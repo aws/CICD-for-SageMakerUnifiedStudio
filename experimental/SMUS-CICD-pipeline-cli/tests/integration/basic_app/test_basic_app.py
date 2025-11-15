@@ -7,66 +7,74 @@ from ..base import IntegrationTestBase
 from smus_cicd.helpers.utils import get_datazone_project_info
 
 
-class TestBasicPipeline(IntegrationTestBase):
+class TestBasicApp(IntegrationTestBase):
     """Test basic pipeline end-to-end workflow."""
 
     def setup_method(self, method):
         """Set up test environment."""
         super().setup_method(method)
         self.setup_test_directory()
-        
-        # Clean up project and role from previous test run
+
+        # Clean up projects and role from previous test run (only in setup)
         try:
             import boto3
             import time
-            
-            # Step 1: Delete project if it exists
-            try:
-                dz = boto3.client('datazone', region_name='us-east-2')
-                # Find domain
-                domains = dz.list_domains()
-                domain_id = None
-                for domain in domains.get('items', []):
-                    if any(tag.get('key') == 'purpose' and tag.get('value') == 'smus-cicd-testing' 
-                           for tag in domain.get('tags', [])):
-                        domain_id = domain['id']
-                        break
-                
-                if domain_id:
-                    # Find project
-                    projects = dz.list_projects(domainIdentifier=domain_id)
-                    for project in projects.get('items', []):
-                        if project['name'] == 'test-project-basic':
-                            project_id = project['id']
-                            print(f"🧹 Deleting existing project: {project_id}")
-                            dz.delete_project(domainIdentifier=domain_id, identifier=project_id)
-                            
-                            # Wait for project deletion
-                            print("⏳ Waiting for project deletion...")
-                            for i in range(30):
-                                try:
-                                    dz.get_project(domainIdentifier=domain_id, identifier=project_id)
-                                    time.sleep(2)
-                                except dz.exceptions.ResourceNotFoundException:
-                                    print(f"✅ Project deleted after {i*2}s")
-                                    break
-                            break
-            except Exception as e:
-                print(f"⚠️ Could not delete project: {e}")
-            
-            # Step 2: Delete IAM role after project is deleted
-            iam = boto3.client('iam')
-            role_name = 'smus-test-project-basic-role'
-            
+
+            dz = boto3.client("datazone", region_name="us-east-2")
+
+            # Find domain
+            domains = dz.list_domains()
+            domain_id = None
+            for domain in domains.get("items", []):
+                if any(
+                    tag.get("key") == "purpose"
+                    and tag.get("value") == "smus-cicd-testing"
+                    for tag in domain.get("tags", [])
+                ):
+                    domain_id = domain["id"]
+                    break
+
+            if domain_id:
+                # Delete test project
+                for project_name in ["test-project-basic"]:
+                    try:
+                        projects = dz.list_projects(domainIdentifier=domain_id)
+                        for project in projects.get("items", []):
+                            if project["name"] == project_name:
+                                project_id = project["id"]
+                                print(f"🧹 Deleting existing project: {project_name}")
+                                dz.delete_project(
+                                    domainIdentifier=domain_id, identifier=project_id
+                                )
+
+                                # Wait for project deletion
+                                print(f"⏳ Waiting for {project_name} deletion...")
+                                for i in range(30):
+                                    try:
+                                        dz.get_project(
+                                            domainIdentifier=domain_id,
+                                            identifier=project_id,
+                                        )
+                                        time.sleep(2)
+                                    except dz.exceptions.ResourceNotFoundException:
+                                        print(f"✅ {project_name} deleted after {i*2}s")
+                                        break
+                                break
+                    except Exception as e:
+                        print(f"⚠️ Could not delete {project_name}: {e}")
+
+            # Delete IAM role after all projects are deleted
+            iam = boto3.client("iam")
+            role_name = "smus-test-project-basic-role"
+
             try:
                 # Detach all policies
                 policies = iam.list_attached_role_policies(RoleName=role_name)
-                for policy in policies.get('AttachedPolicies', []):
+                for policy in policies.get("AttachedPolicies", []):
                     iam.detach_role_policy(
-                        RoleName=role_name,
-                        PolicyArn=policy['PolicyArn']
+                        RoleName=role_name, PolicyArn=policy["PolicyArn"]
                     )
-                
+
                 # Delete the role
                 iam.delete_role(RoleName=role_name)
                 print(f"🧹 Cleaned up existing role: {role_name}")
@@ -76,17 +84,17 @@ class TestBasicPipeline(IntegrationTestBase):
             print(f"⚠️ Could not clean up resources: {e}")
 
     def teardown_method(self, method):
-        """Clean up test environment."""
+        """Clean up test environment - do NOT delete projects/roles here."""
         super().teardown_method(method)
         self.cleanup_resources()
         self.cleanup_test_directory()
 
     def get_pipeline_file(self):
         """Get path to pipeline file in same directory."""
-        return os.path.join(os.path.dirname(__file__), "basic_bundle.yaml")
+        return os.path.join(os.path.dirname(__file__), "manifest.yaml")
 
     @pytest.mark.integration
-    def test_basic_pipeline_workflow(self):
+    def test_basic_app_workflow(self):
         """Test complete basic pipeline workflow: describe --connect -> bundle -> deploy -> monitor."""
         if not self.verify_aws_connectivity():
             pytest.skip("AWS connectivity not available")
@@ -188,13 +196,13 @@ class TestBasicPipeline(IntegrationTestBase):
         assert result["success"], f"Bundle failed: {result['output']}"
         print("✅ Bundle successful")
 
-        # Step 4: Deploy
-        print("\n=== Step 4: Deploy ===")
-        self.logger.info("=== STEP 4: Deploy ===")
+        # Step 4: Deploy test target
+        print("\n=== Step 4: Deploy Test Target ===")
+        self.logger.info("=== STEP 4: Deploy Test Target ===")
         result = self.run_cli_command(["deploy", "test", "--manifest", pipeline_file])
         results.append(result)
-        assert result["success"], f"Deploy failed: {result['output']}"
-        print("✅ Deploy successful")
+        assert result["success"], f"Deploy test failed: {result['output']}"
+        print("✅ Deploy test successful")
 
         # Step 5: Monitor
         print("\n=== Step 5: Monitor ===")

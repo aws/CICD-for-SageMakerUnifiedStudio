@@ -5,7 +5,7 @@ This test validates the basic single-target pipeline workflow.
 ## Files
 
 - `basic_pipeline.yaml` - Pipeline configuration with single dev target
-- `test_basic_pipeline.py` - Integration test implementation
+- `test_basic_app.py` - Integration test implementation
 
 ## Test Scenarios
 

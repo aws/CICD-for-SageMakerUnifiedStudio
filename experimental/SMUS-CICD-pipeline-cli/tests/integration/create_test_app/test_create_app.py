@@ -12,7 +12,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from base import IntegrationTestBase
 
 
-class TestCreatePipeline(IntegrationTestBase):
+class TestCreateApp(IntegrationTestBase):
     """Integration test for target creation with userParameters validation."""
 
     def setUp(self):
@@ -58,9 +58,9 @@ class TestCreatePipeline(IntegrationTestBase):
             return {"success": False, "output": "", "error": str(e), "returncode": -1}
 
     @pytest.mark.integration
-    def test_create_pipeline_workflow(self):
+    def test_create_app_workflow(self):
         """Test complete pipeline creation workflow with userParameters validation."""
-        pipeline_file = str(Path(__file__).parent / "create_test_bundle.yaml")
+        pipeline_file = str(Path(__file__).parent / "manifest.yaml")
         results = []
 
         print("\n" + "=" * 60)
@@ -198,7 +198,7 @@ class TestCreatePipeline(IntegrationTestBase):
     @pytest.mark.integration
     def test_describe_only(self):
         """Test just the describe command for quick validation."""
-        pipeline_file = str(Path(__file__).parent / "create_test_bundle.yaml")
+        pipeline_file = str(Path(__file__).parent / "manifest.yaml")
 
         print("\n=== Quick Describe Test ===")
         result = self.run_cli_command(["describe", "--manifest", pipeline_file])
@@ -212,7 +212,7 @@ class TestCreatePipeline(IntegrationTestBase):
     @pytest.mark.integration
     def test_userparameters_schema_validation(self):
         """Test that userParameters are properly validated in the schema."""
-        pipeline_file = str(Path(__file__).parent / "create_test_bundle.yaml")
+        pipeline_file = str(Path(__file__).parent / "manifest.yaml")
 
         print("\n=== Schema Validation Test ===")
         result = self.run_cli_command(

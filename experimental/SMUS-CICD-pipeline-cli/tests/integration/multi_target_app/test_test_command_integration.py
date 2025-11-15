@@ -14,7 +14,7 @@ class TestTestCommandIntegration(IntegrationTestBase):
     @pytest.fixture
     def manifest_path(self):
         """Get path to test manifest."""
-        return "tests/integration/multi_target_bundle/multi_target_bundle.yaml"
+        return "tests/integration/multi_target_bundle/manifest.yaml"
 
     def test_test_command_basic(self, manifest_path):
         """Test basic test command functionality."""

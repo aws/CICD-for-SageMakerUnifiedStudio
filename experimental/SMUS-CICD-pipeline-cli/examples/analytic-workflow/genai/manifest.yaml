@@ -52,4 +52,4 @@ initialization:
   engine: airflow-serverless
   type: workflow
 tests:
-  folder: examples/analytic-workflow/genai/pipeline_tests/
+  folder: examples/analytic-workflow/genai/app_tests/

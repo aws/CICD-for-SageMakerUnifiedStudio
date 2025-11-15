@@ -5,7 +5,7 @@ This test validates the multi-target pipeline workflow with dev, test, and prod 
 ## Files
 
 - `multi_target_pipeline.yaml` - Pipeline configuration with multiple targets
-- `test_multi_target_pipeline.py` - Integration test implementation
+- `test_multi_target_app.py` - Integration test implementation
 
 ## Test Scenarios
 
@@ -40,5 +40,5 @@ This test validates the multi-target pipeline workflow with dev, test, and prod 
 python -m pytest tests/integration/multi_target_bundle/ -v
 
 # Run specific test
-python -m pytest tests/integration/multi_target_bundle/test_multi_target_pipeline.py::TestMultiTargetPipeline::test_multi_target_describe -v
+python -m pytest tests/integration/multi_target_bundle/test_multi_target_app.py::TestMultiTargetApp::test_multi_target_describe -v
 ```

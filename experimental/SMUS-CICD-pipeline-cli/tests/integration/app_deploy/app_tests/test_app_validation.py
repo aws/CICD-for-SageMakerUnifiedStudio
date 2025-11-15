@@ -13,7 +13,7 @@ class TestBundleValidation:
 
     def get_pipeline_file(self):
         """Get pipeline file path."""
-        return Path(__file__).parent.parent / "bundle_deploy_bundle.yaml"
+        return Path(__file__).parent.parent / "manifest.yaml"
 
     def create_test_bundle(self):
         """Create a test bundle for validation."""

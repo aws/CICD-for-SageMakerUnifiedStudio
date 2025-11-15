@@ -8,7 +8,7 @@ from typer.testing import CliRunner
 from tests.integration.base import IntegrationTestBase
 
 
-class TestBundleDeployPipeline(IntegrationTestBase):
+class TestAppDeploy(IntegrationTestBase):
     """Test bundle-based deployment workflow without dev project."""
 
     def setup_method(self, method):
@@ -137,7 +137,7 @@ class TestBundleDeployPipeline(IntegrationTestBase):
 
     def get_pipeline_file(self):
         """Get path to pipeline file in same directory."""
-        return os.path.join(os.path.dirname(__file__), "bundle_deploy_bundle.yaml")
+        return os.path.join(os.path.dirname(__file__), "manifest.yaml")
 
     def create_bundle_manually(self):
         """Create a bundle manually from the code directory."""
@@ -198,7 +198,7 @@ class TestBundleDeployPipeline(IntegrationTestBase):
         assert "prod:" not in result["output"]
 
     @pytest.mark.integration
-    def test_bundle_deploy_workflow(self):
+    def test_app_deploy_workflow(self):
         """Test complete bundle-based deployment workflow."""
         if not self.verify_aws_connectivity():
             pytest.skip("AWS connectivity not available")

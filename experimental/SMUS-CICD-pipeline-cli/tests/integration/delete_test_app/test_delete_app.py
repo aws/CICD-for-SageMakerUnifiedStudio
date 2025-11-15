@@ -12,7 +12,7 @@ from typer.testing import CliRunner
 from tests.integration.base import IntegrationTestBase
 
 
-class TestDeletePipeline(IntegrationTestBase):
+class TestDeleteApp(IntegrationTestBase):
     """Test delete command with a simple pipeline."""
 
     def setup_method(self, method):
@@ -116,7 +116,7 @@ class TestDeletePipeline(IntegrationTestBase):
 
     def get_pipeline_file(self):
         """Get the path to the delete test pipeline file."""
-        return str(Path(__file__).parent / "delete_test_bundle.yaml")
+        return str(Path(__file__).parent / "manifest.yaml")
 
     def create_bundle_manually(self):
         """Create a bundle manually from the code directory."""
@@ -160,7 +160,7 @@ class TestDeletePipeline(IntegrationTestBase):
         return bundle_path
 
     @pytest.mark.integration
-    def test_delete_pipeline_workflow(self):
+    def test_delete_app_workflow(self):
         """Test complete delete pipeline workflow: describe -> deploy -> delete."""
         if not self.verify_aws_connectivity():
             pytest.skip("AWS connectivity not available")

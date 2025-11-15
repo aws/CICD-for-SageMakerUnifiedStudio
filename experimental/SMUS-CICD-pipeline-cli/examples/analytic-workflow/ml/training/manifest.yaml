@@ -64,4 +64,4 @@ initialization:
   engine: airflow-serverless
   type: workflow
 tests:
-  folder: examples/analytic-workflow/ml/training/pipeline_tests/
+  folder: examples/analytic-workflow/ml/training/app_tests/

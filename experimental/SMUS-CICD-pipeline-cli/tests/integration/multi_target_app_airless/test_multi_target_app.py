@@ -7,7 +7,7 @@ from ..base import IntegrationTestBase
 from smus_cicd.helpers.utils import get_datazone_project_info
 
 
-class TestMultiTargetPipeline(IntegrationTestBase):
+class TestMultiTargetApp(IntegrationTestBase):
     """Test multi-target pipeline end-to-end workflow."""
 
     def setup_method(self, method):
@@ -82,7 +82,7 @@ class TestMultiTargetPipeline(IntegrationTestBase):
 
     def get_pipeline_file(self):
         """Get path to pipeline file in same directory."""
-        return os.path.join(os.path.dirname(__file__), "multi_target_bundle.yaml")
+        return os.path.join(os.path.dirname(__file__), "manifest.yaml")
 
     @pytest.mark.integration
     def test_describe_connect_after_deploy(self):

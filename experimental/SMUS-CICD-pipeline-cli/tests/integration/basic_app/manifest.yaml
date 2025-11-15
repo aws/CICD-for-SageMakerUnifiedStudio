@@ -69,6 +69,7 @@ stages:
       - name: covid-19-dateset
         connectionName: default.s3_shared
         targetDirectory: repos
+
 initialization:
 - workflowName: basic_test_workflow
   connectionName: project.workflow_serverless
