@@ -54,8 +54,8 @@ Built for data scientists, data engineers, ML engineers, and GenAI app developer
 <div dir="ltr">
 
 ```bash
-git clone https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker.git
-cd Unified-Studio-for-Amazon-Sagemaker
+git clone https://github.com/aws/CICD-for-SageMakerUnifiedStudio.git
+cd CICD-for-SageMakerUnifiedStudio
 pip install -e .
 ```
 
@@ -80,7 +80,7 @@ smus-cli test --manifest manifest.yaml --targets test
 
 </div>
 
-**ראה בפעולה:** [Live GitHub Actions Example](https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/actions/runs/17631303500)
+**ראה בפעולה:** [Live GitHub Actions Example](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/actions/runs/17631303500)
 
 ---
 
@@ -407,7 +407,7 @@ stages:
 - **[סקירת בדיקות](tests/README.md)** - תשתית בדיקות
 
 ### תמיכה
-- **בעיות**: [GitHub Issues](https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/issues)
+- **בעיות**: [GitHub Issues](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/issues)
 - **תיעוד**: [docs/](docs/)
 - **דוגמאות**: [examples/](examples/)
 
@@ -421,8 +421,8 @@ stages:
 
 ```bash
 # ✅ נכון - התקנה ממאגר AWS הרשמי
-git clone https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker.git
-cd Unified-Studio-for-Amazon-Sagemaker
+git clone https://github.com/aws/CICD-for-SageMakerUnifiedStudio.git
+cd CICD-for-SageMakerUnifiedStudio
 pip install -e .
 
 # ❌ לא נכון - אין להשתמש ב-PyPI

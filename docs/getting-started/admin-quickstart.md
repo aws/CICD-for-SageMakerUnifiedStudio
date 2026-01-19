@@ -33,8 +33,8 @@ As an admin, you'll configure:
 ## Step 1: Install the CLI
 
 ```bash
-git clone https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker.git
-cd Unified-Studio-for-Amazon-Sagemaker
+git clone https://github.com/aws/CICD-for-SageMakerUnifiedStudio.git
+cd CICD-for-SageMakerUnifiedStudio
 pip install -e .
 ```
 
@@ -635,8 +635,8 @@ jobs:
       
       - name: Install SMUS CLI
         run: |
-          git clone https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker.git
-          cd Unified-Studio-for-Amazon-Sagemaker
+          git clone https://github.com/aws/CICD-for-SageMakerUnifiedStudio.git
+          cd CICD-for-SageMakerUnifiedStudio
           pip install -e .
       
       - name: Configure AWS Credentials
@@ -674,8 +674,8 @@ jobs:
       
       - name: Install SMUS CLI
         run: |
-          git clone https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker.git
-          cd Unified-Studio-for-Amazon-Sagemaker
+          git clone https://github.com/aws/CICD-for-SageMakerUnifiedStudio.git
+          cd CICD-for-SageMakerUnifiedStudio
           pip install -e .
       
       - name: Configure AWS Credentials

@@ -39,7 +39,7 @@ aws cloudformation deploy \
     --region "$REGION" \
     --parameter-overrides \
         GitHubOrg="${GITHUB_ORG:-aws}" \
-        GitHubRepo="${GITHUB_REPO:-Unified-Studio-for-Amazon-Sagemaker}" \
+        GitHubRepo="${GITHUB_REPO:-CICD-for-SageMakerUnifiedStudio}" \
         GitHubEnvironment="${GITHUB_ENVIRONMENT:-aws-env}"
 
 echo "✅ GitHub OIDC integration stack deployment complete!"

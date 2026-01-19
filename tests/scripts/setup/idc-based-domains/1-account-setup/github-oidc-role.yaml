@@ -10,7 +10,7 @@ Parameters:
   GitHubRepo:
     Type: String
     Description: GitHub repository name
-    Default: Unified-Studio-for-Amazon-Sagemaker
+    Default: CICD-for-SageMakerUnifiedStudio
   
   GitHubEnvironment:
     Type: String

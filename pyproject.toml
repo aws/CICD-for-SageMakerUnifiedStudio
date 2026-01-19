@@ -54,9 +54,9 @@ dev = [
 smus-cli = "smus_cicd.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker"
-"Bug Tracker" = "https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/issues"
-Documentation = "https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/tree/main/docs"
+Homepage = "https://github.com/aws/CICD-for-SageMakerUnifiedStudio"
+"Bug Tracker" = "https://github.com/aws/CICD-for-SageMakerUnifiedStudio/issues"
+Documentation = "https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/docs"
 
 [tool.setuptools.packages.find]
 where = ["src"]

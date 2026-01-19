@@ -35,8 +35,8 @@
 
 **从源代码安装：**
 ```bash
-git clone https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker.git
-cd Unified-Studio-for-Amazon-Sagemaker
+git clone https://github.com/aws/CICD-for-SageMakerUnifiedStudio.git
+cd CICD-for-SageMakerUnifiedStudio
 pip install -e .
 ```
 
@@ -55,7 +55,7 @@ smus-cli deploy --targets test --manifest manifest.yaml
 smus-cli test --manifest manifest.yaml --targets test
 ```
 
-**查看运行实例：** [Live GitHub Actions Example](https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/actions/runs/17631303500)
+**查看运行实例：** [Live GitHub Actions Example](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/actions/runs/17631303500)
 
 ---
 
@@ -826,7 +826,7 @@ stages:
 - **[测试概述](tests/README.md)** - 测试基础设施
 
 ### 支持
-- **问题**: [GitHub Issues](https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/issues)
+- **问题**: [GitHub Issues](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/issues)
 - **文档**: [docs/](docs/)
 - **示例**: [examples/](examples/)
 
@@ -838,8 +838,8 @@ stages:
 
 ```bash
 # ✅ 正确 - 从AWS官方仓库安装
-git clone https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker.git
-cd Unified-Studio-for-Amazon-Sagemaker
+git clone https://github.com/aws/CICD-for-SageMakerUnifiedStudio.git
+cd CICD-for-SageMakerUnifiedStudio
 pip install -e .
 
 # ❌ 错误 - 不要使用PyPI

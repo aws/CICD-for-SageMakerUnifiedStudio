@@ -50,10 +50,10 @@ setup(
     description="A CLI tool for managing CI/CD pipelines in SageMaker Unified Studio (SMUS)",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker",
+    url="https://github.com/aws/CICD-for-SageMakerUnifiedStudio",
     project_urls={
-        "Bug Tracker": "https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/issues",
-        "Documentation": "https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/tree/main/docs",
+        "Bug Tracker": "https://github.com/aws/CICD-for-SageMakerUnifiedStudio/issues",
+        "Documentation": "https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/docs",
     },
     classifiers=[
         "Development Status :: 4 - Beta",

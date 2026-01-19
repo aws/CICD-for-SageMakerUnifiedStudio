@@ -20,8 +20,8 @@
 ## Step 1: Install the CLI
 
 ```bash
-git clone https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker.git
-cd Unified-Studio-for-Amazon-Sagemaker
+git clone https://github.com/aws/CICD-for-SageMakerUnifiedStudio.git
+cd CICD-for-SageMakerUnifiedStudio
 pip install -e .
 ```
 
@@ -134,7 +134,7 @@ For DevOps teams: **[Admin Guide](admin-quickstart.md)** - Configure automated p
 - Check AWS credentials: `aws sts get-caller-identity`
 
 **Need help?**
-- Open an issue: [GitHub Issues](https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/issues)
+- Open an issue: [GitHub Issues](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/issues)
 - Check documentation: [docs/](../)
 
 

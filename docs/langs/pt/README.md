@@ -35,8 +35,8 @@ Implante DAGs do Airflow, notebooks Jupyter e workflows de ML do desenvolvimento
 
 **Instalar do código fonte:**
 ```bash
-git clone https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker.git
-cd Unified-Studio-for-Amazon-Sagemaker
+git clone https://github.com/aws/CICD-for-SageMakerUnifiedStudio.git
+cd CICD-for-SageMakerUnifiedStudio
 pip install -e .
 ```
 
@@ -55,7 +55,7 @@ smus-cli deploy --targets test --manifest manifest.yaml
 smus-cli test --manifest manifest.yaml --targets test
 ```
 
-**Veja em ação:** [Exemplo ao Vivo no GitHub Actions](https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/actions/runs/17631303500)
+**Veja em ação:** [Exemplo ao Vivo no GitHub Actions](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/actions/runs/17631303500)
 
 ---
 
@@ -823,7 +823,7 @@ stages:
 - **[Visão Geral de Testes](tests/README.md)** - Infraestrutura de testes
 
 ### Suporte
-- **Issues**: [GitHub Issues](https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/issues)
+- **Issues**: [GitHub Issues](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/issues)
 - **Documentação**: [docs/](docs/)
 - **Exemplos**: [examples/](examples/)
 
@@ -835,8 +835,8 @@ stages:
 
 ```bash
 # ✅ Correto - Instalar do repositório oficial da AWS
-git clone https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker.git
-cd Unified-Studio-for-Amazon-Sagemaker
+git clone https://github.com/aws/CICD-for-SageMakerUnifiedStudio.git
+cd CICD-for-SageMakerUnifiedStudio
 pip install -e .
 
 # ❌ Errado - Não use PyPI

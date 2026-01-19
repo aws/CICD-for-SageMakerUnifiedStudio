@@ -96,5 +96,5 @@ After completing a quick start guide:
 
 - **Documentation**: Browse [docs/](../)
 - **Examples**: Check [examples/](../../examples/)
-- **Issues**: [GitHub Issues](https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/issues)
+- **Issues**: [GitHub Issues](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/issues)
 - **Contributing**: [Development Guide](../development.md)

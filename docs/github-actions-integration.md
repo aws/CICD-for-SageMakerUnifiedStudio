@@ -472,9 +472,9 @@ Actions Available:
 - **Audit Logs**: Immutable logs of all deployment activities
 - **Rollback Tracking**: Complete history of rollbacks and reasons
 
-## Specific Implementation Example: aws/Unified-Studio-for-Amazon-Sagemaker
+## Specific Implementation Example: aws/CICD-for-SageMakerUnifiedStudio
 
-This section demonstrates how the general concepts above are implemented in the specific GitHub repository `https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/` using the `.github/workflows/full-pipeline-lifecycle.yml` workflow.
+This section demonstrates how the general concepts above are implemented in the specific GitHub repository `https://github.com/aws/CICD-for-SageMakerUnifiedStudio/` using the `.github/workflows/full-pipeline-lifecycle.yml` workflow.
 
 ### Repository-Specific Configuration
 

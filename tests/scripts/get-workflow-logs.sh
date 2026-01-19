@@ -47,7 +47,7 @@ echo "$RUNS" | while IFS='|' read -r name run_id conclusion; do
   
   # Download logs
   log_file="$OUTPUT_DIR/${name// /_}_${run_id}.log"
-  gh api "/repos/aws/Unified-Studio-for-Amazon-Sagemaker/actions/jobs/$job_id/logs" 2>&1 > "$log_file"
+  gh api "/repos/aws/CICD-for-SageMakerUnifiedStudio/actions/jobs/$job_id/logs" 2>&1 > "$log_file"
   
   # Extract errors
   echo "  Errors found:"

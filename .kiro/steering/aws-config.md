@@ -279,10 +279,10 @@ gh run view <run-id>
 gh run view <run-id> --job <job-id>
 
 # Get logs from failed job
-gh api repos/aws/Unified-Studio-for-Amazon-Sagemaker/actions/jobs/<job-id>/logs
+gh api repos/aws/CICD-for-SageMakerUnifiedStudio/actions/jobs/<job-id>/logs
 
 # Search for errors in logs
-gh api repos/aws/Unified-Studio-for-Amazon-Sagemaker/actions/jobs/<job-id>/logs | grep -A 20 "Error"
+gh api repos/aws/CICD-for-SageMakerUnifiedStudio/actions/jobs/<job-id>/logs | grep -A 20 "Error"
 ```
 
 ### 4-Phase Workflow Process

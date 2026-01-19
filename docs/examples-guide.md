@@ -7,7 +7,7 @@ This guide provides detailed walkthroughs of real-world example applications sho
 ## Available Examples
 
 ### 📊 Data Engineering - Notebooks
-**Path:** [`examples/analytic-workflow/data-notebooks/`](https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/tree/main/examples/analytic-workflow/data-notebooks)
+**Path:** [`examples/analytic-workflow/data-notebooks/`](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/examples/analytic-workflow/data-notebooks)
 
 Deploy Jupyter notebooks with Airflow orchestration for data analysis and ETL workflows. Demonstrates parallel notebook execution with MLflow integration for experiment tracking.
 
@@ -86,7 +86,7 @@ tests:
 ---
 
 ### 🤖 Machine Learning - Training
-**Path:** [`examples/analytic-workflow/ml/training/`](https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/tree/main/examples/analytic-workflow/ml/training)
+**Path:** [`examples/analytic-workflow/ml/training/`](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/examples/analytic-workflow/ml/training)
 
 Train ML models with SageMaker using the SageMaker SDK and SageMaker Distribution images. Track experiments with MLflow and automate training pipelines with environment-specific configurations.
 
@@ -174,7 +174,7 @@ tests:
 ---
 
 ### 🤖 Machine Learning - Deployment
-**Path:** [`examples/analytic-workflow/ml/deployment/`](https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/tree/main/examples/analytic-workflow/ml/deployment)
+**Path:** [`examples/analytic-workflow/ml/deployment/`](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/examples/analytic-workflow/ml/deployment)
 
 Deploy trained ML models as SageMaker real-time inference endpoints. Uses SageMaker SDK for endpoint configuration and SageMaker Distribution images for serving.
 
@@ -273,7 +273,7 @@ stages:
 ---
 
 ### 📊 Analytics - QuickSight Dashboard
-**Path:** [`examples/analytic-workflow/dashboard-glue-quick/`](https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/tree/main/examples/analytic-workflow/dashboard-glue-quick)
+**Path:** [`examples/analytic-workflow/dashboard-glue-quick/`](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/examples/analytic-workflow/dashboard-glue-quick)
 
 Deploy interactive BI dashboards with automated Glue ETL pipelines for data preparation. Uses QuickSight asset bundles, Athena queries, and GitHub dataset integration with environment-specific configurations.
 
@@ -383,7 +383,7 @@ tests:
 ---
 
 ### 🧠 Generative AI
-**Path:** [`examples/analytic-workflow/genai/`](https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/tree/main/examples/analytic-workflow/genai)
+**Path:** [`examples/analytic-workflow/genai/`](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/examples/analytic-workflow/genai)
 
 Deploy GenAI applications with Bedrock agents and knowledge bases. Demonstrates RAG (Retrieval Augmented Generation) workflows with automated agent deployment and testing.
 
@@ -619,4 +619,4 @@ smus-cli test --manifest manifest.yaml --targets test
 
 - Check the [Quick Start Guide](getting-started/quickstart.md) for step-by-step instructions
 - Review the [Admin Guide](getting-started/admin-quickstart.md) for infrastructure setup
-- Open an issue on [GitHub](https://github.com/aws/Unified-Studio-for-Amazon-Sagemaker/issues)
+- Open an issue on [GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/issues)
