@@ -69,7 +69,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli
+        
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
     
@@ -131,7 +131,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli
+        
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
     
@@ -141,7 +141,7 @@ jobs:
         PROD_DOMAIN_REGION: ${{ vars.PROD_DOMAIN_REGION }}
         SMUS_LOG_LEVEL: WARNING
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli/examples/serverless-example
+        /examples/serverless-example
         python -m smus_cicd.cli describe \
           --pipeline "${{ needs.setup.outputs.pipeline-file }}" \
           --connect
@@ -169,7 +169,7 @@ jobs:
       env:
         DEV_DOMAIN_REGION: ${{ vars.DEV_DOMAIN_REGION }}
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli/examples/serverless-example
+        /examples/serverless-example
         
         # Get S3 location from describe command
         S3_LOCATION=$(python -m smus_cicd.cli describe --pipeline "${{ needs.setup.outputs.pipeline-file }}" --connect | grep "s3Uri:" | head -1 | awk '{print $2}')
@@ -203,7 +203,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli
+        
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
     
@@ -213,7 +213,7 @@ jobs:
         PROD_DOMAIN_REGION: ${{ vars.PROD_DOMAIN_REGION }}
         SMUS_LOG_LEVEL: WARNING
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli/examples/serverless-example
+        /examples/serverless-example
         python -m smus_cicd.cli bundle \
           --pipeline "${{ needs.setup.outputs.pipeline-file }}"
         
@@ -223,7 +223,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: serverless-deployment-bundle
-        path: experimental/SMUS-CICD-pipeline-cli/examples/serverless-example/bundles/DemoMarketingPipeline-Serverless.zip
+        path: examples/serverless-example/bundles/DemoMarketingPipeline-Serverless.zip
 
   deploy-test:
     name: "Step 4 - Deploy to Test Environment"
@@ -249,7 +249,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli
+        
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
     
@@ -257,7 +257,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: serverless-deployment-bundle
-        path: experimental/SMUS-CICD-pipeline-cli/examples/serverless-example/bundles/
+        path: examples/serverless-example/bundles/
     
     - name: Deploy to test environment
       env:
@@ -265,7 +265,7 @@ jobs:
         PROD_DOMAIN_REGION: ${{ vars.PROD_DOMAIN_REGION }}
         SMUS_LOG_LEVEL: WARNING
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli/examples/serverless-example
+        /examples/serverless-example
         python -m smus_cicd.cli deploy \
           --pipeline "${{ needs.setup.outputs.pipeline-file }}" \
           test
@@ -296,7 +296,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli
+        
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
     
@@ -304,7 +304,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: serverless-deployment-bundle
-        path: experimental/SMUS-CICD-pipeline-cli/examples/serverless-example/bundles/
+        path: examples/serverless-example/bundles/
     
     - name: Deploy to production environment
       env:
@@ -312,7 +312,7 @@ jobs:
         PROD_DOMAIN_REGION: ${{ vars.PROD_DOMAIN_REGION }}
         SMUS_LOG_LEVEL: WARNING
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli/examples/serverless-example
+        /examples/serverless-example
         python -m smus_cicd.cli deploy \
           --pipeline "${{ needs.setup.outputs.pipeline-file }}" \
           prod
@@ -343,7 +343,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli
+        
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
     
@@ -353,7 +353,7 @@ jobs:
         PROD_DOMAIN_REGION: ${{ vars.PROD_DOMAIN_REGION }}
         SMUS_LOG_LEVEL: WARNING
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli/examples/serverless-example
+        /examples/serverless-example
         python -m smus_cicd.cli monitor \
           --pipeline "${{ needs.setup.outputs.pipeline-file }}"
         

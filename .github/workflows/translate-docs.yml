@@ -23,7 +23,7 @@ jobs:
       - name: Check for changes in README or docs
         id: check-changes
         run: |
-          if git diff --name-only HEAD~1 HEAD | grep -E '^experimental/SMUS-CICD-pipeline-cli/(README\.md|docs/)'; then
+          if git diff --name-only HEAD~1 HEAD | grep -E '^(README\.md|docs/)'; then
             echo "has-changes=true" >> $GITHUB_OUTPUT
           else
             echo "has-changes=false" >> $GITHUB_OUTPUT
@@ -51,13 +51,13 @@ jobs:
 
       - name: Translate README
         if: steps.check-changes.outputs.has-changes == 'true'
-        working-directory: experimental/SMUS-CICD-pipeline-cli
+        
         run: |
           python docs/scripts/translate-readme-chunked.py
 
       - name: Fix Hebrew code blocks
         if: steps.check-changes.outputs.has-changes == 'true'
-        working-directory: experimental/SMUS-CICD-pipeline-cli
+        
         run: |
           python docs/scripts/fix-hebrew-code-blocks.py
 
@@ -66,7 +66,7 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add experimental/SMUS-CICD-pipeline-cli/docs/langs/
+          git add docs/langs/
           if git diff --staged --quiet; then
             echo "No translation changes to commit"
           else

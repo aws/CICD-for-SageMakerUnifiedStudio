@@ -7,7 +7,7 @@ on:
       - test
       - amirbo_feature_branch
     paths:
-      - 'experimental/SMUS-CICD-pipeline-cli/examples/analytic-workflow/ml/training/**'
+      - 'examples/analytic-workflow/ml/training/**'
   workflow_dispatch:
 
 permissions:
@@ -18,5 +18,5 @@ jobs:
   deploy:
     uses: ./.github/workflows/smus-direct-deploy.yml
     with:
-      manifest_path: 'experimental/SMUS-CICD-pipeline-cli/examples/analytic-workflow/ml/training/manifest.yaml'
+      manifest_path: 'examples/analytic-workflow/ml/training/manifest.yaml'
       test_target: 'test'

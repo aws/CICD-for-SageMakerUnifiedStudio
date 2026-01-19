@@ -67,7 +67,7 @@ jobs:
       
       - name: Install SMUS CLI
         run: |
-          cd experimental/SMUS-CICD-pipeline-cli
+          
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
       
@@ -83,7 +83,7 @@ jobs:
       - name: Register AWS CLI model patch
         run: |
           aws configure add-model \
-            --service-model file://experimental/SMUS-CICD-pipeline-cli/src/smus_cicd/resources/mwaaserverless-2024-07-26.normal-edited-2.json \
+            --service-model file://src/smus_cicd/resources/mwaaserverless-2024-07-26.normal-edited-2.json \
             --service-name mwaaserverless-internal
       
       - name: smus-cli describe (validate dev target)
@@ -92,8 +92,8 @@ jobs:
           DEV_DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
         run: |
           echo "🔍 Validating dev target"
-          cd experimental/SMUS-CICD-pipeline-cli
-          smus-cli describe --manifest ../../${{ inputs.manifest_path }} --targets dev --connect
+          
+          smus-cli describe --manifest ${{ inputs.manifest_path }} --targets dev --connect
       
       - name: smus-cli bundle from dev
         env:
@@ -105,9 +105,9 @@ jobs:
           BUNDLE_DIR="${{ runner.temp }}/smus-bundles-${{ github.run_id }}"
           mkdir -p "$BUNDLE_DIR"
           echo "BUNDLE_DIR=$BUNDLE_DIR" >> $GITHUB_ENV
-          cd experimental/SMUS-CICD-pipeline-cli
+          
           smus-cli bundle \
-            --manifest ../../${{ inputs.manifest_path }} \
+            --manifest ${{ inputs.manifest_path }} \
             --target dev \
             --output-dir "$BUNDLE_DIR"
       
@@ -135,7 +135,7 @@ jobs:
       
       - name: Install SMUS CLI
         run: |
-          cd experimental/SMUS-CICD-pipeline-cli
+          
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
       
@@ -155,8 +155,8 @@ jobs:
           echo "🔍 DOMAIN_REGION: $DOMAIN_REGION"
           echo "🔍 TEST_DOMAIN_REGION: $TEST_DOMAIN_REGION"
           echo "🔍 AWS_REGION: $AWS_REGION"
-          cd experimental/SMUS-CICD-pipeline-cli
-          smus-cli describe --manifest ../../${{ inputs.manifest_path }} --targets test --connect
+          
+          smus-cli describe --manifest ${{ inputs.manifest_path }} --targets test --connect
 
   deploy-test:
     name: Deploy to Test
@@ -180,7 +180,7 @@ jobs:
       
       - name: Install SMUS CLI
         run: |
-          cd experimental/SMUS-CICD-pipeline-cli
+          
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
       
@@ -196,7 +196,7 @@ jobs:
       - name: Register AWS CLI model patch
         run: |
           aws configure add-model \
-            --service-model file://experimental/SMUS-CICD-pipeline-cli/src/smus_cicd/resources/mwaaserverless-2024-07-26.normal-edited-2.json \
+            --service-model file://src/smus_cicd/resources/mwaaserverless-2024-07-26.normal-edited-2.json \
             --service-name mwaaserverless-internal
       
       - name: Get AWS Account ID
@@ -212,8 +212,8 @@ jobs:
           TEST_DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
         run: |
           echo "🔍 Validating test target: ${{ inputs.test_target }}"
-          cd experimental/SMUS-CICD-pipeline-cli
-          smus-cli describe --manifest ../../${{ inputs.manifest_path }} --targets ${{ inputs.test_target }} --connect
+          
+          smus-cli describe --manifest ${{ inputs.manifest_path }} --targets ${{ inputs.test_target }} --connect
       
       - name: smus-cli deploy to test
         env:
@@ -229,9 +229,9 @@ jobs:
           echo "🔍 TEST_DOMAIN_REGION: $TEST_DOMAIN_REGION"
           BUNDLE_FILE=$(ls ${{ runner.temp }}/smus-bundles-${{ github.run_id }}/*.zip | head -1)
           echo "🔍 Using bundle: $BUNDLE_FILE"
-          cd experimental/SMUS-CICD-pipeline-cli
+          
           smus-cli deploy \
-            --manifest ../../${{ inputs.manifest_path }} \
+            --manifest ${{ inputs.manifest_path }} \
             --targets ${{ inputs.test_target }} \
             --bundle-archive-path "$BUNDLE_FILE"
       
@@ -239,7 +239,7 @@ jobs:
         if: always()
         continue-on-error: true
         run: |
-          cd experimental/SMUS-CICD-pipeline-cli
+          
           
           # Extract workflow name from manifest path
           WORKFLOW_NAME=$(basename $(dirname ${{ inputs.manifest_path }}))
@@ -268,7 +268,7 @@ jobs:
       
       - name: Install SMUS CLI
         run: |
-          cd experimental/SMUS-CICD-pipeline-cli
+          
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
       
@@ -284,7 +284,7 @@ jobs:
       - name: Register AWS CLI model patch
         run: |
           aws configure add-model \
-            --service-model file://experimental/SMUS-CICD-pipeline-cli/src/smus_cicd/resources/mwaaserverless-2024-07-26.normal-edited-2.json \
+            --service-model file://src/smus_cicd/resources/mwaaserverless-2024-07-26.normal-edited-2.json \
             --service-name mwaaserverless-internal
       
       - name: smus-cli test
@@ -294,9 +294,9 @@ jobs:
         run: |
           echo "🔍 DOMAIN_REGION: $DOMAIN_REGION"
           echo "🔍 TEST_DOMAIN_REGION: $TEST_DOMAIN_REGION"
-          cd experimental/SMUS-CICD-pipeline-cli
+          
           smus-cli test \
-            --manifest ../../${{ inputs.manifest_path }} \
+            --manifest ${{ inputs.manifest_path }} \
             --targets ${{ inputs.test_target }}
 
   deploy-prod:
@@ -322,7 +322,7 @@ jobs:
       
       - name: Install SMUS CLI
         run: |
-          cd experimental/SMUS-CICD-pipeline-cli
+          
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
       
@@ -337,7 +337,7 @@ jobs:
       - name: Register AWS CLI model patch
         run: |
           aws configure add-model \
-            --service-model file://experimental/SMUS-CICD-pipeline-cli/src/smus_cicd/resources/mwaaserverless-2024-07-26.normal-edited-2.json \
+            --service-model file://src/smus_cicd/resources/mwaaserverless-2024-07-26.normal-edited-2.json \
             --service-name mwaaserverless-internal
       
       - name: Get AWS Account ID
@@ -353,8 +353,8 @@ jobs:
           PROD_DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
         run: |
           echo "🔍 Validating prod target: ${{ inputs.prod_target }}"
-          cd experimental/SMUS-CICD-pipeline-cli
-          smus-cli describe --manifest ../../${{ inputs.manifest_path }} --targets ${{ inputs.prod_target }} --connect
+          
+          smus-cli describe --manifest ${{ inputs.manifest_path }} --targets ${{ inputs.prod_target }} --connect
       
       - name: smus-cli deploy to production
         env:
@@ -370,8 +370,8 @@ jobs:
           echo "🔍 PROD_DOMAIN_REGION: $PROD_DOMAIN_REGION"
           BUNDLE_FILE=$(ls ${{ runner.temp }}/smus-bundles-${{ github.run_id }}/*.zip | head -1)
           echo "🔍 Using bundle: $BUNDLE_FILE"
-          cd experimental/SMUS-CICD-pipeline-cli
+          
           smus-cli deploy \
-            --manifest ../../${{ inputs.manifest_path }} \
+            --manifest ${{ inputs.manifest_path }} \
             --targets ${{ inputs.prod_target }} \
             --bundle-archive-path "$BUNDLE_FILE"

@@ -59,7 +59,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli
+        
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
     
@@ -121,7 +121,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli
+        
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
     
@@ -130,7 +130,7 @@ jobs:
         DEV_DOMAIN_REGION: ${{ vars.DEV_DOMAIN_REGION }}
         SMUS_LOG_LEVEL: WARNING
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli/examples/mwaa-example
+        /examples/mwaa-example
         python -m smus_cicd.cli describe \
           --pipeline "${{ needs.setup.outputs.pipeline-file }}" \
           --connect
@@ -161,7 +161,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli
+        
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
     
@@ -170,7 +170,7 @@ jobs:
         DEV_DOMAIN_REGION: ${{ vars.DEV_DOMAIN_REGION }}
         SMUS_LOG_LEVEL: WARNING
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli/examples/mwaa-example
+        /examples/mwaa-example
         python -m smus_cicd.cli bundle \
           --pipeline "${{ needs.setup.outputs.pipeline-file }}"
         
@@ -180,7 +180,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: mwaa-deployment-bundle
-        path: experimental/SMUS-CICD-pipeline-cli/examples/mwaa-example/bundles/DemoMarketingPipeline-MWAA.zip
+        path: examples/mwaa-example/bundles/DemoMarketingPipeline-MWAA.zip
 
   deploy-test:
     name: "Step 4 - Deploy to Test Environment"
@@ -206,7 +206,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli
+        
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
     
@@ -214,14 +214,14 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: mwaa-deployment-bundle
-        path: experimental/SMUS-CICD-pipeline-cli/examples/mwaa-example/bundles/
+        path: examples/mwaa-example/bundles/
     
     - name: Deploy to test environment
       env:
         DEV_DOMAIN_REGION: ${{ vars.DEV_DOMAIN_REGION }}
         SMUS_LOG_LEVEL: WARNING
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli/examples/mwaa-example
+        /examples/mwaa-example
         python -m smus_cicd.cli deploy \
           --pipeline "${{ needs.setup.outputs.pipeline-file }}" \
           test
@@ -252,7 +252,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli
+        
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
     
@@ -261,7 +261,7 @@ jobs:
         DEV_DOMAIN_REGION: ${{ vars.DEV_DOMAIN_REGION }}
         SMUS_LOG_LEVEL: WARNING
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli/examples/mwaa-example
+        /examples/mwaa-example
         python -m smus_cicd.cli monitor \
           --pipeline "${{ needs.setup.outputs.pipeline-file }}"
         
@@ -291,7 +291,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli
+        
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
     
@@ -299,14 +299,14 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: mwaa-deployment-bundle
-        path: experimental/SMUS-CICD-pipeline-cli/examples/mwaa-example/bundles/
+        path: examples/mwaa-example/bundles/
     
     - name: Deploy to production environment
       env:
         PROD_DOMAIN_REGION: ${{ vars.PROD_DOMAIN_REGION }}
         SMUS_LOG_LEVEL: WARNING
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli/examples/mwaa-example
+        /examples/mwaa-example
         python -m smus_cicd.cli deploy \
           --pipeline "${{ needs.setup.outputs.pipeline-file }}" \
           prod
@@ -337,7 +337,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli
+        
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
     
@@ -346,7 +346,7 @@ jobs:
         PROD_DOMAIN_REGION: ${{ vars.PROD_DOMAIN_REGION }}
         SMUS_LOG_LEVEL: WARNING
       run: |
-        cd experimental/SMUS-CICD-pipeline-cli/examples/mwaa-example
+        /examples/mwaa-example
         python -m smus_cicd.cli monitor \
           --pipeline "${{ needs.setup.outputs.pipeline-file }}"
         

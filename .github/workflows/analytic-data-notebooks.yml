@@ -7,7 +7,7 @@ on:
       - test
       - amirbo_feature_branch
     paths:
-      - 'experimental/SMUS-CICD-pipeline-cli/examples/analytic-workflow/data-notebooks/**'
+      - 'examples/analytic-workflow/data-notebooks/**'
   workflow_dispatch:
 
 permissions:
@@ -18,5 +18,5 @@ jobs:
   deploy:
     uses: ./.github/workflows/smus-direct-deploy.yml
     with:
-      manifest_path: 'experimental/SMUS-CICD-pipeline-cli/examples/analytic-workflow/data-notebooks/manifest.yaml'
+      manifest_path: 'examples/analytic-workflow/data-notebooks/manifest.yaml'
       test_target: 'test'
