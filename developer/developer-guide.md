@@ -114,7 +114,29 @@ Reference `./developer/AmazonQ.md` at the start of your conversation to load ful
 
 ## 4. Development Environment Setup
 
-### 4.1 Domain Types and Testing
+### 4.1 Quick Setup for Integration Testing
+
+For running integration tests, use the automated setup script:
+
+```bash
+# Run the setup script
+./tests/setup-integ-env.sh
+
+# Activate the environment (for subsequent sessions)
+source activate-integ-env.sh
+```
+
+The setup script will:
+- Create a Python virtual environment
+- Install the package in development mode
+- Auto-detect AWS account, region, and DataZone domain
+- Discover DataZone projects
+- Generate `.env` file with all required environment variables
+- Create `activate-integ-env.sh` for easy activation
+
+See `tests/RUNNING_TESTS.md` for detailed testing instructions.
+
+### 4.2 Domain Types and Testing
 
 **IAM-Based Domains** (Simpler, Faster Setup)
 - **No IAM Identity Center (IDC) required**
@@ -145,7 +167,7 @@ Reference `./developer/AmazonQ.md` at the start of your conversation to load ful
 | Quick prototyping | IAM-based | Minimal setup time |
 | SSO feature testing | IDC-based | Required for SSO |
 
-### 4.2 Infrastructure Deployment
+### 4.3 Infrastructure Deployment
 
 **Setup Steps:**
 
@@ -242,7 +264,7 @@ cd ../testing-data
 - `mlflow_bucket_{region}.txt`
 - `ml_bucket_{region}.txt`
 
-### 4.3 Quick Start (IAM-Based)
+### 4.4 Quick Start (IAM-Based)
 
 ```bash
 cd tests/scripts/setup/iam-based-domains
@@ -258,7 +280,7 @@ cd 5-testing-infrastructure/testing-infrastructure && ./deploy.sh us-east-2 && c
 cd testing-data && ./deploy.sh us-east-2
 ```
 
-### 4.4 Environment Variables
+### 4.5 Environment Variables
 
 After setup, export these for integration tests:
 ```bash

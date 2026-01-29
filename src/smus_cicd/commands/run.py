@@ -665,7 +665,7 @@ def _get_connection_type(connection_name: str, targets: dict, manifest) -> str:
     """Get connection type from DataZone by looking it up in the first target."""
     import boto3
 
-    from ..helpers.datazone import get_project_id_by_name, resolve_domain_id
+    from ..helpers.datazone import get_domain_from_target_config, get_project_id_by_name
 
     # Get first target to lookup connection
     first_target = next(iter(targets.values()))
@@ -673,12 +673,8 @@ def _get_connection_type(connection_name: str, targets: dict, manifest) -> str:
     project_name = first_target.project.name
 
     try:
-        # Get domain and project IDs
-        domain_id, _ = resolve_domain_id(
-            first_target.domain.name,
-            first_target.domain.tags if hasattr(first_target.domain, "tags") else None,
-            region,
-        )
+        # Get domain and project IDs using the new helper
+        domain_id, _ = get_domain_from_target_config(first_target, region)
 
         if not domain_id:
             return "UNKNOWN"
