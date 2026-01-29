@@ -372,7 +372,7 @@ def _resolve_domain_id(config: Dict[str, Any], region: str) -> Optional[str]:
     from .logger import get_logger
 
     logger = get_logger("utils")
-    
+
     # DEBUG: Log what we're working with
     logger.debug(f"_resolve_domain_id called with region={region}")
     logger.debug(f"config keys: {list(config.keys())}")
@@ -387,13 +387,15 @@ def _resolve_domain_id(config: Dict[str, Any], region: str) -> Optional[str]:
         domain_config = config.get("domain", {})
         domain_name = domain_config.get("name")
         domain_tags = domain_config.get("tags")
-        
+
         logger.debug(f"domain_name: {domain_name}")
         logger.debug(f"domain_tags: {domain_tags}")
 
         if domain_name or domain_tags:
             try:
-                logger.debug(f"Calling datazone.resolve_domain_id with name={domain_name}, tags={domain_tags}, region={region}")
+                logger.debug(
+                    f"Calling datazone.resolve_domain_id with name={domain_name}, tags={domain_tags}, region={region}"
+                )
                 domain_id, _ = datazone.resolve_domain_id(
                     domain_name=domain_name, domain_tags=domain_tags, region=region
                 )

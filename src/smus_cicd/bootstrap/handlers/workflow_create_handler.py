@@ -99,8 +99,8 @@ def handle_workflow_create(
     else:
         # Domain ID not in project_info, resolve both from target_config
         try:
-            target_domain_id, target_domain_name = datazone.get_domain_from_target_config(
-                target_config, region
+            target_domain_id, target_domain_name = (
+                datazone.get_domain_from_target_config(target_config, region)
             )
             domain_id = target_domain_id
             domain_name = target_domain_name

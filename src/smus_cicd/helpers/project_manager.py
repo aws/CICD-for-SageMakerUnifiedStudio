@@ -315,7 +315,7 @@ class ProjectManager:
                 )
             except Exception as e:
                 handle_error(f"Failed to resolve domain: {e}")
-            
+
             if domain_id:
                 project_id = datazone.get_project_id_by_name(
                     project_name, domain_id, region

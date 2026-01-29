@@ -36,9 +36,7 @@ def _fix_airflow_role_cloudwatch_policy(role_arn: str, region: str) -> bool:
                 RoleName=role_name,
                 PolicyArn="arn:aws:iam::aws:policy/AdministratorAccess",
             )
-            typer.echo(
-                f"⚠️ TEMPORARY: Attached Admin policy to {role_name} for testing"
-            )
+            typer.echo(f"⚠️ TEMPORARY: Attached Admin policy to {role_name} for testing")
             typer.echo("⚠️ TODO: Replace with minimal permissions in production")
             return True
         except iam.exceptions.NoSuchEntityException:

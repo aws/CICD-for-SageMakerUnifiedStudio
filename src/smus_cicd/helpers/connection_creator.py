@@ -96,15 +96,19 @@ class ConnectionCreator:
         """Get DataZone-internal client for workflow connections (WORKFLOWS_MWAA, WORKFLOWS_SERVERLESS)."""
         if self._internal_client is None:
             import os
-            
+
             endpoint_url = os.environ.get("DATAZONE_ENDPOINT_URL")
             if endpoint_url:
                 self._internal_client = boto3.client(
-                    "datazone-internal", region_name=self.region, endpoint_url=endpoint_url
+                    "datazone-internal",
+                    region_name=self.region,
+                    endpoint_url=endpoint_url,
                 )
             else:
-                self._internal_client = boto3.client("datazone-internal", region_name=self.region)
-        
+                self._internal_client = boto3.client(
+                    "datazone-internal", region_name=self.region
+                )
+
         return self._internal_client
 
     def create_from_config(
