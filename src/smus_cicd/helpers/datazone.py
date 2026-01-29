@@ -1487,7 +1487,9 @@ def process_catalog_assets(
 
         # Skip non-Glue assets as specified in requirements
         if asset_type and asset_type != "GlueTable":
-            typer.echo(f"⏭️ Skipping asset type {asset_type} (only GlueTable supported)")
+            typer.echo(
+                f"⏭️ Skipping asset type {asset_type} (only GlueTable supported)"
+            )
             continue
 
         # Process asset access
