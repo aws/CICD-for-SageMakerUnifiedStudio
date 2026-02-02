@@ -172,6 +172,47 @@ def get_domain_id_by_name(domain_name, region):
     return domain_id
 
 
+def get_domain_from_target_config(
+    target_config, region: str = None
+) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Get domain ID and name from target configuration.
+
+    Handles both cases:
+    - Domain name is provided: resolve ID from name
+    - Domain name is not provided: resolve both ID and name from tags
+
+    Args:
+        target_config: Target configuration object with domain.name, domain.tags, domain.region
+        region: Optional AWS region override (uses target_config.domain.region if not provided)
+
+    Returns:
+        Tuple of (domain_id, domain_name) or (None, None) if not found
+
+    Raises:
+        Exception: If domain cannot be resolved
+    """
+    domain_name = target_config.domain.name
+    region = region or target_config.domain.region
+
+    if domain_name:
+        # Domain name provided, resolve ID
+        domain_id = get_domain_id_by_name(domain_name, region)
+        if not domain_id:
+            raise Exception(f"Domain '{domain_name}' not found in region {region}")
+        return domain_id, domain_name
+    else:
+        # Domain name not provided, use tags to resolve both ID and name
+        domain_id, domain_name = resolve_domain_id(
+            domain_name=None, domain_tags=target_config.domain.tags, region=region
+        )
+        if not domain_id or not domain_name:
+            raise Exception(
+                f"Could not resolve domain from tags {target_config.domain.tags} in region {region}"
+            )
+        return domain_id, domain_name
+
+
 def get_default_project_profile(domain_id, region):
     """Get the default project profile for a domain. Returns first available profile."""
     try:
@@ -1446,7 +1487,9 @@ def process_catalog_assets(
 
         # Skip non-Glue assets as specified in requirements
         if asset_type and asset_type != "GlueTable":
-            typer.echo(f"⏭️ Skipping asset type {asset_type} (only GlueTable supported)")
+            typer.echo(
+                f"⏭️ Skipping asset type {asset_type} (only GlueTable supported)"
+            )
             continue
 
         # Process asset access

@@ -36,7 +36,9 @@ def _fix_airflow_role_cloudwatch_policy(role_arn: str, region: str) -> bool:
                 RoleName=role_name,
                 PolicyArn="arn:aws:iam::aws:policy/AdministratorAccess",
             )
-            typer.echo(f"⚠️ TEMPORARY: Attached Admin policy to {role_name} for testing")
+            typer.echo(
+                f"⚠️ TEMPORARY: Attached Admin policy to {role_name} for testing"
+            )
             typer.echo("⚠️ TODO: Replace with minimal permissions in production")
             return True
         except iam.exceptions.NoSuchEntityException:
@@ -1458,17 +1460,13 @@ def _process_catalog_assets(
     # Get domain and project IDs
     region = target_config.domain.region
 
-    # Resolve domain using name, tags, or auto-detect
-    from ..helpers.datazone import resolve_domain_id
+    # Resolve domain using the new helper
+    from ..helpers.datazone import get_domain_from_target_config
 
-    domain_id, domain_name = resolve_domain_id(
-        domain_name=target_config.domain.name,
-        domain_tags=target_config.domain.tags,
-        region=region,
-    )
-
-    if not domain_id:
-        error_msg = f"Could not resolve domain in region {region}"
+    try:
+        domain_id, domain_name = get_domain_from_target_config(target_config, region)
+    except Exception as e:
+        error_msg = str(e)
         if emitter:
             target_info = build_target_info(target_config.name, target_config)
             error = {

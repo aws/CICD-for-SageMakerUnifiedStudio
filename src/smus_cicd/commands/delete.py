@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.prompt import Confirm
 
 from ..application import ApplicationManifest
-from ..helpers.datazone import get_domain_id_by_name
+from ..helpers.datazone import get_domain_from_target_config
 
 console = Console()
 
@@ -89,20 +89,18 @@ def delete_command(
                 console.print(f"\n[blue]🗑️  Deleting target: {stage_name}[/blue]")
 
             try:
-                # Get domain ID for this target
-                domain_id = get_domain_id_by_name(
-                    target.domain.name, target.domain.region
-                )
+                # Get domain ID for this target using the new helper
+                domain_id, domain_name = get_domain_from_target_config(target)
+
                 if not domain_id:
-                    console.print(
-                        f"[red]Error: Domain '{target.domain.name}' not found[/red]"
-                    )
+                    error_msg = f"Domain not found in region {target.domain.region}"
+                    console.print(f"[red]Error: {error_msg}[/red]")
                     results.append(
                         {
                             "target": stage_name,
                             "project_name": target.project.name,
                             "status": "error",
-                            "message": f"Domain '{target.domain.name}' not found",
+                            "message": error_msg,
                         }
                     )
                     continue

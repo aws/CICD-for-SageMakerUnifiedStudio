@@ -84,37 +84,6 @@ class TestBasicApp(IntegrationTestBase):
         except Exception as e:
             print(f"⚠️ Could not delete role: {e}")
 
-        # Step 0.5: Delete workflow if it exists
-        print("\n=== Step 0.5: Cleanup Existing Workflow ===")
-        try:
-            import boto3
-            import os
-            
-            # Get region and endpoint from environment
-            region = os.environ.get('DEV_DOMAIN_REGION', 'us-east-1')
-            endpoint = os.environ.get('AIRFLOW_SERVERLESS_ENDPOINT')
-            if not endpoint:
-                endpoint = f'https://airflow-serverless.{region}.api.aws/'
-            
-            # Note: Workflow deletion removed - deploy command now updates existing workflows
-            # This preserves run history across test runs
-            # client = boto3.client('awsoverdriveservice', region_name=region, endpoint_url=endpoint)
-            # response = client.list_workflows()
-            # workflows = response.get('Workflows', [])
-            # expected_name = f'BasicTestPipeline_test_marketing_{workflow_name}'
-            # 
-            # for wf in workflows:
-            #     if wf.get('Name') == expected_name:
-            #         workflow_arn = wf.get('WorkflowArn')
-            #         print(f"🗑️  Deleting existing workflow: {expected_name}")
-            #         client.delete_workflow(WorkflowArn=workflow_arn)
-            #         print("✅ Workflow deleted")
-            #         break
-            # else:
-            #     print("✓ No existing workflow to delete")
-        except Exception as e:
-            print(f"⚠️  Could not delete workflow: {e}")
-
         # Step 1: Describe with connections
         print("\n=== Step 1: Describe with Connections ===")
         self.logger.info("=== STEP 1: Describe with Connections ===")
@@ -126,6 +95,7 @@ class TestBasicApp(IntegrationTestBase):
         # Step 1.5: Upload local code to S3
         print("\n=== Step 2: Upload Code and Workflows to S3 ===")
         describe_output = result["output"]
+        import os
         import re
         import subprocess
         import yaml

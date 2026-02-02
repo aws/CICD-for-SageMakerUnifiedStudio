@@ -359,12 +359,9 @@ targets:"""
       actions:
         - type: mwaaserverless.start_workflow_run
           workflowArn: "arn:aws:airflow-serverless:${{AWS_REGION}}:${{AWS_ACCOUNT_ID}}:workflow/"""
-            bundle_yaml += (
-                project_name
-                + """_workflow"
+            bundle_yaml += project_name + """_workflow"
           clientToken: "run-${{STAGE}}"
 """
-            )
 
         bundle_yaml += """
 bundle:

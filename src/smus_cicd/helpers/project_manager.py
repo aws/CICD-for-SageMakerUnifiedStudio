@@ -25,19 +25,19 @@ class ProjectManager:
         logger.debug(f"ensure_project_exists called for target: {stage_name}")
 
         project_name = target_config.project.name
-        domain_name = target_config.domain.name
         region = target_config.domain.region
 
-        # Resolve domain name if not provided (using tags)
-        if not domain_name:
-            domain_id, domain_name = datazone.resolve_domain_id(
-                domain_name=None, domain_tags=target_config.domain.tags, region=region
+        # Resolve domain ID and name using the new helper
+        try:
+            domain_id, domain_name = datazone.get_domain_from_target_config(
+                target_config, region
             )
-            if not domain_name:
-                handle_error("Could not resolve domain name from tags")
+        except Exception as e:
+            handle_error(str(e))
 
         logger.debug(f"project_name: {project_name}")
         logger.debug(f"domain_name: {domain_name}")
+        logger.debug(f"domain_id: {domain_id}")
         logger.debug(f"region: {region}")
 
         # Check if project exists in DataZone first
@@ -68,7 +68,7 @@ class ProjectManager:
         if self._should_create_project(target_config):
             logger.debug("Should create project - calling _create_new_project")
             project_info = self._create_new_project(
-                stage_name, target_config, project_name, domain_name, region
+                stage_name, target_config, project_name, domain_name, region, domain_id
             )
             logger.debug("_create_new_project returned")
             logger.debug(
@@ -116,26 +116,49 @@ class ProjectManager:
         project_name: str,
         domain_name: str,
         region: str,
+        domain_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create a new project via CloudFormation."""
+        print(
+            f"🔍 DEBUG _create_new_project: domain_name={domain_name}, domain_id={domain_id}, region={region}"
+        )
         typer.echo("🔧 Auto-initializing target infrastructure...")
 
         # Double-check project doesn't exist (race condition protection)
-        config_with_region = {**self.config, "region": region}
+        config_with_region = {
+            **self.config,
+            "region": region,
+            "domain": {
+                **self.config.get("domain", {}),
+                "name": domain_name,
+            },
+        }
+        print(
+            f"🔍 DEBUG _create_new_project: calling get_datazone_project_info with config={config_with_region}"
+        )
         project_info = get_datazone_project_info(project_name, config_with_region)
+        print(
+            f"🔍 DEBUG _create_new_project: project_info status={project_info.get('status')}"
+        )
         if "error" not in project_info and project_info.get("status") != "NOT_FOUND":
             handle_success(
                 f"✅ Project '{project_name}' was created by another process"
             )
             return project_info
 
-        # Get domain ID
-        domain_id = datazone.get_domain_id_by_name(domain_name, region)
+        # Get domain ID if not already provided
+        if not domain_id:
+            print(
+                "🔍 DEBUG _create_new_project: domain_id not provided, calling get_domain_id_by_name"
+            )
+            domain_id = datazone.get_domain_id_by_name(domain_name, region)
         if not domain_id:
             handle_error(f"Domain '{domain_name}' not found")
 
         # Extract project configuration
-        profile_name = self._get_profile_name(target_config)
+        profile_name = self._get_profile_name(
+            target_config, domain_name, domain_id, region
+        )
         _ = self._extract_user_parameters(
             target_config, stage_name
         )  # Reserved for future use
@@ -285,8 +308,14 @@ class ProjectManager:
         owners, contributors = self._extract_memberships(target_config)
         if owners or contributors:
             typer.echo("🔧 Managing project memberships...")
-            domain_name = target_config.domain.name
-            domain_id = datazone.get_domain_id_by_name(domain_name, region)
+            # Use get_domain_from_target_config to properly resolve domain
+            try:
+                domain_id, domain_name = datazone.get_domain_from_target_config(
+                    target_config, region
+                )
+            except Exception as e:
+                handle_error(f"Failed to resolve domain: {e}")
+
             if domain_id:
                 project_id = datazone.get_project_id_by_name(
                     project_name, domain_id, region
@@ -330,7 +359,13 @@ class ProjectManager:
                         role_arn=role_arn,
                     )
 
-    def _get_profile_name(self, target_config) -> str:
+    def _get_profile_name(
+        self,
+        target_config,
+        domain_name: str = None,
+        domain_id: str = None,
+        region: str = None,
+    ) -> str:
         """Extract profile name from target configuration."""
         profile_name = target_config.project.profile_name
         if target_config.bootstrap and target_config.project:
@@ -340,13 +375,18 @@ class ProjectManager:
         if not profile_name:
             from . import datazone
 
-            domain_name = target_config.domain.name
-            region = self.config.get("region")
+            # Use provided domain_name/domain_id if available, otherwise get from config
+            if not region:
+                region = self.config.get("region")
 
-            # Get domain ID
-            domain_id = datazone.get_domain_id_by_name(domain_name, region)
-            if not domain_id:
-                handle_error(f"Domain '{domain_name}' not found")
+            # Get domain ID and name if not provided
+            if not domain_id or not domain_name:
+                try:
+                    domain_id, domain_name = datazone.get_domain_from_target_config(
+                        target_config, region
+                    )
+                except Exception as e:
+                    handle_error(str(e))
 
             # List project profiles
             import boto3
@@ -383,8 +423,12 @@ class ProjectManager:
         contributors,
     ):
         """Create project using DataZone API directly (for gamma endpoints)."""
+        print(
+            f"🔍 DEBUG _create_project_via_datazone_api: domain_name={domain_name}, region={region}"
+        )
         # Get domain ID
         domain_id = datazone.get_domain_id_by_name(domain_name, region)
+        print(f"🔍 DEBUG _create_project_via_datazone_api: domain_id={domain_id}")
         if not domain_id:
             handle_error(f"Domain '{domain_name}' not found")
             return False

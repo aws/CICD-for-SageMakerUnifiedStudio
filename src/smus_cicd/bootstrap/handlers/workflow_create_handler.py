@@ -65,7 +65,7 @@ def handle_workflow_create(
     project_id = project_info.get("project_id")
     domain_id = project_info.get("domain_id")
 
-    if not project_id or not domain_id:
+    if not project_id:
         typer.echo("❌ Project info not available in context")
         return False
 
@@ -84,8 +84,30 @@ def handle_workflow_create(
     if bundle_path:
         ensure_bundle_local(bundle_path, region)
 
-    # Get role ARN - need domain_name not domain_id
-    domain_name = target_config.domain.name
+    # Resolve domain ID and name
+    # Prefer domain_id from project_info if available, otherwise resolve from target_config
+    if domain_id:
+        # Domain ID available from project_info, resolve name if needed
+        domain_name = target_config.domain.name
+        if not domain_name:
+            # Resolve domain_name from domain_id
+            from ...helpers.datazone import _get_datazone_client
+
+            dz_client = _get_datazone_client(region)
+            domain_response = dz_client.get_domain(identifier=domain_id)
+            domain_name = domain_response.get("name")
+    else:
+        # Domain ID not in project_info, resolve both from target_config
+        try:
+            target_domain_id, target_domain_name = (
+                datazone.get_domain_from_target_config(target_config, region)
+            )
+            domain_id = target_domain_id
+            domain_name = target_domain_name
+        except Exception as e:
+            typer.echo(f"❌ Failed to resolve domain: {e}")
+            return False
+
     role_arn = datazone.get_project_user_role_arn(project_name, domain_name, region)
     if not role_arn:
         typer.echo("❌ No project user role found")
