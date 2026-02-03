@@ -74,8 +74,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # TODO: Replace with secrets.AWS_ROLE_ARN_DEV once configured
-          role-to-assume: arn:aws:iam::198737698272:role/GitHubActionsRole-SMUS-CLI-Tests
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
           aws-region: ${{ vars.DOMAIN_REGION }}
           role-session-name: smus-bundle-session
       
@@ -142,8 +141,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # TODO: Replace with secrets.AWS_ROLE_ARN_TEST once configured
-          role-to-assume: arn:aws:iam::019900059033:role/GitHubActionsRole-SMUS-CLI-Tests
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_TEST }}
           aws-region: ${{ vars.DOMAIN_REGION }}
           role-session-name: smus-validate-session
       
@@ -187,8 +185,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # TODO: Replace with secrets.AWS_ROLE_ARN_TEST once configured
-          role-to-assume: arn:aws:iam::019900059033:role/GitHubActionsRole-SMUS-CLI-Tests
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_TEST }}
           aws-region: ${{ vars.DOMAIN_REGION }}
           role-session-name: smus-deploy-test-session
       
@@ -275,8 +272,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # TODO: Replace with secrets.AWS_ROLE_ARN_TEST once configured
-          role-to-assume: arn:aws:iam::019900059033:role/GitHubActionsRole-SMUS-CLI-Tests
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_TEST }}
           aws-region: ${{ vars.DOMAIN_REGION }}
           role-session-name: smus-test-session
       
