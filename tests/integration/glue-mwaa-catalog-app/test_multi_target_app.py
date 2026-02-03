@@ -315,6 +315,9 @@ task = PythonOperator(
         manifest_content = """
 applicationName: NonexistentProjectTest
 content:
+  workflows:
+    - workflowName: test_dag
+      connectionName: project.workflow_mwaa
 stages:
   test:
     stage: test
@@ -323,10 +326,6 @@ stages:
       region: us-east-2
     project:
       name: nonexistent-project-12345
-workflows:
-  - workflowName: test_dag
-    connectionName: project.workflow_mwaa
-    logging: console
 """
 
         # Write temporary manifest
@@ -366,6 +365,9 @@ workflows:
         manifest_content = """
 applicationName: WrongDomainTest
 content:
+  workflows:
+    - workflowName: test_dag
+      connectionName: project.workflow_mwaa
 stages:
   test:
     stage: test
@@ -374,10 +376,6 @@ stages:
       region: ${DEV_DOMAIN_REGION:us-east-1}
     project:
       name: test-glue-mwaa-catalog-app
-workflows:
-  - workflowName: test_dag
-    connectionName: project.workflow_mwaa
-    logging: console
 """
 
         # Write temporary manifest
@@ -415,6 +413,9 @@ workflows:
         manifest_content = """
 applicationName: WrongRegionTest
 content:
+  workflows:
+    - workflowName: test_dag
+      connectionName: project.workflow_mwaa
 stages:
   test:
     stage: test
@@ -423,10 +424,6 @@ stages:
       region: ${DEV_DOMAIN_REGION:eu-west-1}
     project:
       name: test-glue-mwaa-catalog-app
-workflows:
-  - workflowName: test_dag
-    connectionName: project.workflow_mwaa
-    logging: console
 """
 
         # Write temporary manifest
@@ -564,6 +561,9 @@ workflows:
         manifest_content = """
 applicationName: MixedTargetsTest
 content:
+  workflows:
+    - workflowName: test_dag
+      connectionName: project.workflow_mwaa
 stages:
   existing:
     stage: test
@@ -579,9 +579,6 @@ stages:
       region: us-east-2
     project:
       name: definitely-does-not-exist-project-12345
-workflows:
-  - workflowName: test_dag
-    connectionName: project.workflow_mwaa
 """
 
         # Write temporary manifest
@@ -627,6 +624,9 @@ workflows:
         manifest_content = """
 applicationName: InvalidConnectionTest
 content:
+  workflows:
+    - workflowName: test_dag
+      connectionName: nonexistent.connection.name
 stages:
   test:
     stage: test
@@ -635,9 +635,6 @@ stages:
       region: us-east-2
     project:
       name: test-glue-mwaa-catalog-app
-workflows:
-  - workflowName: test_dag
-    connectionName: nonexistent.connection.name
 """
 
         # Write temporary manifest

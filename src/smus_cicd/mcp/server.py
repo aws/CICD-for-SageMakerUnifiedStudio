@@ -726,7 +726,7 @@ workflows:
             if "workflows" in data:
                 success_text += f"Workflows: {len(data.get('workflows', []))}\n"
 
-            success_text += "\nValidated against pipeline-manifest-schema.yaml"
+            success_text += "\nValidated against application-manifest-schema.yaml"
 
             return {"content": [{"type": "text", "text": success_text}]}
 

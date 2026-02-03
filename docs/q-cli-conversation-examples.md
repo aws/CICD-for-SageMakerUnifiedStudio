@@ -235,7 +235,7 @@ Your notebooks will be:
 - Bundle sections: 2
 - Workflows: 1
 
-Validated against pipeline-manifest-schema.yaml
+Validated against application-manifest-schema.yaml
 
 Your pipeline looks good! All required fields are present and properly formatted.
 

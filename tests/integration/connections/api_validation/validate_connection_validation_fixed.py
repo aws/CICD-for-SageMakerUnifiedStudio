@@ -4,7 +4,7 @@ import boto3
 import time
 import json
 
-def test_connection_type(client, domain_id, env_id, conn_type, props, description=""):
+def validate_connection_type(client, domain_id, env_id, conn_type, props, description=""):
     """Test creating a specific connection type"""
     
     timestamp = str(int(time.time()))
@@ -96,7 +96,7 @@ def main():
     
     for i, (conn_type, props, desc) in enumerate(test_cases):
         print(f"\n[{i+1}/{len(test_cases)}] Testing {conn_type}...")
-        success, result = test_connection_type(client, domain_id, env_id, conn_type, props, desc)
+        success, result = validate_connection_type(client, domain_id, env_id, conn_type, props, desc)
         results[conn_type] = {"success": success, "result": result}
         
         # Rate limiting
