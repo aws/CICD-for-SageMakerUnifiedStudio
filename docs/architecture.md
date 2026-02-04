@@ -184,9 +184,9 @@ Manages manifest parsing and validation:
 
 ```
 src/smus_cicd/application/
-├── application_manifest.py   # Manifest data model
-├── validation.py             # Schema validation
-└── manifest-schema.yaml      # JSON Schema definition
+├── application_manifest.py          # Manifest data model
+├── validation.py                    # Schema validation
+└── application-manifest-schema.yaml # JSON Schema definition
 ```
 
 **Key Components:**

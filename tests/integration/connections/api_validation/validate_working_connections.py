@@ -11,7 +11,7 @@ DOMAIN_ID = "dzd_6je2k8b63qse07"
 ENV_ID = "dtadp6zmf87b53"
 REGION = "us-east-1"
 
-def test_connection(client, name, props, description=""):
+def validate_connection(client, name, props, description=""):
     """Create, verify, and cleanup a connection"""
     try:
         response = client.create_connection(
@@ -57,7 +57,7 @@ def main():
     
     # 1. S3
     print("\n1. Testing S3 Connection...")
-    results['S3'] = test_connection(
+    results['S3'] = validate_connection(
         client,
         f"test-s3-{timestamp}",
         {"s3Properties": {"s3Uri": "s3://test-bucket/data/"}},
@@ -67,7 +67,7 @@ def main():
     
     # 2. IAM
     print("\n2. Testing IAM Connection...")
-    results['IAM'] = test_connection(
+    results['IAM'] = validate_connection(
         client,
         f"test-iam-{timestamp}",
         {"iamProperties": {"glueLineageSyncEnabled": False}},
@@ -77,7 +77,7 @@ def main():
     
     # 3. SPARK_GLUE
     print("\n3. Testing SPARK_GLUE Connection...")
-    results['SPARK_GLUE'] = test_connection(
+    results['SPARK_GLUE'] = validate_connection(
         client,
         f"test-spark-glue-{timestamp}",
         {
@@ -93,7 +93,7 @@ def main():
     
     # 4. ATHENA
     print("\n4. Testing ATHENA Connection...")
-    results['ATHENA'] = test_connection(
+    results['ATHENA'] = validate_connection(
         client,
         f"test-athena-{timestamp}",
         {"athenaProperties": {"workgroupName": "workgroup-buxme33txzr413-dtadp6zmf87b53"}},
@@ -103,7 +103,7 @@ def main():
     
     # 5. REDSHIFT
     print("\n5. Testing REDSHIFT Connection...")
-    results['REDSHIFT'] = test_connection(
+    results['REDSHIFT'] = validate_connection(
         client,
         f"test-redshift-{timestamp}",
         {
@@ -120,7 +120,7 @@ def main():
     
     # 6. SPARK_EMR
     print("\n6. Testing SPARK_EMR Connection...")
-    results['SPARK_EMR'] = test_connection(
+    results['SPARK_EMR'] = validate_connection(
         client,
         f"test-spark-emr-{timestamp}",
         {
@@ -135,7 +135,7 @@ def main():
     
     # 7. MLFLOW
     print("\n7. Testing MLFLOW Connection...")
-    results['MLFLOW'] = test_connection(
+    results['MLFLOW'] = validate_connection(
         client,
         f"test-mlflow-{timestamp}",
         {
@@ -150,7 +150,7 @@ def main():
     
     # 8. WORKFLOWS_MWAA
     print("\n8. Testing WORKFLOWS_MWAA Connection...")
-    results['WORKFLOWS_MWAA'] = test_connection(
+    results['WORKFLOWS_MWAA'] = validate_connection(
         client,
         f"test-mwaa-{timestamp}",
         {
@@ -165,7 +165,7 @@ def main():
     
     # 9. WORKFLOWS_SERVERLESS
     print("\n9. Testing WORKFLOWS_SERVERLESS Connection...")
-    results['WORKFLOWS_SERVERLESS'] = test_connection(
+    results['WORKFLOWS_SERVERLESS'] = validate_connection(
         client,
         f"test-serverless-{timestamp}",
         {"workflowsServerlessProperties": {}},
