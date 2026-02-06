@@ -29,7 +29,7 @@ stages:
     domain:
       tags:
         purpose: smus-cicd-testing
-      region: ${DEV_DOMAIN_REGION:us-east-2}
+      region: ${DEV_DOMAIN_REGION}
     project:
       name: dev-marketing
       create: true
@@ -45,7 +45,7 @@ stages:
     domain:
       tags:
         purpose: smus-cicd-testing
-      region: ${DEV_DOMAIN_REGION:us-east-2}
+      region: ${DEV_DOMAIN_REGION}
     project:
       name: test-project-basic
       create: true
@@ -64,7 +64,7 @@ stages:
         connection_type: MLFLOW
         properties:
           trackingServerName: ${MLFLOW_TRACKING_SERVER_NAME:smus-integration-mlflow-use2}
-          trackingServerArn: arn:aws:sagemaker:${DEV_DOMAIN_REGION:us-east-2}:${AWS_ACCOUNT_ID}:mlflow-tracking-server/${MLFLOW_TRACKING_SERVER_NAME:smus-integration-mlflow-use2}
+          trackingServerArn: arn:aws:sagemaker:${DEV_DOMAIN_REGION}:${AWS_ACCOUNT_ID}:mlflow-tracking-server/${MLFLOW_TRACKING_SERVER_NAME:smus-integration-mlflow-use2}
       - type: workflow.create
         workflowName: basic_test_workflow
       - type: workflow.run

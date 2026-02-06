@@ -63,8 +63,8 @@ class TestTestCommandIntegration(IntegrationTestBase):
         )
 
         # Should produce valid JSON
-        assert '"content": "IntegrationTestMultiTarget"' in result.stdout
-        assert '"domain": "cicd-test-domain"' in result.stdout
+        assert '"bundle": "IntegrationTestMultiTarget"' in result.stdout
+        assert '"domain":' in result.stdout  # Check domain field exists (value varies by environment)
 
     def test_test_command_verbose(self, manifest_path):
         """Test test command with verbose output."""
@@ -106,11 +106,12 @@ class TestTestCommandIntegration(IntegrationTestBase):
 
         # Should process all targets
         assert "Pipeline: IntegrationTestMultiTarget" in result.stdout
-        # Dev target has no tests configured
-        assert (
-            "No tests configured" in result.stdout
-            or "Test folder not found" in result.stdout
-        )
+        # All targets should be processed (dev, test, prod)
+        assert "Target: dev" in result.stdout
+        assert "Target: test" in result.stdout
+        assert "Target: prod" in result.stdout
+        # Should show test execution attempts
+        assert "Running tests..." in result.stdout
 
     def test_test_files_exist(self):
         """Test that test files exist in the expected location."""

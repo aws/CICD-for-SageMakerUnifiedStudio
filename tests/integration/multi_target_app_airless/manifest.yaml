@@ -25,7 +25,7 @@ stages:
     domain:
       tags:
         purpose: smus-cicd-testing
-      region: ${DEV_DOMAIN_REGION:us-east-2}
+      region: ${DEV_DOMAIN_REGION}
     project:
       name: dev-marketing
     environment_variables:
@@ -43,11 +43,13 @@ stages:
     domain:
       tags:
         purpose: smus-cicd-testing
-      region: ${DEV_DOMAIN_REGION:us-east-2}
+      region: ${DEV_DOMAIN_REGION}
     project:
       name: integration-airless-test
       create: true
       profileName: All capabilities
+      role:
+        arn: arn:aws:iam::${AWS_ACCOUNT_ID}:role/smus-integration-airless-test-role
       owners:
       - Eng1
       - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
@@ -73,11 +75,13 @@ stages:
     domain:
       tags:
         purpose: smus-cicd-testing
-      region: ${DEV_DOMAIN_REGION:us-east-2}
+      region: ${DEV_DOMAIN_REGION}
     project:
       name: integration-airless-test
       create: true
       profileName: All capabilities
+      role:
+        arn: arn:aws:iam::${AWS_ACCOUNT_ID}:role/smus-integration-airless-test-role
       owners:
       - Eng1
       - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
@@ -98,4 +102,4 @@ stages:
         name: workflows
         targetDirectory: workflows
 tests:
-  folder: tests/integration/multi_target_bundle/pipeline_tests/
+  folder: tests/integration/multi_target_app_airless/app_tests/

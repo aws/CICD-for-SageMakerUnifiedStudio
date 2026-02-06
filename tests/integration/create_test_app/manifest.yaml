@@ -25,7 +25,7 @@ stages:
     domain:
       tags:
         purpose: smus-cicd-testing
-      region: ${DEV_DOMAIN_REGION:us-east-2}
+      region: ${DEV_DOMAIN_REGION}
     project:
       name: dev-marketing
   create-test:
@@ -33,7 +33,7 @@ stages:
     domain:
       tags:
         purpose: smus-cicd-testing
-      region: ${DEV_DOMAIN_REGION:us-east-2}
+      region: ${DEV_DOMAIN_REGION}
     project:
       name: create-test-project
       create: true

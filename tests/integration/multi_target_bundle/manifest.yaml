@@ -1,4 +1,4 @@
-applicationName: DeleteTestBundle
+applicationName: IntegrationTestMultiTarget
 content:
   storage:
   - connectionName: default.s3_shared
@@ -10,15 +10,6 @@ content:
     - __pycache__/
     - '*.pyc'
     name: code
-  - connectionName: default.s3_shared
-    append: true
-    include:
-    - workflows
-    exclude:
-    - .ipynb_checkpoints/
-    - __pycache__/
-    - '*.pyc'
-    name: workflows
 stages:
   dev:
     stage: DEV
@@ -28,31 +19,49 @@ stages:
       region: ${DEV_DOMAIN_REGION}
     project:
       name: dev-marketing
-  delete-test:
+    deployment_configuration:
+      storage:
+      - connectionName: default.s3_shared
+        name: code
+        targetDirectory: src
+  test:
     stage: TEST
     domain:
       tags:
         purpose: smus-cicd-testing
       region: ${DEV_DOMAIN_REGION}
     project:
-      name: delete-test-project
+      name: integration-test-test
       create: true
       profileName: All capabilities
       owners:
       - Eng1
-      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
       - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
+      - Admin
       contributors: []
-      user_parameters:
-      - environment_configuration_name: Lakehouse Database
-        parameters:
-        - name: glueDbName
-          value: delete_test_db
     deployment_configuration:
       storage:
       - connectionName: default.s3_shared
         name: code
         targetDirectory: src
+  prod:
+    stage: PROD
+    domain:
+      tags:
+        purpose: smus-cicd-testing
+      region: ${DEV_DOMAIN_REGION}
+    project:
+      name: integration-test-prod
+      create: true
+      profileName: All capabilities
+      owners:
+      - Eng1
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
+      contributors: []
+    deployment_configuration:
+      storage:
       - connectionName: default.s3_shared
-        name: workflows
-        targetDirectory: workflows
+        name: code
+        targetDirectory: src
+tests:
+  folder: tests/integration/multi_target_bundle/pipeline_tests/
