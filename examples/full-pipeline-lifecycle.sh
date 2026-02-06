@@ -124,7 +124,7 @@ run_command "smus-cli describe --bundle \"$PIPELINE_FILE\" --workflows --connect
 pause_if_needed
 
 # Step 3: Create deployment bundle
-run_command "smus-cli bundle --bundle \"$PIPELINE_FILE\" --targets dev --output JSON"
+run_command "smus-cli bundle --bundle \"$PIPELINE_FILE\" --target dev --output JSON"
 
 pause_if_needed
 

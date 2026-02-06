@@ -1,12 +1,29 @@
 import os
 import boto3
+from botocore.exceptions import ClientError
 
-region = os.environ.get('AWS_REGION', 'us-east-2')
+region = os.environ.get('AWS_REGION', os.environ.get('DOMAIN_REGION', 'us-east-2'))
 # Get account ID from STS
 sts = boto3.client('sts')
 account_id = sts.get_caller_identity()['Account']
 
 qs = boto3.client('quicksight', region_name=region)
+
+print(f"Cleaning up QuickSight resources in account {account_id}, region {region}")
+
+# Delete analyses starting with "deployed-test" (prevents 5-entity limit errors)
+try:
+    analyses = qs.list_analyses(AwsAccountId=account_id)['AnalysisSummaryList']
+    for analysis in analyses:
+        if analysis['AnalysisId'].startswith('deployed-test'):
+            try:
+                qs.delete_analysis(AwsAccountId=account_id, AnalysisId=analysis['AnalysisId'])
+                print(f"✓ Deleted analysis: {analysis['AnalysisId']}")
+            except ClientError as e:
+                if e.response['Error']['Code'] != 'ResourceNotFoundException':
+                    print(f"✗ Error deleting analysis {analysis['AnalysisId']}: {e}")
+except Exception as e:
+    print(f"✗ Error listing analyses: {e}")
 
 # Delete dashboards starting with "deployed-test"
 dashboards = qs.list_dashboards(AwsAccountId=account_id)['DashboardSummaryList']

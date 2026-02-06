@@ -10,6 +10,41 @@ import boto3
 from botocore.exceptions import ClientError
 
 
+def cleanup_analyses(prefix, account_id, region):
+    """Delete analyses matching prefix (prevents 5-entity limit errors)."""
+    client = boto3.client("quicksight", region_name=region)
+    deleted_count = 0
+    
+    try:
+        response = client.list_analyses(AwsAccountId=account_id)
+        analyses = response.get('AnalysisSummaryList', [])
+        
+        for analysis in analyses:
+            if analysis['AnalysisId'].startswith(prefix):
+                try:
+                    print(f"  Deleting analysis: {analysis['AnalysisId']}")
+                    client.delete_analysis(
+                        AwsAccountId=account_id,
+                        AnalysisId=analysis['AnalysisId']
+                    )
+                    print(f"    ✓ Deleted")
+                    deleted_count += 1
+                except ClientError as e:
+                    if e.response['Error']['Code'] != 'ResourceNotFoundException':
+                        print(f"    ✗ Error: {e}")
+        
+        if deleted_count == 0:
+            print(f"  No analyses found with prefix '{prefix}' (already clean)")
+        else:
+            print(f"  ✓ Deleted {deleted_count} analyses")
+        
+        return deleted_count
+        
+    except Exception as e:
+        print(f"  Error listing analyses: {e}")
+        return 0
+
+
 def cleanup_dashboard(dashboard_id, account_id, region):
     """Delete a dashboard if it exists."""
     client = boto3.client("quicksight", region_name=region)
@@ -54,17 +89,21 @@ def main():
     print(f"Region: {region}")
     print(f"Account: {account_id}\n")
     
+    # Clean up analyses first (critical to prevent 5-entity limit errors)
+    print("1. Checking analyses with 'deployed-test' prefix...")
+    cleanup_analyses("deployed-test", account_id, region)
+    
     # Clean up deployed dashboard (from previous deploy)
-    print("1. Checking deployed dashboard...")
+    print("\n2. Checking deployed dashboard...")
     cleanup_dashboard("deployed-test-covid-dashboard", account_id, region)
     
     # Note: We keep test-covid-dashboard as it's the source for export
-    print("\n2. Keeping source dashboard: test-covid-dashboard")
+    print("\n3. Keeping source dashboard: test-covid-dashboard")
     print("   (This is the source for bundle export)\n")
     
     print("✅ Cleanup complete! Ready for new test run.")
     print("\nNext steps:")
-    print("  1. Run: smus-cli bundle --targets dev")
+    print("  1. Run: smus-cli bundle --target dev")
     print("  2. Run: smus-cli deploy --targets test")
 
 

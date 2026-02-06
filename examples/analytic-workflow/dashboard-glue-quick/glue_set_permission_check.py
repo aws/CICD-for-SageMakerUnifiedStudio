@@ -82,7 +82,7 @@ for db, table in tables:
             raise
 
 print("Validating data with Athena...")
-s3_output = f"s3://{args['BUCKET_NAME']}/athena-results/" if args['REGION_NAME'] == 'us-east-1' else f"s3://sagemaker-{args['REGION_NAME']}-{account_id}/athena-results/"
+s3_output = f"s3://{args['BUCKET_NAME']}/athena-results/"
 query_id = athena.start_query_execution(
     QueryString='SELECT COUNT(*) FROM covid19_db.us_simplified',
     ResultConfiguration={'OutputLocation': s3_output}

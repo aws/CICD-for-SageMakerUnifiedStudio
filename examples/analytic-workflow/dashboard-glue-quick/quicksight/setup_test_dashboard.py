@@ -35,7 +35,7 @@ def setup_test_dashboard():
         account_id = sts.get_caller_identity()["Account"]
     
     # Configuration
-    dashboard_bundle = os.path.join(os.path.dirname(__file__), "sample-dashboard.qs")
+    dashboard_bundle = os.path.join(os.path.dirname(__file__), "TotalDeathByCountry.qs")
     dashboard_name = "TotalDeathByCountry"
     quicksight_user = os.environ.get("QUICKSIGHT_USER", "default-user")
     principal = f"arn:aws:quicksight:{dev_region}:{account_id}:user/default/{quicksight_user}"
@@ -47,11 +47,27 @@ def setup_test_dashboard():
     
     # Import dashboard
     print("\nImporting dashboard...")
+    permissions = [
+        {
+            "principal": principal,
+            "actions": [
+                "quicksight:DescribeDashboard",
+                "quicksight:ListDashboardVersions",
+                "quicksight:UpdateDashboardPermissions",
+                "quicksight:QueryDashboard",
+                "quicksight:UpdateDashboard",
+                "quicksight:DeleteDashboard",
+                "quicksight:DescribeDashboardPermissions",
+                "quicksight:UpdateDashboardPublishedVersion",
+            ],
+        }
+    ]
     job_id = import_dashboard(
         dashboard_bundle,
         account_id,
         dev_region,
-        override_parameters={}
+        override_parameters={},
+        permissions=permissions
     )
     
     print(f"Import job started: {job_id}")
@@ -68,7 +84,7 @@ def setup_test_dashboard():
     
     print(f"\n✅ Test dashboard setup complete!")
     print(f"\nNext steps:")
-    print(f"  1. Run: smus-cli bundle --targets dev")
+    print(f"  1. Run: smus-cli bundle --target dev")
     print(f"     → Will export '{dashboard_name}' by name lookup")
     print(f"  2. Run: smus-cli deploy --targets test")
     print(f"     → Will import as 'deployed-test-{dashboard_name}' in us-east-1")
