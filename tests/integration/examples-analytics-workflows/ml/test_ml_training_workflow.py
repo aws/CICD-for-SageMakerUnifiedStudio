@@ -50,7 +50,7 @@ class TestMLTrainingWorkflow(IntegrationTestBase):
 
         # Step 3: Bundle
         self.logger.info("\n=== Step 3: Bundle ===")
-        result = self.run_cli_command(["bundle", "--manifest", pipeline_file, "--target", "dev"])
+        result = self.run_cli_command(["bundle", "--manifest", pipeline_file, "--targets", "dev"])
         assert result["success"], f"Bundle failed: {result['output']}"
         self.logger.info("✅ Bundle successful")
 

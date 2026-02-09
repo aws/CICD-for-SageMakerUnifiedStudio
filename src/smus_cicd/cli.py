@@ -134,7 +134,7 @@ def describe(
 
 @app.command(
     "bundle",
-    help="2. Create bundle zip files. Bundles from dev target by default. Example: smus-cli bundle --target test",
+    help="2. Create bundle zip files. Bundles from dev target by default. Example: smus-cli bundle --targets test",
     rich_help_panel="Pipeline Commands",
 )
 def bundle(
@@ -147,11 +147,11 @@ def bundle(
     output: str = typer.Option(
         "TEXT", "--output", "-o", help="Output format: TEXT (default) or JSON"
     ),
-    target: str = typer.Option(
+    targets: str = typer.Option(
         None,
-        "--target",
+        "--targets",
         "-t",
-        help="Target name to bundle for (bundles FROM dev by default)",
+        help="Target name(s) - single target or comma-separated list (bundles FROM dev by default)",
     ),
     local: bool = typer.Option(
         False,
@@ -163,20 +163,20 @@ def bundle(
     ),
 ):
     """Create bundle zip files. By default bundles FROM dev target for deployment to specified target."""
-    # Use positional argument if provided, otherwise use --target flag
-    final_target = target_positional if target_positional else target
+    # Use positional argument if provided, otherwise use --targets flag
+    final_targets = target_positional if target_positional else targets
 
     """Create bundle zip files. By default bundles FROM dev target for deployment to specified target."""
     configure_logging(output, LOG_LEVEL)
 
     # Determine bundle source
     if local:
-        bundle_source = final_target or "default"
+        bundle_source = final_targets or "default"
         console.print(f"📦 Bundling from local filesystem for target: {bundle_source}")
     else:
         bundle_source = "dev"
         console.print("🔍 Bundle source: dev target")
-        console.print(f"📦 Bundle destination: {final_target or 'default'}")
+        console.print(f"📦 Bundle destination: {final_targets or 'default'}")
 
     bundle_command(bundle_source, manifest_file, output_dir, output)
 

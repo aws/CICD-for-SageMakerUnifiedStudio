@@ -89,7 +89,7 @@ The dashboard will be named `TotalDeathByCountry` with ID prefix `deployed-dev-c
 Export the customized dashboard from dev QuickSight:
 
 ```bash
-smus-cli bundle --target dev --manifest examples/analytic-workflow/dashboard-glue-quick/manifest.yaml
+smus-cli bundle --targets dev --manifest examples/analytic-workflow/dashboard-glue-quick/manifest.yaml
 ```
 
 This exports the live dashboard from dev QuickSight and packages it into `./artifacts/IntegrationTestETLWorkflow.zip`.
@@ -224,7 +224,7 @@ python setup_test_dashboard.py
 cd ../../../..
 smus-cli bundle \
   --manifest examples/analytic-workflow/dashboard-glue-quick/manifest.yaml \
-  --target dev \
+  --targets dev \
   --output-dir ./my-bundles
 
 # 5. Deploy to test

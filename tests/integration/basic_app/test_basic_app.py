@@ -137,7 +137,7 @@ class TestBasicApp(IntegrationTestBase):
         # Step 3: Bundle (from dev target - default)
         print("\n=== Step 3: Bundle ===")
         self.logger.info("=== STEP 3: Bundle ===")
-        # Bundle from dev target (default behavior, no --target needed)
+        # Bundle from dev target (default behavior, no --targets needed)
         result = self.run_cli_command(["bundle", "--manifest", pipeline_file])
         results.append(result)
         assert result["success"], f"Bundle failed: {result['output']}"

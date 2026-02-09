@@ -94,7 +94,7 @@ stages:
 When running `smus-cli bundle`, dashboards with `assetBundle: export` are exported:
 
 ```bash
-smus-cli bundle --target dev
+smus-cli bundle --targets dev
 ```
 
 **What happens:**
@@ -150,7 +150,7 @@ stages:
 **Steps:**
 1. Create dashboard in dev environment
 2. Add to manifest with `assetBundle: export`
-3. Run `smus-cli bundle --target dev`
+3. Run `smus-cli bundle --targets dev`
 4. Run `smus-cli deploy --targets prod`
 
 ### Use Case 2: Environment-Specific Permissions
