@@ -13,7 +13,7 @@ All commands support these global options:
 | `--log-level` | Control logging verbosity | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` | `INFO` |
 | `--output` | Output format | `TEXT`, `JSON` | `TEXT` |
 | `--manifest` / `-m` | Path to manifest file | File path | `manifest.yaml` |
-| `--target` / `-t` | Target environment | Target name(s) | All targets |
+| `--targets` / `-t` | Target environment | Target name(s) | All targets |
 
 **Examples:**
 ```bash
@@ -42,12 +42,12 @@ smus-cli describe --manifest manifest.yaml
 |---------|---------|---------|
 | `create` | Create new bundle manifest | `smus-cli create --output manifest.yaml` |
 | `describe` | Validate and show bundle configuration | `smus-cli describe --manifest manifest.yaml --connect` |
-| `bundle` | Package files from source environment | `smus-cli bundle --stages dev` |
-| `deploy` | Deploy bundle to target environment | `smus-cli deploy --stages test --manifest bundle.zip` |
+| `bundle` | Package files from source environment | `smus-cli bundle --targets dev` |
+| `deploy` | Deploy bundle to target environment | `smus-cli deploy --targets test --manifest bundle.zip` |
 | `run` | Execute workflow commands or trigger workflows | `smus-cli run --workflow my_dag` |
 | `logs` | Fetch workflow logs from CloudWatch | `smus-cli logs --workflow arn:aws:airflow-serverless:region:account:workflow/name` |
 | `monitor` | Monitor workflow status | `smus-cli monitor --manifest manifest.yaml` |
-| `test` | Run tests for pipeline targets | `smus-cli test --stages marketing-test-stage` |
+| `test` | Run tests for pipeline targets | `smus-cli test --targets marketing-test-stage` |
 | `integrate` | Integrate with external tools (Q CLI) | `smus-cli integrate qcli` |
 | `delete` | Remove target environments | `smus-cli delete --stages marketing-test-stage --force` |
 
@@ -107,10 +107,10 @@ Manifest Workflows:
 ### 2. Bundle Creation
 ```bash
 # Bundle for specific target
-smus-cli bundle --stages dev --output-dir ./bundles
+smus-cli bundle --targets dev --output-dir ./bundles
 
 # Bundle for multiple targets
-smus-cli bundle --stages dev,test --output-dir /tmp/bundles
+smus-cli bundle --targets dev,test --output-dir /tmp/bundles
 ```
 
 ### 3. Deploy Bundle
@@ -364,7 +364,7 @@ Manifest Workflows:
 
 ### 2. Create Bundle from Dev Environment
 ```bash
-smus-cli bundle --manifest manifest.yaml --stages dev
+smus-cli bundle --manifest manifest.yaml --targets dev
 ```
 **Example Output:**
 ```
@@ -629,7 +629,7 @@ smus-cli bundle [OPTIONS] [TARGET_POSITIONAL]
 
 #### Options
 - **`-p, --manifest`**: Path to bundle manifest file (default: `manifest.yaml`)
-- **`-t, --stages`**: Target name(s) - single target or comma-separated list (uses default target if not specified)
+- **`-t, --targets`**: Target name(s) - single target or comma-separated list (uses default target if not specified)
 - **`-d, --output-dir`**: Output directory for bundle files (default: `./bundles`)
 - **`-o, --output`**: Output format: TEXT (default) or JSON
 - **`--help`**: Show command help
@@ -664,7 +664,7 @@ bundlesDirectory: s3://my-datazone-bucket/bundles
 smus-cli bundle
 
 # Bundle specific targets
-smus-cli bundle --stages dev,test
+smus-cli bundle --targets dev,test
 
 # Bundle to custom directory
 smus-cli bundle --output-dir /path/to/bundles
@@ -986,7 +986,7 @@ smus-cli create -o my-manifest.yaml
 smus-cli describe --manifest my-manifest.yaml
 
 # 3. Create bundle from dev
-smus-cli bundle --manifest my-manifest.yaml --target dev
+smus-cli bundle --manifest my-manifest.yaml --targets dev
 
 # 4. Deploy to test
 smus-cli deploy --manifest my-manifest.yaml --targets test

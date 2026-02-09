@@ -88,7 +88,8 @@ def bundle_command(
         if targets:
             target_list = [t.strip() for t in targets.split(",")]
 
-        # Use first target for now (bundle command typically works with single target)
+        # TODO: Add support for bundling multiple targets
+        # For now, use first target only (consistent with deploy command behavior)
         stage_name = target_list[0] if target_list else None
 
         # If no target specified, default to target with STAGE=DEV

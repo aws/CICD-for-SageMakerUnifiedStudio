@@ -30,7 +30,7 @@ For detailed information about integration tests and example pipelines, see [Exa
 ### Local Development
 1. **Update code** in dev environment S3 location
 2. **Create bundle**: `smus-cli bundle` (downloads latest from dev)
-3. **Deploy to test**: `smus-cli deploy --stages test` (deploys and triggers workflows)
+3. **Deploy to test**: `smus-cli deploy --targets test` (deploys and triggers workflows)
 4. **Verify execution**: Check workflow runs in SageMaker Unified Studio console
 5. **Deploy to prod**: `smus-cli deploy --stages prod` (when ready)
 

@@ -417,7 +417,7 @@ smus-cli deploy --stages prod --manifest manifest.yaml
 ### Bundle-Based Deployment
 ```bash
 # Create bundle (typically from dev)
-smus-cli bundle --manifest manifest.yaml --stages dev
+smus-cli bundle --manifest manifest.yaml --targets dev
 
 # Deploy bundle to test
 smus-cli deploy --stages test --manifest manifest.yaml --manifest path/to/bundle.tar.gz
@@ -429,7 +429,7 @@ smus-cli deploy --stages prod --manifest manifest.yaml --manifest path/to/bundle
 ### Hybrid Deployment
 ```bash
 # Create bundle once (contains some content like data files, configs)
-smus-cli bundle --manifest manifest.yaml --stages dev
+smus-cli bundle --manifest manifest.yaml --targets dev
 
 # Deploy to test: pulls workflows from release_test branch + data from bundle
 smus-cli deploy --stages test --manifest manifest.yaml --manifest path/to/bundle.tar.gz
@@ -685,7 +685,7 @@ jobs:
           aws-region: us-east-1
       
       - name: Create Bundle
-        run: smus-cli bundle --manifest manifest.yaml --stages dev
+        run: smus-cli bundle --manifest manifest.yaml --targets dev
       
       - name: Upload Bundle
         uses: actions/upload-artifact@v3
@@ -876,7 +876,7 @@ Multiple data applications can deploy to the same project.
 
 ## Deployment Process
 1. Develop in your dev project
-2. Create bundle: `smus-cli bundle --manifest manifest.yaml --stages dev`
+2. Create bundle: `smus-cli bundle --manifest manifest.yaml --targets dev`
 3. Push to GitHub → Automatic deployment to test
 4. After validation → Automatic deployment to prod
 

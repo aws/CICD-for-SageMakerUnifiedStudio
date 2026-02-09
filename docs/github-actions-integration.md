@@ -240,7 +240,7 @@ graph TD
 #### **Bundle Creation Process**
 ```bash
 # CLI packages all deployment artifacts
-smus-cli bundle --manifest manifest.yaml --stages test
+smus-cli bundle --manifest manifest.yaml --targets test
 ```
 
 **What gets bundled:**
@@ -364,7 +364,7 @@ smus-cli describe --manifest manifest.yaml --connect
 #### **2. Bundle Creation**
 ```bash
 # Creates deployment bundle from source environment
-smus-cli bundle --manifest manifest.yaml --stages test
+smus-cli bundle --manifest manifest.yaml --targets test
 ```
 
 #### **3. Infrastructure-Aware Deployment**
@@ -531,7 +531,7 @@ create-bundle:
 ```
 
 **Purpose**: Packages deployment artifacts including DAGs, notebooks, and catalog assets
-**CLI Command**: `smus-cli bundle --manifest manifest.yaml --stages test`
+**CLI Command**: `smus-cli bundle --manifest manifest.yaml --targets test`
 **Infrastructure Impact**: Creates S3 storage for bundles if not present
 
 #### **Job 3: Test Environment Deployment**

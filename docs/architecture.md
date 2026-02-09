@@ -521,7 +521,7 @@ User runs: smus-cli monitor --manifest manifest.yaml --targets test --live
 │                        Bundle Phase (Optional)                           │
 │                                                                          │
 │  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │ smus-cli bundle --manifest manifest.yaml --target test           │  │
+│  │ smus-cli bundle --manifest manifest.yaml --targets test           │  │
 │  │                                                                   │  │
 │  │ 1. Download content from dev environment                         │  │
 │  │    - S3 files                                                    │  │

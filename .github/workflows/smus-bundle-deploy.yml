@@ -116,7 +116,7 @@ jobs:
           
           smus-cli bundle \
             --manifest ${{ inputs.manifest_path }} \
-            --target dev \
+            --targets dev \
             --output-dir "$BUNDLE_DIR"
       
       - name: Upload bundle artifact

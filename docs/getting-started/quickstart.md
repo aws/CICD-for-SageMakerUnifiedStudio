@@ -300,7 +300,7 @@ If using bundle-based deployment, create a versioned artifact:
 
 ```bash
 # Create bundle from dev environment
-smus-cli bundle --manifest manifest.yaml --stages dev
+smus-cli bundle --manifest manifest.yaml --targets dev
 ```
 
 This creates a versioned archive containing your application content. Skip this step if using direct git-based deployment.
