@@ -26,6 +26,11 @@ on:
         required: false
         type: boolean
         default: false
+    
+    secrets:
+      AWS_ROLE_ARN_TEST:
+        description: 'AWS IAM Role ARN for test account'
+        required: true
 
 permissions:
   id-token: write
