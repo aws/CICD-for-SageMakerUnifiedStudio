@@ -45,7 +45,16 @@ on:
         type: boolean
         default: true
     
-    # No secrets needed - use environment secrets instead
+    secrets:
+      AWS_ROLE_ARN_DEV:
+        description: 'AWS IAM Role ARN for dev account'
+        required: true
+      AWS_ROLE_ARN_TEST:
+        description: 'AWS IAM Role ARN for test account'
+        required: true
+      AWS_ROLE_ARN_PROD:
+        description: 'AWS IAM Role ARN for prod account'
+        required: true
 
 permissions:
   id-token: write

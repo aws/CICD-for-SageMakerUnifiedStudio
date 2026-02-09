@@ -17,6 +17,8 @@ permissions:
 jobs:
   deploy:
     uses: ./.github/workflows/smus-direct-deploy.yml
+    secrets:
+      AWS_ROLE_ARN_TEST: ${{ secrets.AWS_ROLE_ARN_TEST }}
     with:
       manifest_path: 'examples/analytic-workflow/data-notebooks/manifest.yaml'
       test_target: 'test'

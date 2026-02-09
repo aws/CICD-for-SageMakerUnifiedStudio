@@ -20,7 +20,7 @@ jobs:
   setup:
     name: "Step 1 - Setup Domain and Project IDs"
     runs-on: ubuntu-latest
-    environment: aws-env
+    environment: dev-aws-account
     outputs:
       domain-id: ${{ steps.resolve.outputs.domain-id }}
       project-id: ${{ steps.resolve.outputs.project-id }}
@@ -33,13 +33,13 @@ jobs:
     
     - name: Validate environment variables
       env:
-        DEV_DOMAIN_REGION: ${{ vars.DEV_DOMAIN_REGION }}
+        DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
       run: |
         echo "Validating required environment variables..."
-        echo "DEV_DOMAIN_REGION: ${DEV_DOMAIN_REGION:-NOT_SET}"
-        if [ -z "$DEV_DOMAIN_REGION" ]; then
-          echo "❌ ERROR: DEV_DOMAIN_REGION environment variable is not set in aws-env environment"
-          echo "Please set DEV_DOMAIN_REGION in GitHub repository settings > Environments > aws-env"
+        echo "DOMAIN_REGION: ${DOMAIN_REGION:-NOT_SET}"
+        if [ -z "$DOMAIN_REGION" ]; then
+          echo "❌ ERROR: DOMAIN_REGION environment variable is not set in dev-aws-account environment"
+          echo "Please set DOMAIN_REGION in GitHub repository settings > Environments > dev-aws-account"
           exit 1
         fi
         echo "✅ All required environment variables are set"
@@ -47,7 +47,7 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-region: us-east-1
+        aws-region: ${{ vars.DOMAIN_REGION }}
         role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
         role-session-name: smus-mwaa-lifecycle-setup
         role-duration-seconds: 43200
@@ -100,7 +100,7 @@ jobs:
   validate-configuration:
     name: "Step 2 - Validate Pipeline Configuration"
     runs-on: ubuntu-latest
-    environment: aws-env
+    environment: dev-aws-account
     needs: [setup]
     
     steps:
@@ -109,7 +109,7 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-region: us-east-1
+        aws-region: ${{ vars.DOMAIN_REGION }}
         role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
         role-session-name: smus-mwaa-lifecycle-validate
         role-duration-seconds: 43200
@@ -127,7 +127,7 @@ jobs:
     
     - name: Validate pipeline configuration
       env:
-        DEV_DOMAIN_REGION: ${{ vars.DEV_DOMAIN_REGION }}
+        DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
         SMUS_LOG_LEVEL: WARNING
       run: |
         /examples/mwaa-example
@@ -140,7 +140,7 @@ jobs:
   create-bundle:
     name: "Step 3 - Create Deployment Bundle"
     runs-on: ubuntu-latest
-    environment: aws-env
+    environment: dev-aws-account
     needs: [setup, validate-configuration]
     
     steps:
@@ -149,7 +149,7 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-region: us-east-1
+        aws-region: ${{ vars.DOMAIN_REGION }}
         role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
         role-session-name: smus-mwaa-lifecycle-bundle
         role-duration-seconds: 43200
@@ -167,7 +167,7 @@ jobs:
     
     - name: Create deployment bundle
       env:
-        DEV_DOMAIN_REGION: ${{ vars.DEV_DOMAIN_REGION }}
+        DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
         SMUS_LOG_LEVEL: WARNING
       run: |
         /examples/mwaa-example
@@ -185,7 +185,7 @@ jobs:
   deploy-test:
     name: "Step 4 - Deploy to Test Environment"
     runs-on: ubuntu-latest
-    environment: aws-env
+    environment: test-aws-account
     needs: [setup, create-bundle]
     
     steps:
@@ -194,8 +194,8 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-region: us-east-1
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
+        aws-region: ${{ vars.DOMAIN_REGION }}
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN_TEST }}
         role-session-name: smus-mwaa-lifecycle-deploy
         role-duration-seconds: 43200
     
@@ -218,7 +218,7 @@ jobs:
     
     - name: Deploy to test environment
       env:
-        DEV_DOMAIN_REGION: ${{ vars.DEV_DOMAIN_REGION }}
+        DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
         SMUS_LOG_LEVEL: WARNING
       run: |
         /examples/mwaa-example
@@ -231,7 +231,7 @@ jobs:
   monitor-pipeline:
     name: "Step 5 - Monitor Pipeline Status"
     runs-on: ubuntu-latest
-    environment: aws-env
+    environment: test-aws-account
     needs: [setup, deploy-test]
     
     steps:
@@ -240,8 +240,8 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-region: us-east-1
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
+        aws-region: ${{ vars.DOMAIN_REGION }}
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN_TEST }}
         role-session-name: smus-mwaa-lifecycle-monitor
         role-duration-seconds: 43200
     
@@ -258,7 +258,7 @@ jobs:
     
     - name: Monitor pipeline status
       env:
-        DEV_DOMAIN_REGION: ${{ vars.DEV_DOMAIN_REGION }}
+        DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
         SMUS_LOG_LEVEL: WARNING
       run: |
         /examples/mwaa-example
@@ -270,7 +270,7 @@ jobs:
   deploy-prod:
     name: "Step 6 - Deploy to Production Environment"
     runs-on: ubuntu-latest
-    environment: aws-env-amirbo-6778
+    environment: prod-aws-account
     needs: [setup, monitor-pipeline]
     
     steps:
@@ -279,8 +279,8 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-region: us-east-1
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
+        aws-region: ${{ vars.DOMAIN_REGION }}
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
         role-session-name: smus-mwaa-lifecycle-deploy-prod
         role-duration-seconds: 43200
     
@@ -303,7 +303,7 @@ jobs:
     
     - name: Deploy to production environment
       env:
-        PROD_DOMAIN_REGION: ${{ vars.PROD_DOMAIN_REGION }}
+        DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
         SMUS_LOG_LEVEL: WARNING
       run: |
         /examples/mwaa-example
@@ -316,7 +316,7 @@ jobs:
   final-monitoring:
     name: "Step 7 - Final Pipeline Monitoring"
     runs-on: ubuntu-latest
-    environment: aws-env-amirbo-6778
+    environment: prod-aws-account
     needs: [setup, deploy-prod]
     
     steps:
@@ -325,8 +325,8 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-region: us-east-1
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
+        aws-region: ${{ vars.DOMAIN_REGION }}
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
         role-session-name: smus-mwaa-lifecycle-final
         role-duration-seconds: 43200
     
@@ -343,7 +343,7 @@ jobs:
     
     - name: Final pipeline monitoring
       env:
-        PROD_DOMAIN_REGION: ${{ vars.PROD_DOMAIN_REGION }}
+        DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
         SMUS_LOG_LEVEL: WARNING
       run: |
         /examples/mwaa-example
