@@ -44,6 +44,12 @@ on:
         required: false
         type: boolean
         default: true
+      
+      quicksight_setup_script:
+        description: 'Optional path to QuickSight setup script to run before bundling'
+        required: false
+        type: string
+        default: ''
     
     # No secrets needed - use environment secrets instead
 
@@ -84,6 +90,14 @@ jobs:
           aws configure add-model \
             --service-model file://src/smus_cicd/resources/mwaaserverless-2024-07-26.normal-edited-2.json \
             --service-name mwaaserverless-internal
+      
+      - name: Setup QuickSight dashboard (optional)
+        if: ${{ inputs.quicksight_setup_script != '' }}
+        env:
+          DEV_DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
+        run: |
+          echo "📊 Setting up QuickSight dashboard..."
+          python ${{ inputs.quicksight_setup_script }}
       
       - name: smus-cli describe (validate dev target)
         env:

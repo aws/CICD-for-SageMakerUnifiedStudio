@@ -295,7 +295,7 @@ def bundle_command(
                                 typer.echo("  Exported dashboard to bundle")
                             except Exception as e:
                                 typer.echo(
-                                    f"Error exporting dashboard {dashboard_id}: {e}",
+                                    f"Error exporting dashboard {dashboard_name}: {e}",
                                     err=True,
                                 )
                         else:
