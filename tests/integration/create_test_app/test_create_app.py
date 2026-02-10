@@ -115,10 +115,9 @@ class TestCreateApp(IntegrationTestBase):
                 with open(pipeline_file, "r") as f:
                     pipeline_data = yaml.safe_load(f)
 
-                targets = pipeline_data.get("targets", {})
-                create_test_target = targets.get("create-test", {})
-                initialization = create_test_target.get("initialization", {})
-                project_init = initialization.get("project", {})
+                stages = pipeline_data.get("stages", {})
+                create_test_stage = stages.get("create-test", {})
+                project_init = create_test_stage.get("project", {})
                 user_params = project_init.get("userParameters", [])
 
                 assert len(user_params) > 0, "userParameters not found in YAML"
@@ -225,8 +224,7 @@ class TestCreateApp(IntegrationTestBase):
             output_data = json.loads(result["output"])
             targets = output_data.get("targets", {})
             create_test_target = targets.get("create-test", {})
-            initialization = create_test_target.get("initialization", {})
-            project_init = initialization.get("project", {})
+            project_init = create_test_target.get("project", {})
             user_params = project_init.get("userParameters", [])
 
             # For now, accept that userParameters parsing might not be working correctly

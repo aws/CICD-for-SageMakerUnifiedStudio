@@ -38,8 +38,8 @@ stages:
       contributors: []
       role:
         arn: arn:aws:iam::${AWS_ACCOUNT_ID}:role/test-marketing-role
-      user_parameters:
-      - environment_configuration_name: Lakehouse Database
+      userParameters:
+      - EnvironmentConfigurationName: Lakehouse Database
         parameters:
         - name: glueDbName
           value: analytic_workflow_test_db

@@ -19,6 +19,9 @@ content:
     - __pycache__/
     - '*.pyc'
     name: workflows
+  workflows:
+  - workflowName: test_dag
+    connectionName: default.workflow_serverless
   catalog:
     assets:
     - selector:
@@ -60,13 +63,15 @@ stages:
       name: test-glue-mwaa-catalog-app
       create: true
       profileName: All capabilities
+      role:
+        arn: arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
       owners:
       - Eng1
       - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
       - Admin
       contributors: []
-      user_parameters:
-      - environment_configuration_name: Lakehouse Database
+      userParameters:
+      - EnvironmentConfigurationName: Lakehouse Database
         parameters:
         - name: glueDbName
           value: glue_mwaa_catalog_app_test_db
@@ -92,13 +97,15 @@ stages:
       name: prod-glue-mwaa-catalog-app
       create: true
       profileName: All capabilities
+      role:
+        arn: arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
       owners:
       - Eng1
       - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
       - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
       contributors: []
-      user_parameters:
-      - environment_configuration_name: Lakehouse Database
+      userParameters:
+      - EnvironmentConfigurationName: Lakehouse Database
         parameters:
         - name: glueDbName
           value: glue_mwaa_catalog_app_prod_db
@@ -115,4 +122,4 @@ stages:
       - type: datazone.create_environment
         environment_configuration_name: OnDemand Workflows
 tests:
-  folder: tests/integration/glue-mwaa-catalog-app/pipeline_tests/
+  folder: tests/integration/glue-mwaa-catalog-app/app_tests/

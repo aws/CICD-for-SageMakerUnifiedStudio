@@ -185,33 +185,102 @@ def bundle_command(
 
             for bundle_def in storage_bundles:
                 name = bundle_def.name
-                connection_name = bundle_def.connectionName
+                connection_name = (
+                    bundle_def.connectionName
+                    if hasattr(bundle_def, "connectionName")
+                    else None
+                )
                 include_patterns = bundle_def.include if bundle_def.include else []
                 append_flag = (
                     bundle_def.append if hasattr(bundle_def, "append") else False
                 )
 
-                if not connection_name or connection_name not in connections:
-                    continue
+                if connection_name:
+                    # Download from S3 connection
+                    if connection_name not in connections:
+                        typer.echo(
+                            f"  Warning: Connection '{connection_name}' not found for storage item '{name}'",
+                            err=True,
+                        )
+                        continue
 
-                connection = connections[connection_name]
-                s3_uri = connection.get("s3Uri")
-                if not s3_uri:
-                    continue
+                    connection = connections[connection_name]
+                    s3_uri = connection.get("s3Uri")
+                    if not s3_uri:
+                        typer.echo(
+                            f"  Warning: No S3 URI found for connection '{connection_name}'",
+                            err=True,
+                        )
+                        continue
 
-                typer.echo(
-                    f"Downloading '{name}' from S3: {connection_name} (append: {append_flag})"
-                )
+                    typer.echo(
+                        f"Downloading '{name}' from S3: {connection_name} (append: {append_flag})"
+                    )
 
-                # List S3 contents first
-                deployment.list_s3_contents(s3_client, s3_uri, f"Storage[{name}]")
+                    # List S3 contents first
+                    deployment.list_s3_contents(s3_client, s3_uri, f"Storage[{name}]")
 
-                # Download to bundle root with name as subdirectory
-                files_added = deployment.download_s3_files(
-                    s3_client, s3_uri, include_patterns, temp_bundle_dir, name
-                )
-                total_files_added += files_added
-                typer.echo(f"  Downloaded {files_added} files for '{name}'")
+                    # Download to bundle root with name as subdirectory
+                    files_added = deployment.download_s3_files(
+                        s3_client, s3_uri, include_patterns, temp_bundle_dir, name
+                    )
+                    total_files_added += files_added
+                    typer.echo(f"  Downloaded {files_added} files for '{name}'")
+                else:
+                    # Bundle from local files (relative to manifest directory)
+                    typer.echo(f"Bundling '{name}' from local files")
+
+                    if not manifest_file:
+                        typer.echo(
+                            "  Error: Cannot bundle local files without manifest path",
+                            err=True,
+                        )
+                        continue
+
+                    manifest_dir = os.path.dirname(os.path.abspath(manifest_file))
+
+                    # Create target directory in bundle
+                    target_dir = os.path.join(temp_bundle_dir, name)
+                    os.makedirs(target_dir, exist_ok=True)
+
+                    files_added = 0
+                    for pattern in include_patterns:
+                        source_path = os.path.join(manifest_dir, pattern)
+
+                        if os.path.isfile(source_path):
+                            # Copy single file
+                            dest_file = os.path.join(
+                                target_dir, os.path.basename(source_path)
+                            )
+                            shutil.copy2(source_path, dest_file)
+                            files_added += 1
+                            typer.echo(f"    Copied file: {pattern}")
+                        elif os.path.isdir(source_path):
+                            # Copy directory recursively
+                            dest_path = os.path.join(
+                                target_dir, os.path.basename(pattern)
+                            )
+                            shutil.copytree(
+                                source_path,
+                                dest_path,
+                                ignore=shutil.ignore_patterns(
+                                    "*.pyc",
+                                    "__pycache__",
+                                    ".ipynb_checkpoints",
+                                    ".DS_Store",
+                                ),
+                            )
+                            # Count files
+                            for root, dirs, files in os.walk(dest_path):
+                                files_added += len(files)
+                            typer.echo(f"    Copied directory: {pattern}")
+                        else:
+                            typer.echo(
+                                f"  Warning: Pattern not found: {pattern}", err=True
+                            )
+
+                    total_files_added += files_added
+                    typer.echo(f"  Bundled {files_added} files for '{name}'")
 
             # Process QuickSight dashboards
             quicksight_dashboards = (
@@ -295,7 +364,7 @@ def bundle_command(
                                 typer.echo("  Exported dashboard to bundle")
                             except Exception as e:
                                 typer.echo(
-                                    f"Error exporting dashboard {dashboard_id}: {e}",
+                                    f"Error exporting dashboard {dashboard_name}: {e}",
                                     err=True,
                                 )
                         else:

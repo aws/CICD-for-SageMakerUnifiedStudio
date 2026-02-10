@@ -242,6 +242,14 @@ def deploy_command(
             typer.echo("No deployment_configuration - skipping bundle deployment")
 
         if deployment_success:
+            # Validate deployed workflows
+            if target_config.deployment_configuration:
+                _validate_deployed_workflows(
+                    target_config.deployment_configuration,
+                    target_config.project.name,
+                    config,
+                )
+
             # Process bootstrap actions (after deployment completes)
             if target_config.bootstrap:
                 typer.echo("Processing bootstrap actions...")
@@ -1261,17 +1269,22 @@ def _display_deployment_summary_new(
     """Display deployment summary for new structure."""
     typer.echo("\n📦 Deployment Summary:")
 
+    total_files = 0
     for i, (files, s3_uri) in enumerate(storage_results):
         if files is not None:
             typer.echo(f"  ✅ Storage item {i + 1}: {len(files)} files → {s3_uri}")
+            total_files += len(files)
         else:
             typer.echo(f"  ❌ Storage item {i + 1}: Failed")
 
     for i, (files, s3_uri) in enumerate(git_results):
         if files is not None:
             typer.echo(f"  ✅ Git item {i + 1}: {len(files)} files → {s3_uri}")
+            total_files += len(files)
         else:
             typer.echo(f"  ❌ Git item {i + 1}: Failed")
+
+    typer.echo(f"📊 Total files deployed: {total_files}")
 
 
 def _get_project_connection(
@@ -1299,82 +1312,6 @@ def _get_project_connection(
     )
     connections = project_info.get("connections", {})
     return connections.get(connection_name, {})
-
-
-def _display_deployment_summary(
-    bundle_file: str,
-    storage_result: Tuple[Optional[List[str]], Optional[str]],
-    workflow_result: Tuple[Optional[List[str]], Optional[str]],
-) -> None:
-    """
-    Display deployed files in a nice tree structure organized by destination.
-
-    Args:
-        bundle_file: Path to bundle file
-        storage_result: Tuple of (storage_files, storage_s3_uri)
-        workflow_result: Tuple of (workflow_files, workflow_s3_uri)
-    """
-    storage_files, storage_s3_uri = storage_result
-    workflow_files, workflow_s3_uri = workflow_result
-
-    try:
-        typer.echo("\n📦 Deployment Summary:")
-        typer.echo("=" * 50)
-
-        # Build tree structure organized by destination
-        tree = {}
-
-        # Add storage files
-        if storage_files and storage_s3_uri:
-            tree["📁 Storage Files"] = {f"📍 {storage_s3_uri}": {}}
-            _add_files_to_tree(
-                tree["📁 Storage Files"][f"📍 {storage_s3_uri}"], storage_files
-            )
-
-        # Add workflow files
-        if workflow_files and workflow_s3_uri:
-            tree["⚙️ Workflow Files"] = {f"📍 {workflow_s3_uri}": {}}
-            _add_files_to_tree(
-                tree["⚙️ Workflow Files"][f"📍 {workflow_s3_uri}"], workflow_files
-            )
-
-        _print_tree(tree)
-        typer.echo("=" * 50)
-
-        total_files = len(storage_files or []) + len(workflow_files or [])
-        typer.echo(f"📊 Total files deployed: {total_files}")
-
-    except Exception as e:
-        typer.echo(f"⚠️ Could not display deployment tree: {e}")
-
-
-def _add_files_to_tree(tree_node: Dict[str, Any], files: List[str]) -> None:
-    """Add files to tree structure."""
-    for file_path in sorted(files):
-        parts = file_path.split("/")
-        current = tree_node
-        for part in parts[:-1]:  # directories
-            if part not in current:
-                current[part] = {}
-            current = current[part]
-        # Add file
-        if parts[-1]:  # not empty
-            current[parts[-1]] = None
-
-
-def _print_tree(node: Dict[str, Any], prefix: str = "", is_last: bool = True) -> None:
-    """Print tree structure recursively."""
-    items = list(node.items()) if isinstance(node, dict) else []
-    for i, (name, subtree) in enumerate(items):
-        is_last_item = i == len(items) - 1
-        current_prefix = "└── " if is_last_item else "├── "
-
-        if subtree is None:  # It's a file
-            typer.echo(f"{prefix}{current_prefix}{name}")
-        else:  # It's a directory
-            typer.echo(f"{prefix}{current_prefix}{name}")
-            extension = "    " if is_last_item else "│   "
-            _print_tree(subtree, prefix + extension, is_last_item)
 
 
 def _validate_deployed_workflows(

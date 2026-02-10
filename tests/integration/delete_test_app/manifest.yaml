@@ -38,13 +38,15 @@ stages:
       name: delete-test-project
       create: true
       profileName: All capabilities
+      role:
+        arn: arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
       owners:
       - Eng1
       - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
       - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
       contributors: []
-      user_parameters:
-      - environment_configuration_name: Lakehouse Database
+      userParameters:
+      - EnvironmentConfigurationName: Lakehouse Database
         parameters:
         - name: glueDbName
           value: delete_test_db

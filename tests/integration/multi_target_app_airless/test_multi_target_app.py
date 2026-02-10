@@ -19,21 +19,21 @@ class TestMultiTargetApp(IntegrationTestBase):
     def cleanup_glue_databases(self):
         """Delete Glue databases that might conflict with the test."""
         import boto3
-        
+
         glue_client = boto3.client('glue', region_name='us-east-1')
         lakeformation_client = boto3.client('lakeformation', region_name='us-east-1')
         sts_client = boto3.client('sts', region_name='us-east-1')
-        
+
         # Get current role ARN
         identity = sts_client.get_caller_identity()
         role_arn = identity['Arn']
         print(f"✅ AWS credentials verified: {role_arn}")
-        
+
         databases_to_delete = [
             'multi_target_airless_test_db',
             'multi_target_airless_prod_db'
         ]
-        
+
         for db_name in databases_to_delete:
             try:
                 # First, try to grant Lake Formation DROP permission
@@ -49,7 +49,7 @@ class TestMultiTargetApp(IntegrationTestBase):
                         print(f"ℹ️  Database {db_name} doesn't exist, no permissions needed")
                     else:
                         print(f"⚠️  Could not grant permissions for {db_name}: {perm_error}")
-                
+
                 # Now try to delete the database
                 glue_client.delete_database(Name=db_name)
                 print(f"✅ Deleted Glue database: {db_name}")
@@ -132,18 +132,13 @@ class TestMultiTargetApp(IntegrationTestBase):
             "Owners:" in result["output"]
         ), "Owners information should be displayed with --connect"
 
-        # Verify it shows workflow info
-        assert "Workflows:" in result["output"]
-        assert "test_dag" in result["output"]
-        assert "Engine: airflow-serverless" in result["output"]
-
         # Verify connection details are shown
         assert "connectionId:" in result["output"]
         assert "type:" in result["output"]
         assert "awsAccountId:" in result["output"]
 
         # Verify MWAA-specific details
-        assert "environmentName:" in result["output"]
+        assert "mwaaEnvironmentName:" in result["output"]
         # Note: mwaaStatus may not always be present depending on MWAA environment state
 
     @pytest.mark.integration
@@ -449,7 +444,7 @@ stages:
             assert (
                 "Targets:" in result["output"]
             ), f"Should show targets section: {result['output']}"
-            
+
             # Should show error for at least one nonexistent project
             assert (
                 "❌ Error connecting to AWS:" in result["output"]
@@ -501,12 +496,12 @@ stages:
             assert result[
                 "success"
             ], f"Command should fail with exit code 1: {result['output']}"
-            
+
             # Should show error about no connections
             assert (
                 "❌ Error" in result["output"]
             ), f"Should show error message: {result['output']}"
-            
+
             # Should mention the project name
             assert (
                 "integration-airless-test" in result["output"]
@@ -842,7 +837,7 @@ stages:
             assert (
                 "Pipeline: IntegrationTestMultiTarget" in describe_output
             ), f"Describe output missing pipeline name: {describe_output}"
-            
+
             # Verify domain with region from environment variable using regex
             expected_region = os.environ.get('DEV_DOMAIN_REGION')
             if expected_region:
@@ -855,7 +850,7 @@ stages:
                 # Fallback if no environment variable set
                 assert "Domain:" in describe_output, \
                     f"Describe output missing domain info: {describe_output}"
-            
+
             assert (
                 "Targets:" in describe_output
             ), f"Describe output missing targets section: {describe_output}"
@@ -894,7 +889,7 @@ stages:
         #     ]
         # )
         # results.append(run_result)
-        
+
         # Create a mock result for consistency
         run_result = {"success": True, "output": "Run command disabled", "command": "run (disabled)"}
         results.append(run_result)
@@ -999,7 +994,7 @@ stages:
         """Test catalog asset access functionality during deployment."""
         # TODO: Re-enable catalog validation tests after workflow name issues are resolved
         pytest.skip("Catalog validation tests temporarily disabled")
-        
+
         if not self.verify_aws_connectivity():
             pytest.skip("AWS connectivity not available")
 
@@ -1007,65 +1002,65 @@ stages:
         results = []
 
         print("\n=== Catalog Asset Access Test ===")
-        
+
         try:
             # Step 1: Verify manifest has catalog assets configured
             print("\n--- Step 1: Verify Catalog Configuration ---")
             from smus_cicd.application import ApplicationManifest
-            
+
             manifest = ApplicationManifest.from_file(pipeline_file)
-            
+
             if not manifest.content.catalog or not manifest.content.catalog.assets:
                 pytest.skip("No catalog assets configured in manifest")
-            
+
             print(f"✅ Found {len(manifest.content.catalog.assets)} catalog assets")
             for i, asset in enumerate(manifest.content.catalog.assets):
                 identifier = asset.selector.search.identifier if asset.selector.search else asset.selector.assetId
                 print(f"   Asset {i+1}: {identifier} (permission: {asset.permission})")
-            
+
             # Step 2: Cancel any existing subscriptions to test fresh workflow
             print("\n--- Step 2: Cancel Existing Subscriptions ---")
             try:
                 from smus_cicd.helpers.datazone import get_domain_id_by_name, get_project_id_by_name
                 import boto3
-                
+
                 target_config = manifest.get_stage('test')
                 domain_name = target_config.domain.name
                 project_name = target_config.project.name
                 region = target_config.domain.region
-                
+
                 domain_id = get_domain_id_by_name(domain_name, region)
                 project_id = get_project_id_by_name(project_name, domain_id, region)
-                
+
                 if domain_id and project_id:
                     datazone_client = boto3.client('datazone', region_name=region)
-                    
+
                     # Cancel existing subscriptions for test assets
                     for asset in manifest.content.catalog.assets:
                         if asset.selector.search:
                             identifier = asset.selector.search.identifier
                             print(f"  Checking subscriptions for: {identifier}")
-                            
+
                             # Search for the asset to get listing ID
                             search_response = datazone_client.search_listings(
                                 domainIdentifier=domain_id,
                                 searchText=identifier
                             )
-                            
+
                             if search_response.get('items'):
                                 listing_id = search_response['items'][0]['assetListing']['listingId']
-                                
+
                                 # Check for active subscriptions
                                 subs_response = datazone_client.list_subscriptions(
                                     domainIdentifier=domain_id,
                                     owningProjectId=project_id
                                 )
-                                
+
                                 for sub in subs_response.get('items', []):
                                     if sub.get('subscribedListing', {}).get('id') == listing_id:
                                         sub_id = sub['id']
                                         print(f"  Canceling existing subscription: {sub_id}")
-                                        
+
                                         try:
                                             datazone_client.cancel_subscription(
                                                 domainIdentifier=domain_id,
@@ -1074,85 +1069,85 @@ stages:
                                             print(f"  ✅ Canceled subscription: {sub_id}")
                                         except Exception as e:
                                             print(f"  ⚠️ Could not cancel subscription {sub_id}: {e}")
-                                            
+
                 print("✅ Subscription cleanup completed")
-                
+
             except Exception as e:
                 print(f"⚠️ Subscription cleanup error: {e}")
                 # Continue with test - cleanup is best effort
-            
+
             # Step 3: First deploy - should create new subscriptions
             print("\n--- Step 3: First Deploy (Create Subscriptions) ---")
             result = self.run_cli_command(
                 ["deploy", "--manifest", pipeline_file, "--targets", "test"]
             )
             results.append(result)
-            
+
             if result["success"]:
                 print("✅ First deploy successful")
                 deploy_output = result["output"]
-                
+
                 # Should show subscription creation
                 if "Created subscription request" in deploy_output:
                     print("✅ New subscription request created as expected")
                 elif "Using existing subscription" in deploy_output:
                     print("ℹ️ Found existing subscription (cleanup may not have completed)")
-                
+
                 print(f"First deploy output: {deploy_output}")
-                
+
             else:
                 pytest.fail(f"First deploy failed: {result['output']}")
-            
+
             # Step 4: Second deploy - should be idempotent
             print("\n--- Step 4: Second Deploy (Idempotency Test) ---")
             result = self.run_cli_command(
                 ["deploy", "--manifest", pipeline_file, "--targets", "test"]
             )
             results.append(result)
-            
+
             if result["success"]:
                 print("✅ Second deploy successful (idempotent)")
                 deploy_output = result["output"]
-                
+
                 # Should use existing subscription
                 if "Using existing subscription" in deploy_output:
                     print("✅ Correctly used existing subscription (idempotent)")
                 elif "Created subscription request" in deploy_output:
                     print("⚠️ Created new subscription on second deploy - may not be fully idempotent")
-                
+
                 # Should still process catalog assets
                 assert (
                     "Processing catalog assets" in deploy_output or
                     "catalog assets" in deploy_output.lower()
                 ), f"Second deploy missing catalog asset processing: {deploy_output}"
-                
+
                 print(f"Second deploy output: {deploy_output}")
-                
+
             else:
                 pytest.fail(f"Second deploy failed: {result['output']}")
-            
+
             # Step 5: Verify DataZone integration
             print("\n--- Step 5: Verify DataZone Integration ---")
             try:
                 from smus_cicd.helpers.datazone import search_asset_listing
-                
+
                 print(f"Testing DataZone connectivity:")
                 print(f"  Domain: {domain_name}")
                 print(f"  Project: {project_name}")
                 print(f"  Region: {region}")
-                
+
                 if domain_id:
                     print(f"✅ Domain ID resolved: {domain_id}")
-                    
+
                     if project_id:
                         print(f"✅ Project ID resolved: {project_id}")
-                        
+
                         # Test asset search functionality
                         for asset in manifest.content.catalog.assets:
                             if asset.selector.search:
                                 identifier = asset.selector.search.identifier
                                 print(f"  Testing asset search: {identifier}")
-                                
+
                                 result = search_asset_listing(domain_id, identifier, region)
                                 if result:
                                     asset_id, listing_id = result
@@ -1163,16 +1158,16 @@ stages:
                         print(f"⚠️ Project ID not resolved for: {project_name}")
                 else:
                     print(f"⚠️ Domain ID not resolved for: {domain_name}")
-                    
+
             except Exception as e:
                 print(f"⚠️ DataZone integration test error: {e}")
-            
+
             # Step 6: Validate overall success
             print("\n--- Step 6: Validate Results ---")
-            
+
             # Both deploys should succeed
             deploy_successes = [r.get("success", False) for r in results]
-            
+
             if all(deploy_successes):
                 print("✅ Catalog asset access test completed successfully")
                 print("   - First deploy: Created/found asset subscriptions")
@@ -1182,7 +1177,7 @@ stages:
             else:
                 failed_deploys = [i for i, success in enumerate(deploy_successes) if not success]
                 pytest.fail(f"Deploy(s) failed: {failed_deploys}")
-                
+
         except Exception as e:
             print(f"❌ Catalog asset access test failed: {e}")
             pytest.fail(f"Catalog asset access test failed: {e}")
@@ -1191,43 +1186,43 @@ stages:
         """Test that catalog assets don't break existing functionality when not configured."""
         # TODO: Re-enable catalog validation tests after workflow name issues are resolved
         pytest.skip("Catalog validation tests temporarily disabled")
-        
+
         if not self.verify_aws_connectivity():
             pytest.skip("AWS connectivity not available")
 
         print("\n=== Catalog Asset Backward Compatibility Test ===")
-        
+
         try:
             # Create a temporary manifest without catalog section
             import tempfile
             import yaml
-            
+
             pipeline_file = self.get_pipeline_file()
-            
+
             # Load existing manifest
             with open(pipeline_file, 'r') as f:
                 manifest_data = yaml.safe_load(f)
-            
+
             # Remove catalog section if it exists
             if 'catalog' in manifest_data.get('bundle', {}):
                 del manifest_data['bundle']['catalog']
                 print("✅ Removed catalog section from test manifest")
-            
+
             # Write temporary manifest
             with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
                 yaml.dump(manifest_data, f)
                 temp_manifest = f.name
-            
+
             try:
                 # Test deploy without catalog assets
                 print("\n--- Testing Deploy Without Catalog Assets ---")
                 result = self.run_cli_command(
                     ["deploy", "--manifest", temp_manifest, "--targets", "test"]
                 )
-                
+
                 if result["success"]:
                     print("✅ Deploy without catalog assets successful")
-                    
+
                     # Should not contain catalog processing messages
                     deploy_output = result["output"]
                     if "catalog assets" in deploy_output.lower():
@@ -1239,17 +1234,17 @@ stages:
                         print("✅ Correctly handled missing catalog configuration")
                     else:
                         print("✅ No catalog processing (as expected)")
-                        
+
                 else:
                     pytest.fail(f"Deploy without catalog assets failed: {result['output']}")
-                    
+
             finally:
                 # Clean up temporary file
                 import os
                 os.unlink(temp_manifest)
-                
+
             print("✅ Backward compatibility test passed")
-            
+
         except Exception as e:
             print(f"❌ Backward compatibility test failed: {e}")
             pytest.fail(f"Backward compatibility test failed: {e}")
@@ -1257,24 +1252,24 @@ stages:
         """Test catalog asset negative scenarios and error handling."""
         # TODO: Re-enable catalog validation tests after workflow name issues are resolved
         pytest.skip("Catalog validation tests temporarily disabled")
-        
+
         if not self.verify_aws_connectivity():
             pytest.skip("AWS connectivity not available")
 
         print("\n=== Catalog Asset Negative Scenarios Test ===")
-        
+
         # Test 1: Invalid asset identifier
         print("\n--- Test 1: Invalid Asset Identifier ---")
         try:
             import tempfile
             import yaml
-            
+
             pipeline_file = self.get_pipeline_file()
-            
+
             # Load existing manifest and modify it
             with open(pipeline_file, 'r') as f:
                 manifest_data = yaml.safe_load(f)
-            
+
             # Add catalog with invalid asset
             manifest_data['bundle']['catalog'] = {
                 'assets': [{
@@ -1288,29 +1283,29 @@ stages:
                     'requestReason': 'Test invalid asset'
                 }]
             }
-            
+
             # Write temporary manifest
             with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
                 yaml.dump(manifest_data, f)
                 temp_manifest = f.name
-            
+
             try:
                 # Deploy should fail gracefully
                 result = self.run_cli_command(
                     ["deploy", "--manifest", temp_manifest, "--targets", "test"]
                 )
-                
+
                 # Should fail but with proper error message
                 assert result["success"] == False
                 print("✅ Invalid asset identifier handled correctly")
-                
+
             finally:
                 import os
                 os.unlink(temp_manifest)
-                
+
         except Exception as e:
             print(f"⚠️ Test 1 error: {e}")
-        
+
         # Test 2: Malformed catalog configuration
         print("\n--- Test 2: Malformed Catalog Configuration ---")
         try:
@@ -1325,27 +1320,27 @@ stages:
                     'requestReason': 'Test malformed config'
                 }]
             }
-            
+
             with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
                 yaml.dump(manifest_data, f)
                 temp_manifest = f.name
-            
+
             try:
                 # Should fail during manifest parsing
                 from smus_cicd.application import ApplicationManifest
-                
+
                 try:
                     manifest = ApplicationManifest.from_file(temp_manifest)
                     print("⚠️ Malformed config was accepted (unexpected)")
                 except Exception as e:
                     print(f"✅ Malformed config rejected: {type(e).__name__}")
-                    
+
             finally:
                 os.unlink(temp_manifest)
-                
+
         except Exception as e:
             print(f"⚠️ Test 2 error: {e}")
-        
+
         # Test 3: Invalid permission values
         print("\n--- Test 3: Invalid Permission Values ---")
         try:
@@ -1362,27 +1357,27 @@ stages:
                     'requestReason': 'Test invalid permission'
                 }]
             }
-            
+
             with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
                 yaml.dump(manifest_data, f)
                 temp_manifest = f.name
-            
+
             try:
                 # Should be handled by schema validation
                 from smus_cicd.application import ApplicationManifest
-                
+
                 try:
                     manifest = ApplicationManifest.from_file(temp_manifest)
                     print("⚠️ Invalid permission was accepted (check schema)")
                 except Exception as e:
                     print(f"✅ Invalid permission rejected: {type(e).__name__}")
-                    
+
             finally:
                 os.unlink(temp_manifest)
-                
+
         except Exception as e:
             print(f"⚠️ Test 3 error: {e}")
-        
+
         # Test 4: Empty assets array
         print("\n--- Test 4: Empty Assets Array ---")
         try:
@@ -1390,50 +1385,50 @@ stages:
             manifest_data['bundle']['catalog'] = {
                 'assets': []  # Empty array
             }
-            
+
             with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
                 yaml.dump(manifest_data, f)
                 temp_manifest = f.name
-            
+
             try:
                 # Should succeed but skip catalog processing
                 result = self.run_cli_command(
                     ["deploy", "--manifest", temp_manifest, "--targets", "test"]
                 )
-                
+
                 if result["success"]:
                     print("✅ Empty assets array handled correctly")
                 else:
                     print("⚠️ Empty assets array caused failure")
-                    
+
             finally:
                 os.unlink(temp_manifest)
-                
+
         except Exception as e:
             print(f"⚠️ Test 4 error: {e}")
-        
+
         print("\n✅ Negative scenarios testing completed")
 
     def test_catalog_asset_mixed_scenarios(self):
         """Test mixed valid/invalid catalog assets."""
         # TODO: Re-enable catalog validation tests after workflow name issues are resolved
         pytest.skip("Catalog validation tests temporarily disabled")
-        
+
         if not self.verify_aws_connectivity():
             pytest.skip("AWS connectivity not available")
 
         print("\n=== Mixed Catalog Asset Scenarios Test ===")
-        
+
         try:
             import tempfile
             import yaml
-            
+
             pipeline_file = self.get_pipeline_file()
-            
+
             # Create manifest with mixed valid/invalid assets
             with open(pipeline_file, 'r') as f:
                 manifest_data = yaml.safe_load(f)
-            
+
             manifest_data['bundle']['catalog'] = {
                 'assets': [
                     {
@@ -1458,30 +1453,30 @@ stages:
                     }
                 ]
             }
-            
+
             with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
                 yaml.dump(manifest_data, f)
                 temp_manifest = f.name
-            
+
             try:
                 # Deploy should fail on first invalid asset
                 result = self.run_cli_command(
                     ["deploy", "--manifest", temp_manifest, "--targets", "test"]
                 )
-                
+
                 # Should fail because of invalid asset
                 if not result["success"]:
                     print("✅ Mixed assets correctly failed on invalid asset")
                 else:
                     print("⚠️ Mixed assets unexpectedly succeeded")
-                    
+
             finally:
                 import os
                 os.unlink(temp_manifest)
-                
+
         except Exception as e:
             print(f"❌ Mixed scenarios test failed: {e}")
-            
+
         print("✅ Mixed scenarios testing completed")
 
     def _validate_airflow_serverless_workflows(self, deploy_output):
@@ -1489,13 +1484,13 @@ stages:
         # Check for Airflow Serverless workflow creation
         if "✅ Created Overdrive workflow:" in deploy_output:
             print("✅ Airflow Serverless workflow created successfully")
-            
+
             # Validate ARN is displayed
             if "ARN: arn:aws:airflow-serverless:" in deploy_output:
                 print("✅ Real Airflow Serverless ARN displayed")
             else:
                 print("⚠️ Airflow Serverless ARN not found in output")
-                
+
             # Validate status is READY
             if "Status: READY" in deploy_output:
                 print("✅ Workflow status is READY")

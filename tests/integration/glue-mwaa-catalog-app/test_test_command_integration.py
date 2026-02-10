@@ -14,7 +14,7 @@ class TestTestCommandIntegration(IntegrationTestBase):
     @pytest.fixture
     def manifest_path(self):
         """Get path to test manifest."""
-        return "tests/integration/multi_target_bundle/manifest.yaml"
+        return "tests/integration/glue-mwaa-catalog-app/manifest.yaml"
 
     def test_test_command_basic(self, manifest_path):
         """Test basic test command functionality."""
@@ -63,7 +63,7 @@ class TestTestCommandIntegration(IntegrationTestBase):
         )
 
         # Should produce valid JSON
-        assert '"bundle": "IntegrationTestMultiTarget"' in result.stdout
+        assert '"bundle": "GlueMwaaCatalogApp"' in result.stdout
         assert '"domain":' in result.stdout  # Check domain field exists (value varies by environment)
 
     def test_test_command_verbose(self, manifest_path):
@@ -105,7 +105,7 @@ class TestTestCommandIntegration(IntegrationTestBase):
         )
 
         # Should process all targets
-        assert "Pipeline: IntegrationTestMultiTarget" in result.stdout
+        assert "Pipeline: GlueMwaaCatalogApp" in result.stdout
         # All targets should be processed (dev, test, prod)
         assert "Target: dev" in result.stdout
         assert "Target: test" in result.stdout
@@ -115,7 +115,7 @@ class TestTestCommandIntegration(IntegrationTestBase):
 
     def test_test_files_exist(self):
         """Test that test files exist in the expected location."""
-        test_folder = Path("tests/integration/multi_target_bundle/pipeline_tests")
+        test_folder = Path("tests/integration/glue-mwaa-catalog-app/app_tests")
         assert test_folder.exists(), "Test folder should exist"
 
         test_file = test_folder / "test_project_validation.py"
@@ -144,7 +144,7 @@ class TestTestCommandIntegration(IntegrationTestBase):
         )
 
         # Run pytest directly on test folder
-        test_folder = "tests/integration/multi_target_bundle/pipeline_tests"
+        test_folder = "tests/integration/glue-mwaa-catalog-app/app_tests"
         result = subprocess.run(
             [sys.executable, "-m", "pytest", test_folder, "-v"],
             capture_output=True,

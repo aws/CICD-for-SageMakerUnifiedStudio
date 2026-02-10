@@ -38,7 +38,7 @@ stages:
     project:
       name: test-project
       create: true
-      profile_name: 'All capabilities'
+      profileName: 'All capabilities'
       owners: ['test@example.com']
     deployment_configuration:
       storage:

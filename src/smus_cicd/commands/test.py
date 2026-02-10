@@ -146,6 +146,21 @@ def test_command(
                 _display_target_summary(stage_name, test_results, output)
                 continue
 
+            # Check if project exists
+            if project_info.get("status") == "NOT_FOUND" or not project_info.get(
+                "projectId"
+            ):
+                if output.upper() != "JSON":
+                    typer.echo(
+                        f"  ⚠️ Project '{target_config.project.name}' not found - skipping tests"
+                    )
+                test_results[stage_name] = {
+                    "status": "skipped",
+                    "reason": "project_not_found",
+                }
+                _display_target_summary(stage_name, test_results, output)
+                continue
+
             # Get domain name from domain_id if not provided
             domain_name = target_config.domain.name
             if not domain_name and project_info.get("domainId"):

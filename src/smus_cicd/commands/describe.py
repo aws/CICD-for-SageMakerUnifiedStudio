@@ -86,8 +86,14 @@ def describe_command(
 
         # Process targets
         for stage_name, target_config in targets_to_show.items():
+            # Use to_dict method if available, otherwise build manually
+            if hasattr(target_config.project, "to_dict"):
+                project_dict = target_config.project.to_dict()
+            else:
+                project_dict = {"name": target_config.project.name}
+
             target_data = {
-                "project": {"name": target_config.project.name},
+                "project": project_dict,
                 "domain": {
                     "name": target_config.domain.name,
                     "region": target_config.domain.region,

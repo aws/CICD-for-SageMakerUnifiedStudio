@@ -154,6 +154,39 @@ class ProjectConfig:
     userParameters: List[EnvironmentUserParameters] = field(default_factory=list)
     role: Optional[Dict[str, Any]] = None
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert ProjectConfig to dictionary for JSON serialization."""
+        result = {
+            "name": self.name,
+            "create": self.create,
+        }
+
+        if self.profile_name:
+            result["profileName"] = self.profile_name
+
+        if self.owners:
+            result["owners"] = self.owners
+
+        if self.contributors:
+            result["contributors"] = self.contributors
+
+        if self.userParameters:
+            result["userParameters"] = [
+                {
+                    "EnvironmentConfigurationName": env_param.EnvironmentConfigurationName,
+                    "parameters": [
+                        {"name": param.name, "value": param.value}
+                        for param in env_param.parameters
+                    ],
+                }
+                for env_param in self.userParameters
+            ]
+
+        if self.role:
+            result["role"] = self.role
+
+        return result
+
 
 @dataclass
 class DeploymentConfiguration:
@@ -381,12 +414,37 @@ class ApplicationManifest:
                         f"stage '{stage_name}' project.name is required and cannot be empty"
                     )
 
+                # Parse userParameters into proper dataclass objects
+                user_parameters_list = []
+                raw_user_params = project_data.get("userParameters", [])
+                for env_param_data in raw_user_params:
+                    # Parse nested parameters
+                    parameters = []
+                    for param_data in env_param_data.get("parameters", []):
+                        parameters.append(
+                            UserParameter(
+                                name=param_data.get("name", ""),
+                                value=param_data.get("value", ""),
+                            )
+                        )
+
+                    # Create EnvironmentUserParameters object
+                    user_parameters_list.append(
+                        EnvironmentUserParameters(
+                            EnvironmentConfigurationName=env_param_data.get(
+                                "EnvironmentConfigurationName", ""
+                            ),
+                            parameters=parameters,
+                        )
+                    )
+
                 project = ProjectConfig(
                     name=project_name,
                     create=project_data.get("create", False),
                     profile_name=project_data.get("profileName"),
                     owners=project_data.get("owners", []),
                     contributors=project_data.get("contributors", []),
+                    userParameters=user_parameters_list,
                     role=project_data.get("role"),
                 )
 
