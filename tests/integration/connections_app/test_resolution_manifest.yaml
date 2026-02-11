@@ -13,7 +13,7 @@ stages:
       name: test-marketing
     environment_variables:
       TEST_VAR: test_value
-      AWS_ACCOUNT_ID: "019900059033"
+      AWS_ACCOUNT_ID: "372123585851"
     bootstrap:
       actions:
       - type: custom.debug_resolve
