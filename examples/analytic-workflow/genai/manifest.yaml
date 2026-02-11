@@ -31,7 +31,7 @@ stages:
       name: test-marketing
       create: true
       role:
-        arn: arn:aws:iam::019900059033:role/test-marketing-role
+        arn: arn:aws:iam::372123585851:role/test-marketing-role
       owners:
       - Eng1
       - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
