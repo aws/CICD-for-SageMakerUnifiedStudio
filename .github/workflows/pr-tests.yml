@@ -155,7 +155,6 @@ jobs:
         DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
         TEST_DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
         DEV_DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
-        MLFLOW_TRACKING_SERVER_NAME: smus-integration-mlflow-use1
         STS_REGION: ${{ vars.DOMAIN_REGION }}
         STS_ACCOUNT_ID: ${{ steps.aws-account.outputs.account-id }}
         AWS_ACCOUNT_ID: ${{ steps.aws-account.outputs.account-id }}
