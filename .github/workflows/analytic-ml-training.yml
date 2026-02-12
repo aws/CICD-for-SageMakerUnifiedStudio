@@ -22,3 +22,4 @@ jobs:
     with:
       manifest_path: 'examples/analytic-workflow/ml/training/manifest.yaml'
       test_target: 'test'
+      setup_mlflow: true

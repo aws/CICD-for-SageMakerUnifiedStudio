@@ -26,6 +26,12 @@ on:
         required: false
         type: boolean
         default: false
+      
+      setup_mlflow:
+        description: 'Setup MLflow tracking server infrastructure'
+        required: false
+        type: boolean
+        default: false
     
     secrets:
       AWS_ROLE_ARN_TEST:
@@ -79,12 +85,59 @@ jobs:
           echo "account-id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
           echo "✓ AWS Account ID: $ACCOUNT_ID"
       
+      - name: Setup MLflow Tracking Server
+        id: mlflow-setup
+        if: ${{ inputs.setup_mlflow }}
+        run: |
+          REGION="${{ vars.DOMAIN_REGION }}"
+          ACCOUNT_ID="${{ steps.aws-account.outputs.account-id }}"
+          STACK_NAME="smus-shared-resources"
+          TRACKING_SERVER_NAME="smus-integration-mlflow-${REGION}"
+          
+          echo "🔍 Checking for existing MLflow tracking server..."
+          
+          # Check if tracking server exists
+          SERVER_EXISTS=$(aws sagemaker list-mlflow-tracking-servers \
+            --region "$REGION" \
+            --query "TrackingServerSummaries[?TrackingServerName=='$TRACKING_SERVER_NAME'].TrackingServerName" \
+            --output text)
+          
+          if [ -n "$SERVER_EXISTS" ]; then
+            echo "✅ MLflow tracking server '$TRACKING_SERVER_NAME' already exists"
+            echo "tracking-server-name=$TRACKING_SERVER_NAME" >> $GITHUB_OUTPUT
+          else
+            echo "📦 MLflow tracking server not found, deploying CloudFormation stack..."
+            
+            # Deploy CloudFormation stack
+            aws cloudformation deploy \
+              --template-file tests/scripts/setup/idc-based-domains/5-testing-infrastructure/testing-infrastructure/shared-resources-template.yaml \
+              --stack-name "$STACK_NAME" \
+              --parameter-overrides \
+                S3BucketName="smus-mlflow-artifacts-${ACCOUNT_ID}-${REGION}" \
+                TrackingServerName="$TRACKING_SERVER_NAME" \
+                TrackingServerSize="Small" \
+              --capabilities CAPABILITY_NAMED_IAM \
+              --region "$REGION"
+            
+            # Get the tracking server ARN from stack outputs
+            MLFLOW_ARN=$(aws cloudformation describe-stacks \
+              --stack-name "$STACK_NAME" \
+              --region "$REGION" \
+              --query 'Stacks[0].Outputs[?OutputKey==`MLflowTrackingServerArn`].OutputValue' \
+              --output text)
+            
+            echo "✅ MLflow infrastructure deployed successfully"
+            echo "   Tracking Server: $TRACKING_SERVER_NAME"
+            echo "   ARN: $MLFLOW_ARN"
+            echo "tracking-server-name=$TRACKING_SERVER_NAME" >> $GITHUB_OUTPUT
+          fi
+      
       - name: smus-cli deploy to test (direct from branch)
         env:
           DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
           TEST_DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
           DEV_DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
-          MLFLOW_TRACKING_SERVER_NAME: smus-integration-mlflow-use1
+          MLFLOW_TRACKING_SERVER_NAME: ${{ inputs.setup_mlflow && steps.mlflow-setup.outputs.tracking-server-name || '' }}
           MLFLOW_ARTIFACT_LOCATION: s3://amazon-sagemaker-${{ steps.aws-account.outputs.account-id }}-${{ vars.DOMAIN_REGION }}-${{ vars.PROJECT_ID }}/shared/ml/mlflow-artifacts
           STS_REGION: ${{ vars.DOMAIN_REGION }}
           STS_ACCOUNT_ID: ${{ steps.aws-account.outputs.account-id }}
@@ -210,7 +263,7 @@ jobs:
           DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
           TEST_DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
           DEV_DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
-          MLFLOW_TRACKING_SERVER_NAME: smus-integration-mlflow-use1
+          MLFLOW_TRACKING_SERVER_NAME: ${{ inputs.setup_mlflow && format('smus-integration-mlflow-{0}', vars.DOMAIN_REGION) || '' }}
           MLFLOW_ARTIFACT_LOCATION: s3://amazon-sagemaker-${{ steps.aws-account-test.outputs.account-id }}-${{ vars.DOMAIN_REGION }}-${{ vars.PROJECT_ID }}/shared/ml/mlflow-artifacts
           STS_REGION: ${{ vars.DOMAIN_REGION }}
           STS_ACCOUNT_ID: ${{ steps.aws-account-test.outputs.account-id }}
