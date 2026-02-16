@@ -157,7 +157,7 @@ jobs:
           
           smus-cli describe --manifest ${{ inputs.manifest_path }} --targets ${{ inputs.bundle_from_target }} --connect
       
-      - name: Pre-deploy local files to bundle source (if needed)
+      - name: Pre-deploy local files to bundle source (optional)
         if: ${{ inputs.pre_deploy_local_files }}
         env:
           DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
@@ -171,8 +171,7 @@ jobs:
           # This ensures all content (local + S3) is available in the bundle source
           smus-cli deploy \
             --manifest ${{ inputs.manifest_path }} \
-            --targets ${{ inputs.bundle_from_target }} \
-            --local
+            --targets ${{ inputs.bundle_from_target }}
       
       - name: smus-cli bundle from ${{ inputs.bundle_from_target }}
         env:
@@ -245,6 +244,8 @@ jobs:
     name: Deploy to Test
     runs-on: ubuntu-latest
     needs: validate
+    # Skip if we already pre-deployed to the test target
+    if: ${{ !(inputs.pre_deploy_local_files && inputs.bundle_from_target == inputs.test_target) }}
     environment: test-aws-account
     
     steps:
@@ -383,8 +384,9 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    needs: deploy-test
-    if: ${{ !inputs.skip_tests }}
+    needs: [bundle, validate, deploy-test]
+    # Run if tests are not skipped AND either deploy-test ran or was skipped
+    if: ${{ !inputs.skip_tests && (success() || needs.deploy-test.result == 'skipped') }}
     environment: test-aws-account
     
     steps:
@@ -430,8 +432,9 @@ jobs:
   deploy-prod:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [deploy-test, test]
-    if: ${{ inputs.deploy_to_prod && (success() || inputs.skip_tests) }}
+    needs: [bundle, deploy-test, test]
+    # Deploy to prod if enabled AND (tests passed OR tests were skipped OR deploy-test was skipped)
+    if: ${{ inputs.deploy_to_prod && (success() || inputs.skip_tests || needs.deploy-test.result == 'skipped') }}
     environment: prod-aws-account
     
     steps:
