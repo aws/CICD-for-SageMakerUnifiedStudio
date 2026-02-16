@@ -31,6 +31,32 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
+  # Policy to grant existing SageMaker role access to MLflow artifacts bucket
+  # This allows training jobs using AmazonSageMakerUserIAMExecutionRole to upload to MLflow
+  MLflowArtifactsPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: MLflowArtifactsAccess
+      Roles:
+        - AmazonSageMakerUserIAMExecutionRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:ListBucket
+            Resource:
+              - !Sub '${MLflowArtifactsBucket.Arn}'
+              - !Sub '${MLflowArtifactsBucket.Arn}/*'
+          - Effect: Allow
+            Action:
+              - sagemaker-mlflow:*
+            Resource: "*"
+
+  # Role for MLflow tracking server (kept for backward compatibility)
   SageMakerExecutionRole:
     Type: AWS::IAM::Role
     Properties:
