@@ -174,8 +174,8 @@ def bundle(
         bundle_source = final_targets or "default"
         console.print(f"📦 Bundling from local filesystem for target: {bundle_source}")
     else:
-        bundle_source = "dev"
-        console.print("🔍 Bundle source: dev target")
+        bundle_source = final_targets or "dev"
+        console.print(f"🔍 Bundle source: {bundle_source} target")
         console.print(f"📦 Bundle destination: {final_targets or 'default'}")
 
     bundle_command(bundle_source, manifest_file, output_dir, output)
