@@ -23,6 +23,9 @@ jobs:
       AWS_ROLE_ARN_PROD: ${{ secrets.AWS_ROLE_ARN_PROD }}
     with:
       manifest_path: 'examples/analytic-workflow/ml/deployment/manifest.yaml'
+      bundle_from_target: 'test'
+      pre_deploy_local_files: true
       test_target: 'test'
       prod_target: 'prod'
       deploy_to_prod: ${{ github.ref == 'refs/heads/main' }}
+      setup_mlflow: true

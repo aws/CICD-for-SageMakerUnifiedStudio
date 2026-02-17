@@ -63,6 +63,42 @@ stages:
       - type: workflow.run
         workflowName: ml_deployment_workflow
         trailLogs: true
+  prod:
+    stage: PROD
+    domain:
+      tags:
+        purpose: smus-cicd-testing
+      region: ${PROD_DOMAIN_REGION:us-east-1}
+    project:
+      name: prod-marketing
+      create: true
+      owners:
+      - Eng1
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
+      contributors: []
+      role:
+        arn: arn:aws:iam::${AWS_ACCOUNT_ID}:role/prod-marketing-role
+    environment_variables:
+      S3_PREFIX: prod
+    deployment_configuration:
+      storage:
+      - name: deployment-code
+        connectionName: default.s3_shared
+        targetDirectory: ml/bundle/deployment-code
+      - name: deployment-workflows
+        connectionName: default.s3_shared
+        targetDirectory: ml/bundle/deployment-workflows
+      - name: model-artifacts
+        connectionName: default.s3_shared
+        targetDirectory: ml/bundle/model-artifacts
+    bootstrap:
+      actions:
+      - type: workflow.create
+        workflowName: ml_deployment_workflow
+      - type: workflow.run
+        workflowName: ml_deployment_workflow
+        trailLogs: true
 tests:
   folder: examples/analytic-workflow/ml/deployment/app_tests/
 # Trigger workflow
