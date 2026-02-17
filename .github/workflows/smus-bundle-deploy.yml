@@ -222,8 +222,6 @@ jobs:
     name: Deploy to Test
     runs-on: ubuntu-latest
     needs: validate
-    # Skip if we already bundled from the test target (no need to redeploy)
-    if: ${{ inputs.bundle_from_target != inputs.test_target }}
     environment: test-aws-account
     
     steps:
