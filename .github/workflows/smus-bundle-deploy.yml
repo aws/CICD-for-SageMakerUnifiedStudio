@@ -62,12 +62,6 @@ on:
         required: false
         type: boolean
         default: false
-      
-      pre_deploy_local_files:
-        description: 'Pre-deploy local files to bundle source before bundling'
-        required: false
-        type: boolean
-        default: false
     
     secrets:
       AWS_ROLE_ARN_DEV:
@@ -157,22 +151,6 @@ jobs:
           
           smus-cli describe --manifest ${{ inputs.manifest_path }} --targets ${{ inputs.bundle_from_target }} --connect
       
-      - name: Pre-deploy local files to bundle source (optional)
-        if: ${{ inputs.pre_deploy_local_files }}
-        env:
-          DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
-          DEV_DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
-          TEST_DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
-          PROD_DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
-        run: |
-          echo "📤 Pre-deploying local files to ${{ inputs.bundle_from_target }} stage for bundling..."
-          
-          # Deploy local files to the bundle source target
-          # This ensures all content (local + S3) is available in the bundle source
-          smus-cli deploy \
-            --manifest ${{ inputs.manifest_path }} \
-            --targets ${{ inputs.bundle_from_target }}
-      
       - name: smus-cli bundle from ${{ inputs.bundle_from_target }}
         env:
           DOMAIN_REGION: ${{ vars.DOMAIN_REGION }}
@@ -244,8 +222,8 @@ jobs:
     name: Deploy to Test
     runs-on: ubuntu-latest
     needs: validate
-    # Skip if we already pre-deployed to the test target
-    if: ${{ !(inputs.pre_deploy_local_files && inputs.bundle_from_target == inputs.test_target) }}
+    # Skip if we already bundled from the test target (no need to redeploy)
+    if: ${{ inputs.bundle_from_target != inputs.test_target }}
     environment: test-aws-account
     
     steps:

@@ -4,15 +4,15 @@ content:
   - name: deployment-code
     connectionName: default.s3_shared
     include:
-    - ml/deployment/code
+    - ml/bundle/deployment-code
   - name: deployment-workflows
     connectionName: default.s3_shared
     include:
-    - ml/deployment/workflows
+    - ml/bundle/deployment-workflows
   - name: model-artifacts
     connectionName: default.s3_shared
     include:
-    - ml/output/model-artifacts/latest
+    - ml/bundle/model-artifacts
   workflows:
   - workflowName: ml_deployment_workflow
     connectionName: default.workflow_serverless
@@ -67,7 +67,7 @@ stages:
     stage: PROD
     domain:
       tags:
-        purpose: smus-cicd-testing
+        purpose: smus-cicd-production
       region: ${PROD_DOMAIN_REGION:us-east-1}
     project:
       name: prod-marketing
