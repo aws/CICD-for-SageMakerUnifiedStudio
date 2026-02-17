@@ -68,15 +68,18 @@ def test_permissions():
         for conn in response.get('items', []):
             if conn['name'].startswith('test-s3-permission-check'):
                 try:
-                    client.delete_connection(
-                        domainIdentifier=domain_id,
-                        identifier=conn['connectionId']
-                    )
-                    print(f"🧹 Cleaned up old test connection: {conn['name']}")
-                except Exception:
-                    pass  # Ignore cleanup errors
-    except Exception:
-        pass  # Ignore cleanup errors
+                    # Use 'id' field instead of 'connectionId' for identifier
+                    conn_id = conn.get('connectionId') or conn.get('id')
+                    if conn_id:
+                        client.delete_connection(
+                            domainIdentifier=domain_id,
+                            identifier=conn_id
+                        )
+                        print(f"🧹 Cleaned up old test connection: {conn['name']} ({conn_id})")
+                except Exception as e:
+                    print(f"⚠️ Cleanup failed for {conn['name']}: {e}")
+    except Exception as e:
+        print(f"⚠️ Cleanup listing failed: {e}")
     
     connection_id = None
     try:
@@ -94,6 +97,29 @@ def test_permissions():
         
         connection_id = response['connectionId']
         print(f"✅ S3 connection creation: SUCCESS - {connection_id}")
+        
+    except client.exceptions.ConflictException as e:
+        # Connection already exists despite cleanup attempt
+        error_msg = str(e)
+        print(f"⚠️ S3 connection creation: CONFLICT - {error_msg}")
+        print("   → Connection already exists, attempting to use existing connection")
+        
+        # Try to find and use the existing connection
+        try:
+            response = client.list_connections(
+                domainIdentifier=domain_id,
+                projectIdentifier=project_id
+            )
+            for conn in response.get('items', []):
+                if conn['name'] == 'test-s3-permission-check':
+                    connection_id = conn.get('connectionId') or conn.get('id')
+                    print(f"✅ Using existing connection: {connection_id}")
+                    break
+            
+            if not connection_id:
+                pytest.fail(f"Connection exists but couldn't find it: {error_msg}")
+        except Exception as list_error:
+            pytest.fail(f"Failed to list connections after conflict: {list_error}")
         
     except Exception as e:
         error_msg = str(e)

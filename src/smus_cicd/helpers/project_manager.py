@@ -225,7 +225,7 @@ class ProjectManager:
 
         # Temporary: Use DataZone API directly for gamma endpoints
         typer.echo(f"Creating project '{project_name}' via DataZone API...")
-        success = self._create_project_via_datazone_api(
+        created_project_id = self._create_project_via_datazone_api(
             project_name,
             profile_name,
             domain_name,
@@ -235,8 +235,8 @@ class ProjectManager:
             contributors,
         )
 
-        print(f"🔍 DEBUG: DataZone API create_project returned: {success}")
-        if not success:
+        print(f"🔍 DEBUG: DataZone API create_project returned: {created_project_id}")
+        if not created_project_id:
             print("🔍 DEBUG: Project creation failed - returning error")
             handle_error("Failed to create project")
 
@@ -247,8 +247,13 @@ class ProjectManager:
         if not domain_id:
             handle_error(f"Failed to find domain ID for {domain_name}")
 
-        # Get project ID via DataZone API lookup
-        project_id = self._get_project_id_with_retry(project_name, domain_id, region)
+        # Use project ID from create/conflict response
+        # Only fall back to lookup if we don't have it (shouldn't happen)
+        project_id = created_project_id
+        if not project_id:
+            project_id = self._get_project_id_with_retry(
+                project_name, domain_id, region
+            )
 
         if not project_id:
             handle_error(f"Failed to find project ID for {project_name}")
@@ -494,10 +499,37 @@ class ProjectManager:
                     project_id, domain_id, region, owners, contributors
                 )
 
-            return True
+            # Return project_id for use by caller
+            return project_id
+        except dz_client.exceptions.ConflictException as e:
+            # Project already exists - extract project ID from error message
+            # Error format: "Conflict with project <project_id>"
+            import re
+
+            error_msg = str(e)
+            match = re.search(r"Conflict with project ([a-zA-Z0-9_-]+)", error_msg)
+            if match:
+                existing_project_id = match.group(1)
+                typer.echo(
+                    f"ℹ️  Project '{project_name}' already exists (ID: {existing_project_id})"
+                )
+                typer.echo("   Using existing project for deployment.")
+
+                # Manage memberships on existing project if provided
+                if owners or contributors:
+                    typer.echo("🔧 Managing project memberships...")
+                    datazone.manage_project_memberships(
+                        existing_project_id, domain_id, region, owners, contributors
+                    )
+
+                # Return existing project_id for use by caller
+                return existing_project_id
+            else:
+                typer.echo(f"❌ Error creating project: {e}")
+                return None
         except Exception as e:
             typer.echo(f"❌ Error creating project: {e}")
-            return False
+            return None
 
     def _get_role_arn(self, target_config) -> Optional[str]:
         """Extract role ARN from target configuration."""

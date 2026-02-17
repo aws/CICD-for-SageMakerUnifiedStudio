@@ -20,7 +20,7 @@ content:
     - '*.pyc'
     name: workflows
   workflows:
-  - workflowName: test_dag
+  - workflowName: s3_list_dag
     connectionName: default.workflow_serverless
 stages:
   dev:
@@ -41,6 +41,9 @@ stages:
       - connectionName: default.s3_shared
         name: workflows
         targetDirectory: workflows
+    bootstrap:
+      actions:
+      - type: workflow.create
   test:
     stage: TEST
     domain:
@@ -73,6 +76,9 @@ stages:
       - connectionName: default.s3_shared
         name: workflows
         targetDirectory: workflows
+    bootstrap:
+      actions:
+      - type: workflow.create
   prod:
     stage: PROD
     domain:
@@ -104,5 +110,8 @@ stages:
       - connectionName: default.s3_shared
         name: workflows
         targetDirectory: workflows
+    bootstrap:
+      actions:
+      - type: workflow.create
 tests:
   folder: tests/integration/multi_target_app_airless/app_tests/

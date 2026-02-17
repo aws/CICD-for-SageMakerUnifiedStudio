@@ -486,26 +486,24 @@ stages:
             temp_manifest = f.name
 
         try:
-            # Expect exit code 1 if project has no connections
+            # Describe should succeed - validation of connection existence happens at deploy time
             result = self.run_cli_command(
-                ["describe", "--manifest", temp_manifest, "--connect"],
-                expected_exit_code=1
+                ["describe", "--manifest", temp_manifest, "--connect"]
             )
 
-            # Command should fail with exit code 1 due to no connections
+            # Should succeed but may show warnings about nonexistent connections
             assert result[
                 "success"
-            ], f"Command should fail with exit code 1: {result['output']}"
-
-            # Should show error about no connections
+            ], f"Command should not crash with invalid connection: {result['output']}"
             assert (
-                "❌ Error" in result["output"]
-            ), f"Should show error message: {result['output']}"
-
-            # Should mention the project name
+                "Workflows:" in result["output"]
+            ), f"Should show workflows section: {result['output']}"
             assert (
-                "integration-airless-test" in result["output"]
-            ), f"Should mention project name: {result['output']}"
+                "test_dag" in result["output"]
+            ), f"Should show workflow name: {result['output']}"
+            assert (
+                "nonexistent.connection.name" in result["output"]
+            ), f"Should show connection name: {result['output']}"
 
         finally:
             os.unlink(temp_manifest)
@@ -908,7 +906,7 @@ stages:
             monitor_output = result["output"]
 
             # Check if the actual deployed workflow is detected in at least one environment
-            expected_workflow = "IntegrationTestMultiTargetAirless_integration_airless_test_test_dag"
+            expected_workflow = "IntegrationTestMultiTargetAirless_integration_airless_test_s3_list_dag"
             if expected_workflow in monitor_output:
                 print(f"✅ Workflow '{expected_workflow}' detected in Airflow Serverless")
 

@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.prompt import Confirm
 
 from ..application import ApplicationManifest
-from ..helpers.datazone import get_domain_from_target_config
+from ..helpers.datazone import get_domain_from_target_config, get_project_id_by_name
 
 console = Console()
 
@@ -108,22 +108,20 @@ def delete_command(
                 # Initialize DataZone client
                 dz = boto3.client("datazone", region_name=target.domain.region)
 
-                # Find the project
+                # Find the project using pagination-aware lookup
                 project_id = None
                 try:
-                    projects = dz.list_projects(domainIdentifier=domain_id)
-                    for project in projects.get("items", []):
-                        if project["name"] == target.project.name:
-                            project_id = project["id"]
-                            break
+                    project_id = get_project_id_by_name(
+                        target.project.name, domain_id, target.domain.region
+                    )
                 except Exception as e:
-                    console.print(f"[red]Error listing projects: {e}[/red]")
+                    console.print(f"[red]Error finding project: {e}[/red]")
                     results.append(
                         {
                             "target": stage_name,
                             "project_name": target.project.name,
                             "status": "error",
-                            "message": f"Error listing projects: {e}",
+                            "message": f"Error finding project: {e}",
                         }
                     )
                     continue
@@ -280,12 +278,21 @@ def delete_command(
                     "deleted": "✅",
                     "deletion_initiated": "🚀",
                     "not_found": "⚠️",
+                    "already_deleted": "⚠️",
+                    "timeout": "⚠️",
                     "error": "❌",
                 }.get(result["status"], "❓")
                 console.print(
                     f"  {status_icon} {result['target']}: {result['message']}"
                 )
 
+        # Exit with error code if any deletions failed
+        has_errors = any(result["status"] in ["error", "timeout"] for result in results)
+        if has_errors:
+            raise typer.Exit(1)
+
+    except typer.Exit:
+        raise
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
         raise typer.Exit(1)
