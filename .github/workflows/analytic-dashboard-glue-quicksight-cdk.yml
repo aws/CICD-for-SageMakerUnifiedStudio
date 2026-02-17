@@ -1,0 +1,32 @@
+name: Deploy Dashboard Glue QuickSight CDK
+
+on:
+  push:
+    branches:
+      - main
+      - test
+    paths:
+      - 'examples/analytic-workflow/dashboard-glue-quick-cdk/**'
+  workflow_dispatch:
+
+concurrency:
+  group: dashboard-glue-quick-cdk-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/smus-bundle-deploy.yml
+    secrets:
+      AWS_ROLE_ARN_DEV: ${{ secrets.AWS_ROLE_ARN_DEV }}
+      AWS_ROLE_ARN_TEST: ${{ secrets.AWS_ROLE_ARN_TEST }}
+      AWS_ROLE_ARN_PROD: ${{ secrets.AWS_ROLE_ARN_PROD }}
+    with:
+      manifest_path: 'examples/analytic-workflow/dashboard-glue-quick-cdk/manifest.yaml'
+      test_target: 'test'
+      prod_target: 'prod'
+      deploy_to_prod: ${{ github.ref == 'refs/heads/main' }}
+      quicksight_setup_script: 'examples/analytic-workflow/dashboard-glue-quick-cdk/quicksight/setup_test_dashboard.py'

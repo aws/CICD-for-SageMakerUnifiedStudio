@@ -1,0 +1,29 @@
+applicationName: cdk-bootstrap-test
+
+content:
+  storage:
+    - name: infra
+      include:
+        - infra/
+
+stages:
+  test:
+    stage: TEST
+    domain:
+      tags:
+        purpose: smus-cicd-testing
+      region: ${DEV_DOMAIN_REGION}
+    project:
+      name: test-marketing
+    deployment_configuration:
+      storage:
+        - name: infra
+          connectionName: default.s3_shared
+          targetDirectory: shared/cdk-bootstrap-test
+    bootstrap:
+      actions:
+        - type: cdk.deploy
+          appPath: infra
+          stackName: CdkBootstrapTestStack
+          context:
+            stage: test

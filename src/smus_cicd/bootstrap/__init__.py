@@ -2,6 +2,7 @@
 
 from .action_registry import registry
 from .executor import BootstrapExecutor
+from .handlers.cdk_handler import handle_cdk_action
 from .handlers.custom_handler import handle_cli_action
 from .handlers.datazone_handler import handle_datazone_action
 from .handlers.quicksight_handler import handle_quicksight_action
@@ -18,6 +19,7 @@ registry.register("mwaaserverless", handle_workflow_action)  # Backward compatib
 registry.register("cli", handle_cli_action)
 registry.register("custom", handle_cli_action)  # Backward compatibility
 registry.register("quicksight", handle_quicksight_action)
+registry.register("cdk", handle_cdk_action)
 
 # Create global executor
 executor = BootstrapExecutor(registry)

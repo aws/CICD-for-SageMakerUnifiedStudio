@@ -177,6 +177,7 @@ properties:
                 - workflow
                 - event
                 - cloudformation
+                - cdk
             
             # Workflow-specific fields
             workflowName:
@@ -241,6 +242,29 @@ properties:
             templatePath:
               type: string
               description: "Path to CloudFormation template (for type: cloudformation)"
+            
+            # CDK-specific fields
+            appPath:
+              type: string
+              description: "Path to CDK app directory (required for type: cdk)"
+            context:
+              type: object
+              description: "CDK context key-value pairs (for type: cdk)"
+              additionalProperties:
+                type: string
+            environmentVariables:
+              type: object
+              description: "Extra environment variables for CDK process (for type: cdk)"
+              additionalProperties:
+                type: string
+            extraArgs:
+              type: array
+              description: "Additional CDK CLI arguments (for type: cdk)"
+              items:
+                type: string
+            outputsFile:
+              type: string
+              description: "Path to write CDK stack outputs JSON (for type: cdk)"
           
           additionalProperties: false
     additionalProperties: false

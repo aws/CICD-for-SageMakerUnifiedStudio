@@ -1,0 +1,170 @@
+applicationName: IntegrationTestETLWorkflowCDK
+content:
+  storage:
+  - name: dashboard-glue-quick-cdk
+    include:
+    - "*.py"
+    exclude:
+    - .ipynb_checkpoints/
+    - __pycache__/
+    - '*.pyc'
+    - test_*.sh
+  - name: infra
+    include:
+    - "infra/"
+  git:
+  - repository: covid-19-dataset
+    url: https://github.com/datasets/covid-19.git
+  quicksight:
+  - name: TotalDeathByCountry
+    type: dashboard
+stages:
+  dev:
+    stage: DEV
+    domain:
+      tags:
+        purpose: smus-cicd-testing
+      region: ${DEV_DOMAIN_REGION:us-east-2}
+    project:
+      name: dev-marketing
+      owners:
+      - Eng1
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
+    environment_variables:
+      S3_PREFIX: dev
+      AWS_REGION: ${DEV_DOMAIN_REGION:us-east-2}
+      GRANT_TO: Admin,service-role/aws-quicksight-service-role-v0
+    bootstrap:
+      actions:
+      - type: cdk.deploy
+        appPath: infra
+        stackName: CovidEtlInfra-dev
+        context:
+          stage: dev
+      - type: quicksight.refresh_dataset
+        refreshScope: IMPORTED
+        ingestionType: FULL_REFRESH
+        wait: false
+    deployment_configuration:
+      storage:
+      - name: dashboard-glue-quick-cdk
+        connectionName: default.s3_shared
+        targetDirectory: dashboard-glue-quick-cdk/bundle
+      - name: infra
+        connectionName: default.s3_shared
+        targetDirectory: dashboard-glue-quick-cdk/infra
+      git:
+      - name: covid-19-dataset
+        connectionName: default.s3_shared
+        targetDirectory: repos
+      quicksight:
+        assets:
+        - name: TotalDeathByCountry
+          owners:
+          - arn:aws:quicksight:${DEV_DOMAIN_REGION:us-east-2}:${AWS_ACCOUNT_ID}:user/default/Admin/*
+          viewers:
+          - arn:aws:quicksight:${DEV_DOMAIN_REGION:us-east-2}:${AWS_ACCOUNT_ID}:user/default/Admin/*
+        overrideParameters:
+          ResourceIdOverrideConfiguration:
+            PrefixForAllResources: deployed-{stage.name}-covid-
+  test:
+    stage: TEST
+    domain:
+      tags:
+        purpose: smus-cicd-testing
+      region: ${TEST_DOMAIN_REGION:us-east-1}
+    project:
+      name: test-marketing
+      owners:
+      - Eng1
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
+    environment_variables:
+      S3_PREFIX: test
+      AWS_REGION: ${TEST_DOMAIN_REGION:us-east-1}
+      GRANT_TO: Admin,service-role/aws-quicksight-service-role-v0
+    bootstrap:
+      actions:
+      - type: cdk.deploy
+        appPath: infra
+        stackName: CovidEtlInfra-test
+        context:
+          stage: test
+      - type: quicksight.refresh_dataset
+        refreshScope: IMPORTED
+        ingestionType: FULL_REFRESH
+        wait: false
+    deployment_configuration:
+      storage:
+      - name: dashboard-glue-quick-cdk
+        connectionName: default.s3_shared
+        targetDirectory: dashboard-glue-quick-cdk/bundle
+      - name: infra
+        connectionName: default.s3_shared
+        targetDirectory: dashboard-glue-quick-cdk/infra
+      git:
+      - name: covid-19-dataset
+        connectionName: default.s3_shared
+        targetDirectory: repos
+      quicksight:
+        assets:
+        - name: TotalDeathByCountry
+          owners:
+          - arn:aws:quicksight:${TEST_DOMAIN_REGION:us-east-1}:${AWS_ACCOUNT_ID}:user/default/Admin/*
+          viewers:
+          - arn:aws:quicksight:${TEST_DOMAIN_REGION:us-east-1}:${AWS_ACCOUNT_ID}:user/default/Admin/*
+        overrideParameters:
+          ResourceIdOverrideConfiguration:
+            PrefixForAllResources: deployed-{stage.name}-covid-
+  prod:
+    stage: PROD
+    domain:
+      tags:
+        purpose: smus-cicd-production
+      region: ${PROD_DOMAIN_REGION:us-east-1}
+    project:
+      name: prod-marketing
+      owners:
+      - Eng1
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
+    environment_variables:
+      S3_PREFIX: prod
+      AWS_REGION: ${PROD_DOMAIN_REGION:us-east-1}
+      GRANT_TO: Admin,service-role/aws-quicksight-service-role-v0
+    bootstrap:
+      actions:
+      - type: cdk.deploy
+        appPath: infra
+        stackName: CovidEtlInfra-prod
+        context:
+          stage: prod
+      - type: quicksight.refresh_dataset
+        refreshScope: IMPORTED
+        ingestionType: FULL_REFRESH
+        wait: false
+    deployment_configuration:
+      storage:
+      - name: dashboard-glue-quick-cdk
+        connectionName: default.s3_shared
+        targetDirectory: dashboard-glue-quick-cdk/bundle
+      - name: infra
+        connectionName: default.s3_shared
+        targetDirectory: dashboard-glue-quick-cdk/infra
+      git:
+      - name: covid-19-dataset
+        connectionName: default.s3_shared
+        targetDirectory: repos
+      quicksight:
+        assets:
+        - name: TotalDeathByCountry
+          owners:
+          - arn:aws:quicksight:${PROD_DOMAIN_REGION:us-east-1}:${AWS_ACCOUNT_ID}:user/default/Admin/*
+          viewers:
+          - arn:aws:quicksight:${PROD_DOMAIN_REGION:us-east-1}:${AWS_ACCOUNT_ID}:user/default/Admin/*
+        overrideParameters:
+          ResourceIdOverrideConfiguration:
+            PrefixForAllResources: deployed-{stage.name}-covid-
+tests:
+  folder: examples/analytic-workflow/dashboard-glue-quick-cdk/app_tests/

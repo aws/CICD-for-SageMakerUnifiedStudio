@@ -15,6 +15,10 @@ Bootstrap actions allow you to execute automated tasks during deployment, includ
 | **project.create_environment** | Create DataZone environment |
 | **project.create_connection** | Create DataZone connection |
 | **quicksight.refresh_dataset** | Refresh QuickSight dataset |
+| **cdk.deploy** | Deploy CDK stack |
+| **cdk.destroy** | Destroy CDK stack |
+| **cdk.synth** | Synthesize CDK template |
+| **cdk.diff** | Show CDK stack diff |
 | **cli.print** | Print message to console or log |
 | **cli.wait** | Wait for specified duration |
 | **cli.validate_deployment** | Validate deployment status |
@@ -245,7 +249,109 @@ bootstrap:
       lines: 50
 ```
 
-### 3. EventBridge Actions
+### 3. CDK Actions
+
+#### cdk.deploy - Deploy CDK Stack
+
+Deploy infrastructure using AWS CDK during the bootstrap phase.
+
+```yaml
+bootstrap:
+  actions:
+    - type: cdk.deploy
+      appPath: infra/          # Path to CDK app (relative to manifest)
+      stackName: MyStack       # Optional: specific stack (deploys all if omitted)
+      context:                 # Optional: CDK context values
+        stage: prod
+        featureFlag: "true"
+      environmentVariables:    # Optional: extra env vars for CDK process
+        CDK_NEW_BOOTSTRAP: "1"
+      extraArgs:               # Optional: additional CDK CLI args
+        - "--verbose"
+      outputsFile: /tmp/outputs.json  # Optional: write stack outputs
+      region: us-east-1        # Optional: override region
+```
+
+**Properties:**
+- `appPath` (required): Path to CDK app directory. Relative paths resolve against the manifest file location.
+- `stackName` (optional): Specific stack to deploy. Omit to deploy all stacks.
+- `context` (optional): CDK context key-value pairs passed via `-c key=value`. Deployment context (stage, projectName, region, domainId) is auto-injected.
+- `environmentVariables` (optional): Extra environment variables for the CDK subprocess. Stage `environment_variables` are merged automatically.
+- `extraArgs` (optional): Additional CDK CLI arguments.
+- `outputsFile` (optional): Path to write stack outputs JSON.
+- `region` (optional): AWS region override (defaults to target's domain region).
+
+**Auto-injected context values:**
+- `stage` — current deployment stage name
+- `projectName` — DataZone project name
+- `region` — AWS region
+- `domainId` — DataZone domain ID
+
+**Use Case:** Provision infrastructure (S3 buckets, DynamoDB tables, Lambda functions, etc.) as part of the CI/CD deployment pipeline, with stage-specific configuration.
+
+**Example - Multi-stage CDK deployment:**
+```yaml
+stages:
+  dev:
+    bootstrap:
+      actions:
+        - type: cdk.deploy
+          appPath: infra/
+          context:
+            stage: dev
+  prod:
+    bootstrap:
+      actions:
+        - type: cdk.deploy
+          appPath: infra/
+          context:
+            stage: prod
+```
+
+#### cdk.destroy - Destroy CDK Stack
+
+Tear down a CDK stack. Uses `--force` to skip confirmation.
+
+```yaml
+bootstrap:
+  actions:
+    - type: cdk.destroy
+      appPath: infra/
+      stackName: MyStack
+```
+
+**Properties:** Same as `cdk.deploy` (except `outputsFile` and `extraArgs`).
+
+#### cdk.synth - Synthesize CDK Template
+
+Generate the CloudFormation template without deploying. Useful for validation.
+
+```yaml
+bootstrap:
+  actions:
+    - type: cdk.synth
+      appPath: infra/
+      stackName: MyStack
+```
+
+**Returns:** `template` field containing the synthesized CloudFormation template.
+
+#### cdk.diff - Show CDK Stack Diff
+
+Show differences between deployed stack and local CDK app.
+
+```yaml
+bootstrap:
+  actions:
+    - type: cdk.diff
+      appPath: infra/
+```
+
+**Returns:** `has_changes` (boolean) and `diff_output` (string).
+
+---
+
+### 4. EventBridge Actions
 
 #### custom.put_events - Emit Custom Events
 
