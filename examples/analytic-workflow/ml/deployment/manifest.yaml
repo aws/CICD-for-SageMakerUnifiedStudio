@@ -4,15 +4,15 @@ content:
   - name: deployment-code
     connectionName: default.s3_shared
     include:
-    - ml/deployment/code
+    - code
   - name: deployment-workflows
     connectionName: default.s3_shared
     include:
-    - ml/deployment/workflows
+    - workflows
   - name: model-artifacts
     connectionName: default.s3_shared
     include:
-    - ml/output/model-artifacts/latest
+    - ../../output/model-artifacts/latest
   workflows:
   - workflowName: ml_deployment_workflow
     connectionName: default.workflow_serverless
