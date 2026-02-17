@@ -67,7 +67,7 @@ stages:
     stage: PROD
     domain:
       tags:
-        purpose: smus-cicd-testing
+        purpose: smus-cicd-production
       region: ${PROD_DOMAIN_REGION:us-east-1}
     project:
       name: prod-marketing
