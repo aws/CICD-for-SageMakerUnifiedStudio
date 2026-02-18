@@ -45,7 +45,7 @@ jobs:
         if: steps.check-changes.outputs.has-changes == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
           aws-region: us-east-1
           role-session-name: translate-docs-session
 
