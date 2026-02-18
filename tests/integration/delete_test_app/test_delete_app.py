@@ -194,7 +194,7 @@ class TestDeleteApp(IntegrationTestBase):
         # Step 3: Deploy the project (initialize)
         print("\n=== Step 3: Deploy Project ===")
         result = self.run_cli_command(
-            ["deploy", "--targets", "delete-test", "--manifest", pipeline_file, "--manifest", bundle_path]
+            ["deploy", "--targets", "delete-test", "--manifest", pipeline_file, "--bundle-archive-path", bundle_path]
         )
         results.append(result)
 

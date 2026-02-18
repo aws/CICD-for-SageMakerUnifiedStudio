@@ -93,11 +93,12 @@ class TestMultiTargetApp(IntegrationTestBase):
 
             # Load configuration
             config = load_config()
+            # Use domain tags instead of hardcoded name
             config["domain"] = {
-                "name": "cicd-test-domain",
-                "region": "us-east-1",
+                "tags": {"purpose": "smus-cicd-testing"},
+                "region": os.environ.get('DEV_DOMAIN_REGION'),
             }
-            config["region"] = "us-east-1"
+            config["region"] = os.environ.get('DEV_DOMAIN_REGION')
 
             # Target projects to clean
             target_projects = [
@@ -106,7 +107,7 @@ class TestMultiTargetApp(IntegrationTestBase):
                 "prod-glue-mwaa-catalog-app",
             ]
 
-            s3_client = boto3.client("s3", region_name="us-east-1")
+            s3_client = boto3.client("s3", region_name=config["region"])
 
             for project_name in target_projects:
                 try:
@@ -272,7 +273,7 @@ task = PythonOperator(
 
         # Verify it shows pipeline info
         assert "Pipeline: GlueMwaaCatalogApp" in result["output"]
-        assert "Domain: cicd-test-domain" in result["output"]  # Region-agnostic
+        assert "Domain:" in result["output"]  # Check domain field exists (name varies by environment)
 
         # Verify it shows target info with connections
         assert "Targets:" in result["output"]
@@ -322,8 +323,9 @@ stages:
   test:
     stage: test
     domain:
-      name: cicd-test-domain
-      region: us-east-2
+      tags:
+        purpose: smus-cicd-testing
+      region: ${DEV_DOMAIN_REGION}
     project:
       name: nonexistent-project-12345
 """
@@ -420,8 +422,9 @@ stages:
   test:
     stage: test
     domain:
-      name: cicd-test-domain
-      region: ${DEV_DOMAIN_REGION:eu-west-1}
+      tags:
+        purpose: smus-cicd-testing
+      region: eu-west-1  # Intentionally wrong for test
     project:
       name: test-glue-mwaa-catalog-app
 """
@@ -568,15 +571,17 @@ stages:
   existing:
     stage: test
     domain:
-      name: cicd-test-domain
-      region: us-east-2
+      tags:
+        purpose: smus-cicd-testing
+      region: ${DEV_DOMAIN_REGION}
     project:
       name: test-glue-mwaa-catalog-app
   nonexistent:
     stage: test
     domain:
-      name: cicd-test-domain
-      region: us-east-2
+      tags:
+        purpose: smus-cicd-testing
+      region: ${DEV_DOMAIN_REGION}
     project:
       name: definitely-does-not-exist-project-12345
 """
@@ -631,8 +636,9 @@ stages:
   test:
     stage: test
     domain:
-      name: cicd-test-domain
-      region: us-east-2
+      tags:
+        purpose: smus-cicd-testing
+      region: ${DEV_DOMAIN_REGION}
     project:
       name: test-glue-mwaa-catalog-app
 """
@@ -1008,12 +1014,14 @@ stages:
             assert (
                 "Pipeline: GlueMwaaCatalogApp" in describe_output
             ), f"Describe output missing pipeline name: {describe_output}"
-            # Get the actual region from environment variable or default
-            expected_region = os.environ.get('DEV_DOMAIN_REGION', 'us-east-2')
-            assert (
-                f"Domain: cicd-test-domain ({expected_region})"
-                in describe_output
-            ), f"Describe output missing domain info: {describe_output}"
+            # Get the actual region from environment variable
+            expected_region = os.environ.get('DEV_DOMAIN_REGION')
+            assert expected_region, "DEV_DOMAIN_REGION environment variable must be set"
+            # Use regex to match any domain name with expected region
+            import re
+            domain_pattern = rf"Domain: .+ \({re.escape(expected_region)}\)"
+            assert re.search(domain_pattern, describe_output), \
+                f"Describe output missing domain with region {expected_region}: {describe_output}"
             assert (
                 "Targets:" in describe_output
             ), f"Describe output missing targets section: {describe_output}"

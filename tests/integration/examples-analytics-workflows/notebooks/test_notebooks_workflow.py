@@ -35,7 +35,7 @@ class TestNotebooksWorkflow(IntegrationTestBase):
         self.logger.info("✅ Deploy successful")
         
         # Extract workflow info from bootstrap output
-        arn_match = re.search(r'🔗 ARN: (arn:aws:airflow-serverless:[^\s]+)', result["output"])
+        arn_match = re.search(r'ARN: (arn:aws:airflow-serverless:[^\s]+)', result["output"])
         assert arn_match, "Could not find workflow ARN in output"
         workflow_arn = arn_match.group(1)
         self.logger.info(f"📋 Workflow ARN: {workflow_arn}")

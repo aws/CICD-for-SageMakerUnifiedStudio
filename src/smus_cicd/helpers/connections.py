@@ -118,37 +118,52 @@ def get_project_connections(
         )
 
     try:
-        # Get project-level connections
-        response = datazone_client.list_connections(
-            domainIdentifier=domain_id, projectIdentifier=project_id
-        )
+        # Get project-level connections with pagination
         connections = {}
-        for conn in response.get("items", []):
-            conn_name = conn.get("name", "unknown")
+        next_token = None
 
-            # Get detailed connection info
-            try:
-                detail_response = datazone_client.get_connection(
-                    domainIdentifier=domain_id, identifier=conn.get("connectionId", "")
-                )
+        while True:
+            list_params = {
+                "domainIdentifier": domain_id,
+                "projectIdentifier": project_id,
+            }
+            if next_token:
+                list_params["nextToken"] = next_token
 
-                connection_detail = detail_response.copy()
-                # Add context for environment name inference
-                connection_detail["domain_id"] = domain_id
-                connection_detail["project_id"] = project_id
+            response = datazone_client.list_connections(**list_params)
 
-                # Extract properties using centralized logic
-                conn_info = extract_connection_properties(connection_detail)
-                connections[conn_name] = conn_info
+            for conn in response.get("items", []):
+                conn_name = conn.get("name", "unknown")
 
-            except Exception as e:
-                # If we can't get details, use basic info
-                connections[conn_name] = {
-                    "connectionId": conn.get("connectionId", ""),
-                    "type": conn.get("type", ""),
-                    "description": conn.get("description"),
-                    "error": f"Could not get connection details: {str(e)}",
-                }
+                # Get detailed connection info
+                try:
+                    detail_response = datazone_client.get_connection(
+                        domainIdentifier=domain_id,
+                        identifier=conn.get("connectionId", ""),
+                    )
+
+                    connection_detail = detail_response.copy()
+                    # Add context for environment name inference
+                    connection_detail["domain_id"] = domain_id
+                    connection_detail["project_id"] = project_id
+
+                    # Extract properties using centralized logic
+                    conn_info = extract_connection_properties(connection_detail)
+                    connections[conn_name] = conn_info
+
+                except Exception as e:
+                    # If we can't get details, use basic info
+                    connections[conn_name] = {
+                        "connectionId": conn.get("connectionId", ""),
+                        "type": conn.get("type", ""),
+                        "description": conn.get("description"),
+                        "error": f"Could not get connection details: {str(e)}",
+                    }
+
+            # Check for more pages
+            next_token = response.get("nextToken")
+            if not next_token:
+                break
 
         # Also get environment-level connections for the project's environments
         try:
@@ -161,46 +176,60 @@ def get_project_connections(
                 env_id = env.get("id")
                 if env_id:
                     try:
-                        # Get connections for this environment
-                        env_conn_response = datazone_client.list_connections(
-                            domainIdentifier=domain_id,
-                            projectIdentifier=project_id,
-                            environmentIdentifier=env_id,
-                        )
+                        # Get connections for this environment with pagination
+                        env_next_token = None
 
-                        for conn in env_conn_response.get("items", []):
-                            conn_name = conn.get("name", "unknown")
+                        while True:
+                            env_list_params = {
+                                "domainIdentifier": domain_id,
+                                "projectIdentifier": project_id,
+                                "environmentIdentifier": env_id,
+                            }
+                            if env_next_token:
+                                env_list_params["nextToken"] = env_next_token
 
-                            # Skip if we already have this connection from project level
-                            if conn_name in connections:
-                                continue
+                            env_conn_response = datazone_client.list_connections(
+                                **env_list_params
+                            )
 
-                            # Get detailed connection info
-                            try:
-                                detail_response = datazone_client.get_connection(
-                                    domainIdentifier=domain_id,
-                                    identifier=conn.get("connectionId", ""),
-                                )
+                            for conn in env_conn_response.get("items", []):
+                                conn_name = conn.get("name", "unknown")
 
-                                connection_detail = detail_response.copy()
-                                # Add context for environment name inference
-                                connection_detail["domain_id"] = domain_id
-                                connection_detail["project_id"] = project_id
+                                # Skip if we already have this connection from project level
+                                if conn_name in connections:
+                                    continue
 
-                                # Extract properties using centralized logic
-                                conn_info = extract_connection_properties(
-                                    connection_detail
-                                )
-                                connections[conn_name] = conn_info
+                                # Get detailed connection info
+                                try:
+                                    detail_response = datazone_client.get_connection(
+                                        domainIdentifier=domain_id,
+                                        identifier=conn.get("connectionId", ""),
+                                    )
 
-                            except Exception as e:
-                                # If we can't get details, use basic info
-                                connections[conn_name] = {
-                                    "connectionId": conn.get("connectionId", ""),
-                                    "type": conn.get("type", ""),
-                                    "description": conn.get("description"),
-                                    "error": f"Could not get environment connection details: {str(e)}",
-                                }
+                                    connection_detail = detail_response.copy()
+                                    # Add context for environment name inference
+                                    connection_detail["domain_id"] = domain_id
+                                    connection_detail["project_id"] = project_id
+
+                                    # Extract properties using centralized logic
+                                    conn_info = extract_connection_properties(
+                                        connection_detail
+                                    )
+                                    connections[conn_name] = conn_info
+
+                                except Exception as e:
+                                    # If we can't get details, use basic info
+                                    connections[conn_name] = {
+                                        "connectionId": conn.get("connectionId", ""),
+                                        "type": conn.get("type", ""),
+                                        "description": conn.get("description"),
+                                        "error": f"Could not get environment connection details: {str(e)}",
+                                    }
+
+                            # Check for more pages
+                            env_next_token = env_conn_response.get("nextToken")
+                            if not env_next_token:
+                                break
 
                     except Exception as e:
                         if not is_json_output:

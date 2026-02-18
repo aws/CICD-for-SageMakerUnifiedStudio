@@ -427,17 +427,26 @@ definitions:
                 items:
                   type: string
             additionalProperties: false
-          user_parameters:
+          userParameters:
             type: array
+            description: "User parameters for environment configurations"
             items:
               type: object
               properties:
-                environment_configuration_name:
+                EnvironmentConfigurationName:
                   type: string
+                  description: "Name of the environment configuration"
                 parameters:
                   type: array
+                  description: "List of parameters for the environment"
                   items:
                     type: object
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                    additionalProperties: false
               additionalProperties: false
         additionalProperties: false
       bootstrap:

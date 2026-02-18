@@ -19,13 +19,16 @@ content:
     - __pycache__/
     - '*.pyc'
     name: workflows
+  workflows:
+  - workflowName: s3_list_dag
+    connectionName: default.workflow_serverless
 stages:
   dev:
     stage: DEV
     domain:
       tags:
         purpose: smus-cicd-testing
-      region: ${DEV_DOMAIN_REGION:us-east-2}
+      region: ${DEV_DOMAIN_REGION}
     project:
       name: dev-marketing
     environment_variables:
@@ -38,23 +41,28 @@ stages:
       - connectionName: default.s3_shared
         name: workflows
         targetDirectory: workflows
+    bootstrap:
+      actions:
+      - type: workflow.create
   test:
     stage: TEST
     domain:
       tags:
         purpose: smus-cicd-testing
-      region: ${DEV_DOMAIN_REGION:us-east-2}
+      region: ${DEV_DOMAIN_REGION}
     project:
       name: integration-airless-test
       create: true
       profileName: All capabilities
+      role:
+        arn: arn:aws:iam::${AWS_ACCOUNT_ID}:role/smus-integration-airless-test-role
       owners:
       - Eng1
       - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
       - Admin
       contributors: []
-      user_parameters:
-      - environment_configuration_name: Lakehouse Database
+      userParameters:
+      - EnvironmentConfigurationName: Lakehouse Database
         parameters:
         - name: glueDbName
           value: multi_target_airless_test_db
@@ -68,22 +76,27 @@ stages:
       - connectionName: default.s3_shared
         name: workflows
         targetDirectory: workflows
+    bootstrap:
+      actions:
+      - type: workflow.create
   prod:
     stage: PROD
     domain:
       tags:
         purpose: smus-cicd-testing
-      region: ${DEV_DOMAIN_REGION:us-east-2}
+      region: ${DEV_DOMAIN_REGION}
     project:
       name: integration-airless-test
       create: true
       profileName: All capabilities
+      role:
+        arn: arn:aws:iam::${AWS_ACCOUNT_ID}:role/smus-integration-airless-test-role
       owners:
       - Eng1
       - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
       contributors: []
-      user_parameters:
-      - environment_configuration_name: Lakehouse Database
+      userParameters:
+      - EnvironmentConfigurationName: Lakehouse Database
         parameters:
         - name: glueDbName
           value: multi_target_airless_prod_db
@@ -97,5 +110,8 @@ stages:
       - connectionName: default.s3_shared
         name: workflows
         targetDirectory: workflows
+    bootstrap:
+      actions:
+      - type: workflow.create
 tests:
-  folder: tests/integration/multi_target_bundle/pipeline_tests/
+  folder: tests/integration/multi_target_app_airless/app_tests/
