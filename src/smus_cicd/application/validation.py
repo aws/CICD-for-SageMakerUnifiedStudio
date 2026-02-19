@@ -19,7 +19,9 @@ def load_schema() -> Dict[str, Any]:
     return load_yaml(str(schema_path))
 
 
-def validate_yaml_syntax(manifest_path: str) -> Tuple[bool, str, Dict[str, Any]]:
+def validate_yaml_syntax(
+    manifest_path: str, resolve_aws_pseudo_vars: bool = True
+) -> Tuple[bool, str, Dict[str, Any]]:
     """
     Validate YAML syntax of manifest file.
 
@@ -27,7 +29,7 @@ def validate_yaml_syntax(manifest_path: str) -> Tuple[bool, str, Dict[str, Any]]
         Tuple of (is_valid, error_message, parsed_data)
     """
     try:
-        data = load_yaml(manifest_path)
+        data = load_yaml(manifest_path, resolve_aws_pseudo_vars=resolve_aws_pseudo_vars)
         return True, "", data
     except FileNotFoundError:
         return False, f"File not found: {manifest_path}", {}
@@ -78,18 +80,22 @@ def validate_manifest_schema(
 
 def validate_manifest_file(
     manifest_path: str,
+    resolve_aws_pseudo_vars: bool = True,
 ) -> Tuple[bool, List[str], Dict[str, Any]]:
     """
     Validate a manifest file completely (YAML syntax + schema).
 
     Args:
         manifest_path: Path to the manifest file
+        resolve_aws_pseudo_vars: Passed through to load_yaml/substitute_env_vars
 
     Returns:
         Tuple of (is_valid, list_of_error_messages, parsed_data)
     """
     # First validate YAML syntax
-    yaml_valid, yaml_error, manifest_data = validate_yaml_syntax(manifest_path)
+    yaml_valid, yaml_error, manifest_data = validate_yaml_syntax(
+        manifest_path, resolve_aws_pseudo_vars=resolve_aws_pseudo_vars
+    )
     if not yaml_valid:
         return False, [yaml_error], {}
 
