@@ -201,7 +201,9 @@ def load_yaml(
                         + "\n\nPlease set these environment variables before running the command."
                     )
 
-            return substitute_env_vars(data, resolve_aws_pseudo_vars=resolve_aws_pseudo_vars)
+            return substitute_env_vars(
+                data, resolve_aws_pseudo_vars=resolve_aws_pseudo_vars
+            )
     except yaml.YAMLError as e:
         raise yaml.YAMLError(f"Invalid YAML syntax in {file_path}: {e}")
 

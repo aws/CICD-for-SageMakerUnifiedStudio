@@ -113,7 +113,9 @@ def describe_command(
                 }
 
             if output.upper() != "JSON":
-                typer.echo(f"  - {stage_name}: {target_config.project.name} (domain: {stage_domain_name}, region: {target_config.domain.region})")
+                typer.echo(
+                    f"  - {stage_name}: {target_config.project.name} (domain: {stage_domain_name}, region: {target_config.domain.region})"
+                )
 
             # Add connections if requested or if connect flag is used
             if connections or connect:

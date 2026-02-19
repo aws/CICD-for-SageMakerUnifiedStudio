@@ -239,7 +239,9 @@ class ApplicationManifest:
     _file_path: Optional[str] = field(default=None, init=False)
 
     @classmethod
-    def from_file(cls, manifest_file: str, resolve_aws_pseudo_vars: bool = True) -> "ApplicationManifest":
+    def from_file(
+        cls, manifest_file: str, resolve_aws_pseudo_vars: bool = True
+    ) -> "ApplicationManifest":
         """Load bundle manifest from YAML file with validation."""
         from .validation import validate_manifest_file
 
