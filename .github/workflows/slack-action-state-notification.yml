@@ -1,0 +1,54 @@
+name: Slack Action State Notification
+
+on:
+  workflow_run:
+    workflows:
+      - "Deploy Dashboard Glue QuickSight"
+      - "Deploy Data Notebooks"
+      - "Deploy GenAI"
+      - "Deploy ML Deployment"
+      - "Deploy ML Training"
+      - "Translate Documentation"
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check previous run and notify on state change
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          CURRENT_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          CURRENT_RUN_URL: ${{ github.event.workflow_run.html_url }}
+          CURRENT_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          # Get the previous run conclusion (the run before the current one)
+          PREV_CONCLUSION=$(gh run list --repo "$REPO" \
+            --workflow "$WORKFLOW_NAME" \
+            --limit 2 \
+            --json databaseId,conclusion \
+            --jq "[.[] | select(.databaseId != ($CURRENT_RUN_ID | tonumber))] | .[0].conclusion")
+
+          echo "Current: $CURRENT_CONCLUSION | Previous: $PREV_CONCLUSION"
+
+          # Only notify on state transitions
+          if [ "$CURRENT_CONCLUSION" = "failure" ] && [ "$PREV_CONCLUSION" != "failure" ]; then
+            MESSAGE="failure"
+          elif [ "$CURRENT_CONCLUSION" = "success" ] && [ "$PREV_CONCLUSION" = "failure" ]; then
+            MESSAGE="recovery"
+          else
+            echo "No state change, skipping notification."
+            exit 0
+          fi
+
+          curl -X POST ${{ secrets.SLACK_ACTION_STATE_WEBHOOK_URL }} \
+            -H "Content-Type: application/json" \
+            -d "{\"workflow\": \"$WORKFLOW_NAME\", 
+            \"status\": \"$MESSAGE\", 
+            \"run_url\": \"$CURRENT_RUN_URL\"}"

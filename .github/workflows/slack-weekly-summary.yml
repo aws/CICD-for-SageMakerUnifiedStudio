@@ -1,0 +1,67 @@
+name: Slack Weekly Summary
+
+on:
+  schedule:
+    - cron: '0 14 * * 1'  # Every Monday at 9am EST (14:00 UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+  actions: read
+
+jobs:
+  summary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build and send weekly summary
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Open PRs
+          OPEN_PRS=$(gh pr list --repo "$REPO" --state open --json number,title,url \
+            --jq '[.[] | "• #\(.number) \(.title) - \(.url)"] | join("\n")')
+          PR_COUNT=$(gh pr list --repo "$REPO" --state open --json number | jq length)
+
+          # Open Issues
+          OPEN_ISSUES=$(gh issue list --repo "$REPO" --state open --json number,title,url \
+            --jq '[.[] | "• #\(.number) \(.title) - \(.url)"] | join("\n")')
+          ISSUE_COUNT=$(gh issue list --repo "$REPO" --state open --json number | jq length)
+
+          # Latest run status for each tracked workflow
+          WORKFLOWS=(
+            "Deploy Dashboard Glue QuickSight"
+            "Deploy Data Notebooks"
+            "Deploy GenAI"
+            "Deploy ML Deployment"
+            "Deploy ML Training"
+            "Translate Documentation"
+          )
+
+          WORKFLOW_SUMMARY=""
+          for WF in "${WORKFLOWS[@]}"; do
+            RUN=$(gh run list --repo "$REPO" --workflow "$WF" --limit 1 --json status,conclusion,url \
+              --jq '.[0] | "\(.conclusion // .status) - \(.url)"')
+            WORKFLOW_SUMMARY="${WORKFLOW_SUMMARY}• ${WF}: ${RUN}\n"
+          done
+
+          # Build payload
+          PAYLOAD=$(jq -n \
+            --arg prs "$OPEN_PRS" \
+            --argjson pr_count "$PR_COUNT" \
+            --arg issues "$OPEN_ISSUES" \
+            --argjson issue_count "$ISSUE_COUNT" \
+            --arg workflows "$(printf "$WORKFLOW_SUMMARY")" \
+            '{
+              "open_pr_count": $pr_count,
+              "open_prs": $prs,
+              "open_issue_count": $issue_count,
+              "open_issues": $issues,
+              "workflow_statuses": $workflows
+            }')
+
+          curl -X POST ${{ secrets.SLACK_WEEKLY_SUMMARY_WEBHOOK_URL }} \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
