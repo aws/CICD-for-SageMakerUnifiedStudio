@@ -11,6 +11,9 @@ on:
       - "Translate Documentation"
     types: [completed]
 
+permissions:
+  contents: read
+
 jobs:
   notify:
     runs-on: ubuntu-latest
