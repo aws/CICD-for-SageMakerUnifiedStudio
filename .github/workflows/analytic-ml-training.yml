@@ -8,6 +8,9 @@ on:
       - amirbo_feature_branch
     paths:
       - 'examples/analytic-workflow/ml/training/**'
+      - 'src/**'
+      - '.github/workflows/smus-direct-deploy.yml'
+      - '.github/workflows/analytic-ml-training.yml'
   workflow_dispatch:
 
 permissions:
