@@ -38,15 +38,18 @@ def describe_command(
     """Describe and validate pipeline manifest file."""
     try:
         # Load pipeline manifest using centralized parser
-        manifest = ApplicationManifest.from_file(manifest_file)
+        # Only resolve AWS pseudo vars (STS calls) when --connect is explicitly requested
+        manifest = ApplicationManifest.from_file(
+            manifest_file, resolve_aws_pseudo_vars=connect
+        )
 
         # Determine which targets to show
         targets_to_show = {}
         if targets:
-            if targets in manifest.stages:
-                targets_to_show[targets] = manifest.stages[targets]
-            else:
-                error_msg = f"Target '{targets}' not found in manifest"
+            requested = [t.strip() for t in targets.split(",") if t.strip()]
+            missing = [t for t in requested if t not in manifest.stages]
+            if missing:
+                error_msg = f"Target(s) not found in manifest: {', '.join(missing)}"
                 available_targets = list(manifest.stages.keys())
                 if output.upper() == "JSON":
                     output_data = {
@@ -60,25 +63,19 @@ def describe_command(
                         f"Available targets: {', '.join(available_targets)}", err=True
                     )
                 raise typer.Exit(1)
+            targets_to_show = {t: manifest.stages[t] for t in requested}
         else:
             targets_to_show = manifest.stages
-
-        # Get the first target's domain for display (they should all be the same)
-        first_target = next(iter(manifest.stages.values()))
-        domain_config = first_target.domain
-        domain_name = domain_config.get_name()
 
         # Prepare output data structure for JSON format
         output_data = {
             "bundle": manifest.application_name,
-            "domain": {"name": domain_name, "region": domain_config.region},
             "targets": {},
         }
 
         # TEXT output header
         if output.upper() != "JSON":
             typer.echo(f"Pipeline: {manifest.application_name}")
-            typer.echo(f"Domain: {domain_name} ({domain_config.region})")
             typer.echo("\nTargets:")
 
         # Track errors to exit with proper code
@@ -86,6 +83,12 @@ def describe_command(
 
         # Process targets
         for stage_name, target_config in targets_to_show.items():
+            # Resolve domain name per stage
+            if connect:
+                stage_domain_name = target_config.domain.get_name()
+            else:
+                stage_domain_name = target_config.domain.name or "Unknown"
+
             # Use to_dict method if available, otherwise build manually
             if hasattr(target_config.project, "to_dict"):
                 project_dict = target_config.project.to_dict()
@@ -95,7 +98,7 @@ def describe_command(
             target_data = {
                 "project": project_dict,
                 "domain": {
-                    "name": target_config.domain.name,
+                    "name": stage_domain_name,
                     "region": target_config.domain.region,
                 },
             }
@@ -110,7 +113,9 @@ def describe_command(
                 }
 
             if output.upper() != "JSON":
-                typer.echo(f"  - {stage_name}: {target_config.project.name}")
+                typer.echo(
+                    f"  - {stage_name}: {target_config.project.name} (domain: {stage_domain_name}, region: {target_config.domain.region})"
+                )
 
             # Add connections if requested or if connect flag is used
             if connections or connect:
@@ -447,7 +452,7 @@ def describe_command(
         # Show connections from initialization if they exist
         connections_found = False
         if output.upper() != "JSON":
-            for stage_name, target_config in manifest.stages.items():
+            for stage_name, target_config in targets_to_show.items():
                 if (
                     hasattr(target_config, "bootstrap")
                     and target_config.bootstrap
