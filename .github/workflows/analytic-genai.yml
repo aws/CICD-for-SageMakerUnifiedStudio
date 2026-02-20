@@ -8,6 +8,9 @@ on:
       - amirbo_feature_branch
     paths:
       - 'examples/analytic-workflow/genai/**'
+      - 'src/**'
+      - '.github/workflows/smus-direct-deploy.yml'
+      - '.github/workflows/analytic-genai.yml'
   workflow_dispatch:
 
 permissions:
