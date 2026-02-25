@@ -11,7 +11,6 @@ from .logger import get_logger
 
 # Airflow Serverless (MWAA Serverless) configuration - configurable via environment variables
 AIRFLOW_SERVERLESS_ENDPOINT = os.environ.get("AIRFLOW_SERVERLESS_ENDPOINT")
-AIRFLOW_SERVERLESS_SERVICE = "mwaaserverless-internal"
 
 
 def format_log_event(event: dict) -> str:
@@ -35,92 +34,13 @@ def format_log_event(event: dict) -> str:
 def create_airflow_serverless_client(
     connection_info: Dict[str, Any] = None, region: str = None
 ):
-    """Create Airflow Serverless client with custom model that supports MWAA Serverless operations."""
-    import json
-    import os
-    import shutil
-    import tempfile
-    from pathlib import Path
-
-    from botocore.loaders import Loader
-    from botocore.session import Session as BotocoreSession
-
-    # Determine region
+    """Create Airflow Serverless boto3 client."""
     if not region:
-        session = boto3.Session()
-        region = session.region_name or "us-east-1"
+        region = boto3.Session().region_name or "us-east-1"
 
-    # Use AIRFLOW_SERVERLESS_ENDPOINT if set, otherwise use public endpoint
-    if AIRFLOW_SERVERLESS_ENDPOINT:
-        endpoint_url = AIRFLOW_SERVERLESS_ENDPOINT
-    else:
-        endpoint_url = f"https://airflow-serverless.{region}.api.aws/"
+    endpoint_url = AIRFLOW_SERVERLESS_ENDPOINT or f"https://airflow-serverless.{region}.api.aws/"
 
-    print(
-        f"🔍 DEBUG: Creating Airflow Serverless client with region={region}, endpoint={endpoint_url}"
-    )
-
-    # Get the path to the custom MWAA Serverless model
-    current_dir = Path(__file__).parent.parent
-    model_path = (
-        current_dir / "resources" / "mwaaserverless-2024-07-26.normal-edited-2.json"
-    )
-
-    if not model_path.exists():
-        raise FileNotFoundError(
-            f"Custom MWAA Serverless model not found at {model_path}"
-        )
-
-    # Load the custom model
-    with open(model_path, "r") as f:
-        service_model_data = json.load(f)
-
-    # Create a temporary directory for the custom model
-    temp_dir = tempfile.mkdtemp()
-
-    try:
-        # Create the expected directory structure for botocore
-        service_dir = os.path.join(temp_dir, "mwaaserverless", "2024-07-26")
-        os.makedirs(service_dir, exist_ok=True)
-
-        # Write the service model
-        service_file = os.path.join(service_dir, "service-2.json")
-        with open(service_file, "w") as f:
-            json.dump(service_model_data, f)
-
-        # Create a custom loader with our model directory
-        loader = Loader(extra_search_paths=[temp_dir])
-
-        # Create a botocore session with custom loader
-        botocore_session = BotocoreSession()
-        botocore_session.register_component("data_loader", loader)
-
-        # Get credentials from boto3 session
-        boto3_session = boto3.Session()
-        credentials = boto3_session.get_credentials()
-        botocore_session.set_credentials(
-            access_key=credentials.access_key,
-            secret_key=credentials.secret_key,
-            token=credentials.token,
-        )
-
-        # Create the custom client
-        custom_client = botocore_session.create_client(
-            "mwaaserverless",
-            region_name=region,
-            endpoint_url=endpoint_url,
-            api_version="2024-07-26",
-        )
-
-        # Store temp_dir for cleanup (attach to client for later cleanup)
-        custom_client._temp_dir = temp_dir
-
-        return custom_client
-
-    except Exception as e:
-        # Clean up temp directory on error
-        shutil.rmtree(temp_dir, ignore_errors=True)
-        raise e
+    return boto3.client("mwaa-serverless", region_name=region, endpoint_url=endpoint_url)
 
 
 def create_workflow(
@@ -129,9 +49,6 @@ def create_workflow(
     role_arn: str,
     description: str = None,
     tags: Dict[str, str] = None,
-    datazone_domain_id: str = None,
-    datazone_domain_region: str = None,
-    datazone_project_id: str = None,
     connection_info: Dict[str, Any] = None,
     region: str = None,
     security_group_ids: List[str] = None,
@@ -175,46 +92,6 @@ def create_workflow(
         if tags:
             params["Tags"] = tags
 
-        # Add DataZone environment variables if provided
-        if datazone_domain_id and datazone_project_id:
-            from . import datazone
-
-            env_vars = {}
-            env_vars["DataZoneDomainRegion"] = datazone_domain_region or region
-            env_vars["DataZoneDomainId"] = datazone_domain_id
-            env_vars["DataZoneProjectId"] = datazone_project_id
-
-            # Get environment_id from IAM connection
-            try:
-                project_connections = datazone.get_project_connections(
-                    project_id=datazone_project_id,
-                    domain_id=datazone_domain_id,
-                    region=datazone_domain_region or region,
-                )
-
-                # Find IAM connection and extract environment_id
-                for conn_name, conn_info in project_connections.items():
-                    if conn_info.get("type") == "IAM":
-                        env_id = conn_info.get("environmentId")
-                        if env_id:
-                            env_vars["DataZoneEnvironmentId"] = env_id
-                            logger.info(
-                                f"Found DataZone environment ID from IAM connection: {env_id}"
-                            )
-                            break
-            except Exception as e:
-                logger.warning(
-                    f"Could not get DataZone environment ID from connections: {e}"
-                )
-
-            # Add DataZone endpoint from environment variable if set
-            import os
-
-            if os.getenv("AWS_ENDPOINT_URL_DATAZONE"):
-                env_vars["DataZoneEndpoint"] = os.getenv("AWS_ENDPOINT_URL_DATAZONE")
-
-            params["EnvironmentVariables"] = env_vars
-            logger.debug(f"DataZone environment variables: {env_vars}")
 
         import typer
 
@@ -296,50 +173,6 @@ def create_workflow(
 
                 if description:
                     update_params["Description"] = description
-
-                # Add EnvironmentVariables if provided
-                if datazone_domain_id and datazone_project_id:
-                    from . import datazone
-
-                    env_vars = {}
-                    env_vars["DataZoneDomainRegion"] = datazone_domain_region or region
-                    env_vars["DataZoneDomainId"] = datazone_domain_id
-                    env_vars["DataZoneProjectId"] = datazone_project_id
-
-                    # Get environment_id from IAM connection
-                    try:
-                        project_connections = datazone.get_project_connections(
-                            project_id=datazone_project_id,
-                            domain_id=datazone_domain_id,
-                            region=datazone_domain_region or region,
-                        )
-
-                        # Find IAM connection and extract environment_id
-                        for conn_name, conn_info in project_connections.items():
-                            if conn_info.get("type") == "IAM":
-                                logger.info(f"Found IAM connection: {conn_info}")
-                                env_id = conn_info.get("environmentId")
-                                if env_id:
-                                    env_vars["DataZoneEnvironmentId"] = env_id
-                                    logger.info(
-                                        f"Found DataZone environment ID from IAM connection: {env_id}"
-                                    )
-                                    break
-                    except Exception as e:
-                        logger.warning(
-                            f"Could not get DataZone environment ID from connections: {e}"
-                        )
-
-                    # Add DataZone endpoint from environment variable if set
-                    if os.getenv("AWS_ENDPOINT_URL_DATAZONE"):
-                        env_vars["DataZoneEndpoint"] = os.getenv(
-                            "AWS_ENDPOINT_URL_DATAZONE"
-                        )
-
-                    update_params["EnvironmentVariables"] = env_vars
-                    logger.info(
-                        f"🔍 DEBUG: Updating with environment variables: {env_vars}"
-                    )
 
                 logger.info(f"Updating workflow with params: {update_params}")
                 update_response = client.update_workflow(**update_params)

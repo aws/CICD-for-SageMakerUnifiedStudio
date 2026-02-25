@@ -12,8 +12,8 @@ from pathlib import Path
 def download_workflow_outputs(workflow_name: str, region: str, output_dir: str = "tests/test-outputs/notebooks"):
     """Download notebook outputs from latest workflow run using XCom."""
     
-    endpoint = f'https://airflow-serverless.{region}.api.aws/'
-    client = boto3.client('mwaaserverless-internal', region_name=region, endpoint_url=endpoint)
+    endpoint = os.environ.get('AIRFLOW_SERVERLESS_ENDPOINT', f'https://airflow-serverless.{region}.api.aws/')
+    client = boto3.client('mwaa-serverless', region_name=region, endpoint_url=endpoint)
     
     # Find workflow ARN
     response = client.list_workflows()

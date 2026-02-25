@@ -202,9 +202,6 @@ def handle_workflow_create(
                 "STAGE": stage_name.upper(),
                 "CreatedBy": "SMUS-CICD",
             },
-            datazone_domain_id=domain_id,
-            datazone_domain_region=region,
-            datazone_project_id=project_id,
             region=region,
         )
 

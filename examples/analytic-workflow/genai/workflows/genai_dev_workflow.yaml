@@ -4,6 +4,9 @@ genai_dev_workflow:
     bedrock_agent_notebook:
       operator: "airflow.providers.amazon.aws.operators.sagemaker_unified_studio.SageMakerNotebookOperator"
       retries: 0
+      domain_id: "{domain.id}"
+      project_id: "{proj.id}"
+      domain_region: "{domain.region}"
       input_config:
         input_path: "genai/bundle/workflows/bedrock_agent_notebook.ipynb"
         input_params:

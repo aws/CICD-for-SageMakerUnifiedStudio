@@ -17,8 +17,8 @@ def test_aws_cli_response():
     print("=== Testing AWS CLI Response ===")
     
     region = 'us-east-2'
-    endpoint = 'https://airflow-serverless.us-east-2.api.aws/'
-    client = boto3.client('mwaaserverless-internal', region_name=region, endpoint_url=endpoint)
+    endpoint = os.environ.get('AIRFLOW_SERVERLESS_ENDPOINT', 'https://airflow-serverless.us-east-2.api.aws/')
+    client = boto3.client('mwaa-serverless', region_name=region, endpoint_url=endpoint)
     
     # List task instances
     print(f"\n1. Listing task instances for run {RUN_ID}")

@@ -72,9 +72,6 @@ jobs:
       - name: Register AWS CLI model patch
         run: |
           aws configure add-model \
-            --service-model file://src/smus_cicd/resources/mwaaserverless-2024-07-26.normal-edited-2.json \
-            --service-name mwaaserverless-internal
-          aws configure add-model \
             --service-model file://src/smus_cicd/resources/datazone-internal-2018-05-10.json \
             --service-name datazone-internal
       
@@ -244,9 +241,6 @@ jobs:
       
       - name: Register AWS CLI model patch
         run: |
-          aws configure add-model \
-            --service-model file://src/smus_cicd/resources/mwaaserverless-2024-07-26.normal-edited-2.json \
-            --service-name mwaaserverless-internal
           aws configure add-model \
             --service-model file://src/smus_cicd/resources/datazone-internal-2018-05-10.json \
             --service-name datazone-internal

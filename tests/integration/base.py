@@ -111,7 +111,7 @@ class IntegrationTestBase:
         from datetime import datetime
         
         region = os.environ.get('AWS_DEFAULT_REGION', self.config.get('aws', {}).get('region', 'us-east-2'))
-        client = boto3.client('mwaaserverless-internal', region_name=region)
+        client = boto3.client('mwaa-serverless', region_name=region)
         
         try:
             response = client.get_workflow_run(
@@ -620,7 +620,7 @@ class IntegrationTestBase:
         import boto3
         region = os.environ.get('DEV_DOMAIN_REGION', 'us-east-2')
         endpoint = os.environ.get('AIRFLOW_SERVERLESS_ENDPOINT', f'https://airflow-serverless.{region}.api.aws/')
-        return boto3.client('mwaaserverless-internal', region_name=region, endpoint_url=endpoint)
+        return boto3.client('mwaa-serverless', region_name=region, endpoint_url=endpoint)
 
     def get_workflow_arn(self, expected_workflow_name: str) -> str:
         """Get workflow ARN by name.
@@ -707,7 +707,7 @@ class IntegrationTestBase:
         # Get task instances from workflow run
         region = os.environ.get('DEV_DOMAIN_REGION', 'us-east-2')
         endpoint = os.environ.get('AIRFLOW_SERVERLESS_ENDPOINT', f'https://airflow-serverless.{region}.api.aws/')
-        client = boto3.client('mwaaserverless-internal', region_name=region, endpoint_url=endpoint)
+        client = boto3.client('mwaa-serverless', region_name=region, endpoint_url=endpoint)
         
         # List task instances for this run
         try:

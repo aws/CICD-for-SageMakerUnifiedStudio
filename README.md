@@ -559,6 +559,9 @@ notebooks_workflow:
     nb_churn:
       operator: airflow.providers.amazon.aws.operators.sagemaker_unified_studio.SageMakerNotebookOperator
       retries: 0
+      domain_id: "{domain.id}"
+      project_id: "{proj.id}"
+      domain_region: "{domain.region}"
       input_config:
         input_path: notebooks/bundle/notebooks/customer_churn_prediction.ipynb
         input_params: {}
@@ -574,6 +577,9 @@ notebooks_workflow:
     nb_sales:
       operator: airflow.providers.amazon.aws.operators.sagemaker_unified_studio.SageMakerNotebookOperator
       retries: 0
+      domain_id: "{domain.id}"
+      project_id: "{proj.id}"
+      domain_region: "{domain.region}"
       input_config:
         input_path: notebooks/bundle/notebooks/retail_sales_forecasting.ipynb
         input_params: {}
@@ -589,6 +595,9 @@ notebooks_workflow:
     nb_segment:
       operator: airflow.providers.amazon.aws.operators.sagemaker_unified_studio.SageMakerNotebookOperator
       retries: 0
+      domain_id: "{domain.id}"
+      project_id: "{proj.id}"
+      domain_region: "{domain.region}"
       input_config:
         input_path: notebooks/bundle/notebooks/customer_segmentation_analysis.ipynb
         input_params: {}
@@ -711,6 +720,9 @@ ml_training_workflow:
     ml_training_notebook:
       operator: "airflow.providers.amazon.aws.operators.sagemaker_unified_studio.SageMakerNotebookOperator"
       retries: 0
+      domain_id: "{domain.id}"
+      project_id: "{proj.id}"
+      domain_region: "{domain.region}"
       input_config:
         input_path: "ml/bundle/training-workflows/ml_training_notebook.ipynb"
         input_params:
@@ -834,6 +846,9 @@ ml_deployment_workflow:
     ml_deployment_notebook:
       operator: "airflow.providers.amazon.aws.operators.sagemaker_unified_studio.SageMakerNotebookOperator"
       retries: 0
+      domain_id: "{domain.id}"
+      project_id: "{proj.id}"
+      domain_region: "{domain.region}"
       input_config:
         input_path: "ml/bundle/deployment-workflows/ml_deployment_notebook.ipynb"
         input_params:
@@ -944,6 +959,9 @@ genai_dev_workflow:
     bedrock_agent_notebook:
       operator: "airflow.providers.amazon.aws.operators.sagemaker_unified_studio.SageMakerNotebookOperator"
       retries: 0
+      domain_id: "{domain.id}"
+      project_id: "{proj.id}"
+      domain_region: "{domain.region}"
       input_config:
         input_path: "genai/bundle/workflows/bedrock_agent_notebook.ipynb"
         input_params:

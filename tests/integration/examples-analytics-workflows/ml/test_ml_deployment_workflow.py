@@ -93,7 +93,7 @@ class TestMLDeploymentWorkflow(IntegrationTestBase):
         self.logger.info("\n=== Step 6: Get Workflow ARN ===")
         region = os.environ.get('DEV_DOMAIN_REGION', 'us-east-2')
         endpoint = os.environ.get('AIRFLOW_SERVERLESS_ENDPOINT', f'https://airflow-serverless.{region}.api.aws/')
-        client = boto3.client('mwaaserverless-internal', region_name=region, endpoint_url=endpoint)
+        client = boto3.client('mwaa-serverless', region_name=region, endpoint_url=endpoint)
         response = client.list_workflows()
         workflow_arn = None
         expected_name = 'IntegrationTestMLDeployment_test_marketing_ml_deployment_workflow'
