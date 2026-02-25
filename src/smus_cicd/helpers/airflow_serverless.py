@@ -38,9 +38,13 @@ def create_airflow_serverless_client(
     if not region:
         region = boto3.Session().region_name or "us-east-1"
 
-    endpoint_url = AIRFLOW_SERVERLESS_ENDPOINT or f"https://airflow-serverless.{region}.api.aws/"
+    endpoint_url = AIRFLOW_SERVERLESS_ENDPOINT or (
+        f"https://airflow-serverless.{region}.api.aws/"
+    )
 
-    return boto3.client("mwaa-serverless", region_name=region, endpoint_url=endpoint_url)
+    return boto3.client(
+        "mwaa-serverless", region_name=region, endpoint_url=endpoint_url
+    )
 
 
 def create_workflow(
@@ -92,19 +96,8 @@ def create_workflow(
         if tags:
             params["Tags"] = tags
 
-
-        import typer
-
-        typer.echo(f"🔍 DEBUG: Client region: {region}")
-        typer.echo(
-            f"🔍 DEBUG: Client endpoint: {AIRFLOW_SERVERLESS_ENDPOINT or 'default'}"
-        )
-        typer.echo(f"🔍 DEBUG: Create workflow request params: {params}")
-
         logger.info(f"Creating serverless Airflow workflow: {workflow_name}")
         response = client.create_workflow(**params)
-
-        typer.echo(f"🔍 DEBUG: Create workflow response: {response}")
 
         workflow_arn = response["WorkflowArn"]
         logger.info(f"Successfully created workflow: {workflow_arn}")
