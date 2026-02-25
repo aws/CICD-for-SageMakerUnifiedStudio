@@ -1,7 +1,7 @@
 name: Slack PR Notification
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, reopened]
 
 permissions:
@@ -14,7 +14,6 @@ jobs:
     steps:
       - name: Send Slack notification
         run: |
-          curl -X POST ${{ secrets.SLACK_PR_WEBHOOK_URL }} \
+          curl -X POST "${{ secrets.SLACK_PR_WEBHOOK_URL }}" \
             -H "Content-Type: application/json" \
-            -d "{\"PR_URL\": \"${{ github.event.pull_request.html_url }}\", 
-            \"PR_author\": \"${{ github.event.pull_request.user.login }}\"}"
+            -d '{"PR_URL": "${{ github.event.pull_request.html_url }}", "PR_author": "${{ github.event.pull_request.user.login }}"}'
