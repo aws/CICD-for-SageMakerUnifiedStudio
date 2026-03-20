@@ -1,7 +1,7 @@
 applicationName: IntegrationTestETLWorkflow
 content:
   storage:
-  - name: dashboard-glue-quick
+  - name: etl-scripts
     include:
     - "*.py"
     exclude:
@@ -27,18 +27,17 @@ stages:
   dev:
     stage: DEV
     domain:
+      name: Default_02042026_Domain
       tags:
         purpose: smus-cicd-testing
-      region: ${DEV_DOMAIN_REGION:us-east-2}
+      region: us-east-1
     project:
-      name: dev-marketing
+      name: admin-project-383445062261
       owners:
-      - Eng1
-      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
       - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
     environment_variables:
       S3_PREFIX: dev
-      AWS_REGION: ${DEV_DOMAIN_REGION:us-east-2}
+      AWS_REGION: us-east-1
       GRANT_TO: Admin,service-role/aws-quicksight-service-role-v0
     bootstrap:
       actions:
@@ -53,12 +52,12 @@ stages:
         wait: false
     deployment_configuration:
       storage:
-      - name: dashboard-glue-quick
+      - name: etl-scripts
         connectionName: default.s3_shared
-        targetDirectory: dashboard-glue-quick/bundle
+        targetDirectory: etl-scripts/bundle
       - name: workflows
         connectionName: default.s3_shared
-        targetDirectory: dashboard-glue-quick/bundle/workflows
+        targetDirectory: etl-scripts/bundle/workflows
       git:
       - name: covid-19-dataset
         connectionName: default.s3_shared
@@ -76,38 +75,37 @@ stages:
   test:
     stage: TEST
     domain:
+      name: Default_03052026_Domain
       tags:
         purpose: smus-cicd-testing
-      region: ${TEST_DOMAIN_REGION:us-east-1}
+      region: us-west-2
     project:
-      name: test-marketing
+      name: admin-project-383445062261
       owners:
-      - Eng1
-      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
       - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
     environment_variables:
       S3_PREFIX: test
-      AWS_REGION: ${TEST_DOMAIN_REGION:us-east-1}
+      AWS_REGION: us-west-2
       GRANT_TO: Admin,service-role/aws-quicksight-service-role-v0
     bootstrap:
       actions:
       - type: workflow.create
         workflowName: covid_dashboard_glue_quick_pipeline
-      - type: workflow.run
-        workflowName: covid_dashboard_glue_quick_pipeline
-        trailLogs: true
+      # - type: workflow.run
+      #   workflowName: covid_dashboard_glue_quick_pipeline
+      #   trailLogs: true
       - type: quicksight.refresh_dataset
         refreshScope: IMPORTED
         ingestionType: FULL_REFRESH
         wait: false
     deployment_configuration:
       storage:
-      - name: dashboard-glue-quick
+      - name: etl-scripts
         connectionName: default.s3_shared
-        targetDirectory: dashboard-glue-quick/bundle
+        targetDirectory: etl-scripts/bundle
       - name: workflows
         connectionName: default.s3_shared
-        targetDirectory: dashboard-glue-quick/bundle/workflows
+        targetDirectory: etl-scripts/bundle/workflows
       git:
       - name: covid-19-dataset
         connectionName: default.s3_shared
@@ -125,18 +123,17 @@ stages:
   prod:
     stage: PROD
     domain:
+      name: Default_03052026_Domain
       tags:
         purpose: smus-cicd-production
-      region: ${PROD_DOMAIN_REGION:us-east-1}
+      region: us-east-2
     project:
-      name: prod-marketing
+      name: admin-project-383445062261
       owners:
-      - Eng1
-      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
       - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
     environment_variables:
       S3_PREFIX: prod
-      AWS_REGION: ${PROD_DOMAIN_REGION:us-east-1}
+      AWS_REGION: us-east-2
       GRANT_TO: Admin,service-role/aws-quicksight-service-role-v0
     bootstrap:
       actions:
@@ -151,12 +148,12 @@ stages:
         wait: false
     deployment_configuration:
       storage:
-      - name: dashboard-glue-quick
+      - name: etl-scripts
         connectionName: default.s3_shared
-        targetDirectory: dashboard-glue-quick/bundle
+        targetDirectory: etl-scripts/bundle
       - name: workflows
         connectionName: default.s3_shared
-        targetDirectory: dashboard-glue-quick/bundle/workflows
+        targetDirectory: etl-scripts/bundle/workflows
       git:
       - name: covid-19-dataset
         connectionName: default.s3_shared

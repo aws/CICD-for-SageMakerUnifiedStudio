@@ -5,7 +5,7 @@ workflow_combined:
       operator: airflow.providers.amazon.aws.operators.glue.GlueJobOperator
       retries: 0
       job_name: setup-covid-db-job
-      script_location: '{proj.connection.default.s3_shared.s3Uri}dashboard-glue-quick/bundle/glue_setup_covid_db.py'
+      script_location: '{proj.connection.default.s3_shared.s3Uri}etl-scripts/bundle/glue_setup_covid_db.py'
       s3_bucket: '{proj.connection.default.s3_shared.bucket}'
       iam_role_name: '{proj.iam_role_name}'
       region_name: '{domain.region}'
@@ -22,7 +22,7 @@ workflow_combined:
       operator: airflow.providers.amazon.aws.operators.glue.GlueJobOperator
       retries: 0
       job_name: summary-glue-job
-      script_location: '{proj.connection.default.s3_shared.s3Uri}dashboard-glue-quick/bundle/glue_covid_summary_job.py'
+      script_location: '{proj.connection.default.s3_shared.s3Uri}etl-scripts/bundle/glue_covid_summary_job.py'
       s3_bucket: '{proj.connection.default.s3_shared.bucket}'
       iam_role_name: '{proj.iam_role_name}'
       region_name: '{domain.region}'
@@ -31,7 +31,7 @@ workflow_combined:
         '--DATABASE_NAME': 'covid19_db'
         '--TABLE_NAME': 'us_simplified'
         '--SUMMARY_DATABASE_NAME': 'covid19_summary_db'
-        '--S3_DATABASE_PATH': '{proj.connection.default.s3_shared.s3Uri}dashboard-glue-quick/output/databases/covid19_summary_db/'
+        '--S3_DATABASE_PATH': '{proj.connection.default.s3_shared.s3Uri}etl-scripts/output/databases/covid19_summary_db/'
         '--BUCKET_NAME': '{proj.connection.default.s3_shared.bucket}'
       dependencies: [setup_covid_db_task]
       create_job_kwargs:
@@ -43,7 +43,7 @@ workflow_combined:
       operator: airflow.providers.amazon.aws.operators.glue.GlueJobOperator
       retries: 0
       job_name: set-permission-check-job
-      script_location: '{proj.connection.default.s3_shared.s3Uri}dashboard-glue-quick/bundle/glue_set_permission_check.py'
+      script_location: '{proj.connection.default.s3_shared.s3Uri}etl-scripts/bundle/glue_set_permission_check.py'
       s3_bucket: '{proj.connection.default.s3_shared.bucket}'
       iam_role_name: '{proj.iam_role_name}'
       region_name: '{domain.region}'
