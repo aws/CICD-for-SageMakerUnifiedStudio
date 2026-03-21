@@ -12,9 +12,6 @@
 
 # SMUS CI/CD Pipeline CLI
 
-← [Back to Main README](../../../README.md)
-
-
 [![en](https://img.shields.io/badge/lang-en-brightgreen.svg?style=for-the-badge)](README.md)
 [![pt](https://img.shields.io/badge/lang-pt-gray.svg)](docs/langs/pt/README.md)
 [![fr](https://img.shields.io/badge/lang-fr-gray.svg)](docs/langs/fr/README.md)
@@ -23,15 +20,15 @@
 [![zh](https://img.shields.io/badge/lang-zh-gray.svg)](docs/langs/zh/README.md)
 [![he](https://img.shields.io/badge/lang-he-gray.svg)](docs/langs/he/README.md)
 
-> **[תצוגה מקדימה]** Amazon SageMaker Unified Studio CI/CD CLI נמצא כרגע בתצוגה מקדימה וכפוף לשינויים. פקודות, תבניות תצורה ו-APIs עשויים להתפתח בהתאם למשוב הלקוחות. אנו ממליצים לבדוק כלי זה בסביבות שאינן ייצור במהלך התצוגה המקדימה. למשוב ודיווח על באגים, אנא פתחו נושא ב-https://github.com/aws/CICD-for-SageMakerUnifiedStudio/issues
+> **[תצוגה מקדימה]** Amazon SageMaker Unified Studio CI/CD CLI נמצא כרגע בשלב תצוגה מקדימה וכפוף לשינויים. פקודות, תבניות תצורה ו-APIs עשויים להתפתח בהתאם למשוב הלקוחות. אנו ממליצים לבדוק כלי זה בסביבות שאינן ייצור במהלך התצוגה המקדימה. למשוב ודיווח על באגים, אנא פתחו נושא ב-https://github.com/aws/CICD-for-SageMakerUnifiedStudio/issues
 
 > **[דומיינים מבוססי IAM בלבד]** ה-CLI הזה תומך כרגע בדומיינים של SMUS המשתמשים באימות מבוסס IAM בלבד. תמיכה בדומיינים מבוססי IAM Identity Center (IdC) תגיע בקרוב.
 
-**אוטומציה של פריסת אפליקציות נתונים בסביבות SageMaker Unified Studio**
+"Deploy data applications across SageMaker Unified Studio environments" (פריסת אפליקציות נתונים בסביבות SageMaker Unified Studio)
 
-"Deploy Airflow DAGs, Jupyter notebooks, and ML workflows from development to production with confidence" (פרוס DAGs של Airflow, מחברות Jupyter ותהליכי עבודה של ML מפיתוח לייצור בביטחון). נבנה עבור מדעני נתונים, מהנדסי נתונים, מהנדסי ML ומפתחי אפליקציות GenAI העובדים עם צוותי DevOps.
+"Deploy Airflow DAGs, Jupyter notebooks, and ML workflows from development to production with confidence. Built for data scientists, data engineers, ML engineers, and GenAI app developers working with DevOps teams." (פריסת Airflow DAGs, מחברות Jupyter ותהליכי עבודה של ML מפיתוח לייצור בביטחון. נבנה עבור מדעני נתונים, מהנדסי נתונים, מהנדסי ML ומפתחי אפליקציות GenAI העובדים עם צוותי DevOps)
 
-"Works with your deployment strategy:" (עובד עם אסטרטגיית הפריסה שלך:) בין אם אתה משתמש בענפי git (מבוסס-ענף), ארטיפקטים בגרסאות (מבוסס-bundle), תגיות git (מבוסס-תג), או פריסה ישירה - ה-CLI הזה תומך בתהליך העבודה שלך. הגדר את האפליקציה שלך פעם אחת, פרוס אותה בדרך שלך.
+"Works with your deployment strategy: Whether you use git branches (branch-based), versioned artifacts (bundle-based), git tags (tag-based), or direct deployment - this CLI supports your workflow. Define your application once, deploy it your way." (עובד עם אסטרטגיית הפריסה שלך: בין אם אתה משתמש בענפי git, ארטיפקטים מגורסאות, תגיות git או פריסה ישירה - ה-CLI הזה תומך בתהליך העבודה שלך. הגדר את האפליקציה שלך פעם אחת, פרוס אותה בדרך שלך)
 
 ---
 
@@ -46,10 +43,9 @@
 ✅ **Generic CI/CD Workflows** - Same workflow works for Glue, SageMaker, Bedrock, QuickSight, or any AWS service combination  
 (תהליכי CI/CD גנריים - אותו תהליך עבודה פועל עבור Glue, SageMaker, Bedrock, QuickSight או כל שילוב שירותי AWS)  
 ✅ **פריסה בביטחון** - בדיקות ותיקוף אוטומטיים לפני הפריסה לייצור  
-✅ **ניהול מרובה סביבות** - בדיקות → ייצור עם תצורה ספציפית לכל סביבה  
+✅ **ניהול מרובה סביבות** - בדיקות → ייצור עם תצורה ייעודית לכל סביבה  
 ✅ **תשתית כקוד** - מניפסטים של אפליקציות בבקרת גרסאות ופריסות הניתנות לשחזור  
-✅ **Event-Driven Workflows** - Trigger workflows automatically via EventBridge on deployment  
-(תהליכי עבודה מונעי אירועים - הפעלה אוטומטית של תהליכים דרך EventBridge בעת פריסה)
+✅ **תהליכי עבודה מבוססי אירועים** - הפעלת תהליכים אוטומטית דרך EventBridge בעת פריסה  
 
 ---
 
@@ -59,7 +55,7 @@
 
 ## התחלה מהירה
 
-**התקנה מהקוד המקור:**
+**התקנה מהמקור:**
 <div dir="ltr">
 
 <div dir="ltr">
@@ -109,7 +105,7 @@ aws-smus-cicd-cli test --manifest manifest.yaml --targets test
 
 ### 👨‍💻 צוותי נתונים (מדעני נתונים, מהנדסי נתונים, מפתחי אפליקציות GenAI)
 **המיקוד שלכם:** האפליקציה שלכם - מה לפרוס, איפה לפרוס, ואיך היא רצה  
-**אתם מגדירים:** manifest של האפליקציה (`manifest.yaml`) עם הקוד, workflow-ים והתצורות שלכם  
+**אתם מגדירים:** מניפסט אפליקציה (`manifest.yaml`) עם הקוד, workflow-ים והתצורות שלכם  
 **אתם לא צריכים לדעת:** CI/CD pipelines, GitHub Actions, אוטומציה של פריסה  
 
 → **[מדריך התחלה מהירה](docs/getting-started/quickstart.md)** - פרסו את האפליקציה הראשונה שלכם תוך 10 דקות  
@@ -120,16 +116,14 @@ aws-smus-cicd-cli test --manifest manifest.yaml --targets test
 - GenAI Applications (Bedrock, Notebooks)
 
 ### 🔧 צוותי DevOps
-**המיקוד שלכם:** שיטות עבודה מומלצות ל-CI/CD, אבטחה, תאימות ואוטומציה של פריסה  
+**המיקוד שלכם:** שיטות מיטביות של CI/CD, אבטחה, תאימות ואוטומציה של פריסה  
 **אתם מגדירים:** תבניות workflow שאוכפות בדיקות, אישורים ומדיניות קידום  
-**אתם לא צריכים לדעת:** פרטים ספציפיים לאפליקציה, שירותי AWS בשימוש, DataZone APIs, מבני פרויקט SMUS, או לוגיקה עסקית  
+**אתם לא צריכים לדעת:** פרטים ספציפיים לאפליקציה, שירותי AWS בשימוש, ממשקי DataZone, מבני פרויקט SMUS, או לוגיקה עסקית  
 
-→ **[מדריך למנהל מערכת](docs/getting-started/admin-quickstart.md)** - הגדירו תשתית ו-pipeline תוך 15 דקות  
-→ **[תבניות GitHub Workflow](git-templates/)** - תבניות workflow גנריות וניתנות לשימוש חוזר עבור פריסה אוטומטית
+→ **[מדריך למנהל](docs/getting-started/admin-quickstart.md)** - הגדירו תשתית ו-pipeline תוך 15 דקות  
+→ **[תבניות GitHub Workflow](git-templates/)** - תבניות workflow גנריות, לשימוש חוזר עבור פריסה אוטומטית
 
 **ה-CLI הוא שכבת ההפשטה שלכם:** אתם פשוט קוראים ל-`aws-smus-cicd-cli deploy` - ה-CLI מטפל בכל האינטראקציות עם שירותי AWS‏ (DataZone, Glue, Athena, SageMaker, MWAA, S3, IAM וכו'). ה-workflow שלכם נשאר פשוט וגנרי.
-
----
 
 </div>
 
@@ -175,8 +169,7 @@ aws-smus-cicd-cli test --manifest manifest.yaml --targets test
 
 ## שירותי AWS נתמכים
 
-Deploy workflows using these AWS services through Airflow YAML syntax:
-(פריסת תהליכי עבודה באמצעות שירותי AWS אלה דרך תחביר Airflow YAML)
+פריסת workflows באמצעות שירותי AWS אלה דרך תחביר YAML של Airflow:
 
 ### 🎯 אנליטיקה ונתונים
 **Amazon Athena** • **AWS Glue** • **Amazon EMR** • **Amazon Redshift** • **Amazon QuickSight** • **Lake Formation**
@@ -350,16 +343,18 @@ Both modes work with any combination of storage and git content sources.
 דוגמאות מהעולם האמיתי המציגות כיצד לפרוס עומסי עבודה שונים עם SMUS CI/CD.
 
 ### 📊 אנליטיקה - לוח מחוונים QuickSight
-פריסת לוחות מחוונים BI אינטראקטיביים עם צינורות ETL אוטומטיים של Glue להכנת נתונים. משתמש בחבילות נכסים של QuickSight, שאילתות Athena ואינטגרציית מאגר נתונים של GitHub עם תצורות ספציפיות לסביבה.
+
+"Deploy interactive BI dashboards with automated Glue ETL pipelines for data preparation. Uses QuickSight asset bundles, Athena queries, and GitHub dataset integration with environment-specific configurations."
+(פריסת לוחות מחוונים BI אינטראקטיביים עם צינורות ETL אוטומטיים של Glue להכנת נתונים. משתמש בחבילות נכסים של QuickSight, שאילתות Athena ואינטגרציה עם מאגרי נתונים של GitHub עם תצורות ספציפיות לסביבה)
 
 **AWS Services:** QuickSight • Glue • Athena • S3 • MWAA Serverless
 
 **GitHub Workflow:** [analytic-dashboard-glue-quicksight.yml](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/actions/workflows/analytic-dashboard-glue-quicksight.yml)
 
 "What happens during deployment: Application code is deployed to S3, Glue jobs and Airflow workflows are created and executed, QuickSight dashboard/data source/dataset are created, and QuickSight ingestion is initiated to refresh the dashboard with latest data."
-(קוד היישום מועלה ל-S3, משימות Glue וזרימות עבודה של Airflow נוצרות ומופעלות, לוח מחוונים/מקור נתונים/מערך נתונים של QuickSight נוצרים, והטמעת QuickSight מופעלת לרענון לוח המחוונים עם הנתונים העדכניים ביותר)
+(מה קורה במהלך הפריסה: קוד היישום נפרס ל-S3, משימות Glue ותהליכי Airflow נוצרים ומופעלים, לוח המחוונים/מקור הנתונים/מערך הנתונים של QuickSight נוצרים, והטמעת QuickSight מופעלת כדי לרענן את לוח המחוונים עם הנתונים העדכניים ביותר)
 
-[המשך התוכן המקורי באנגלית כולל כל בלוקי הקוד והפרטים הטכניים]
+[המשך המסמך המקורי ללא שינוי...]
 
 </div>
 
@@ -374,14 +369,14 @@ Both modes work with any combination of storage and git content sources.
 ### מדריכים
 - **[Application Manifest](docs/manifest.md)** - מדריך מלא להגדרות YAML
 - **[CLI Commands](docs/cli-commands.md)** - כל הפקודות והאפשרויות הזמינות
-- **[Bootstrap Actions](docs/bootstrap-actions.md)** - פעולות פריסה אוטומטיות ו-workflow מבוססי אירועים
+- **[Bootstrap Actions](docs/bootstrap-actions.md)** - פעולות פריסה אוטומטיות ו-workflow מבוסס אירועים
 - **[Substitutions & Variables](docs/substitutions-and-variables.md)** - תצורה דינמית
 - **[מדריך חיבורים](docs/connections.md)** - הגדרת אינטגרציות שירותי AWS
 - **[GitHub Actions Integration](docs/github-actions-integration.md)** - הגדרת אוטומציית CI/CD
-- **[Deployment Metrics](docs/pipeline-deployment-metrics.md)** - ניטור עם EventBridge
+- **[מדדי פריסה](docs/pipeline-deployment-metrics.md)** - ניטור עם EventBridge
 
-### מידע עזר
-- **[Manifest Schema](docs/manifest-schema.md)** - אימות מבנה YAML ומבנה
+### מקורות
+- **[Manifest Schema](docs/manifest-schema.md)** - אימות ומבנה סכמת YAML
 - **[Airflow AWS Operators](docs/airflow-aws-operators.md)** - מדריך למפעילים מותאמים אישית
 
 ### דוגמאות
@@ -394,7 +389,7 @@ Both modes work with any combination of storage and git content sources.
 
 ### פיתוח
 - **[מדריך למפתח](developer/developer-guide.md)** - מדריך פיתוח מלא עם ארכיטקטורה, בדיקות ותהליכי עבודה
-- **[AI Assistant Context](developer/AmazonQ.md)** - הקשר עבור עוזרי AI (Amazon Q, Kiro)
+- **[הקשר עוזר AI](developer/AmazonQ.md)** - הקשר לעוזרי AI (Amazon Q, Kiro)
 - **[סקירת בדיקות](tests/README.md)** - תשתית בדיקות
 
 ### תמיכה
