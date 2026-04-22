@@ -8,14 +8,14 @@
 
 ← [Back to Main README](../../../README.md)
 
-# CLI du Pipeline CI/CD SMUS
+# CLI de Pipeline CI/CD SMUS
 
 
 > **[Domaines IAM + IdC]** Ce CLI prend en charge les domaines SMUS basés sur IAM et sur IAM Identity Center (IdC). Pour les domaines IdC, une configuration supplémentaire (réseau VPC, permissions Lake Formation, politiques IAM en ligne) peut être nécessaire — consultez les scripts de configuration dans chaque répertoire d'exemple.
 
 **Automatisez le déploiement d'applications de données dans les environnements SageMaker Unified Studio**
 
-Déployez des DAG Airflow, des notebooks Jupyter et des workflows ML du développement à la production en toute confiance. Conçu pour les data scientists, les data engineers, les ML engineers et les développeurs d'applications GenAI travaillant avec les équipes DevOps.
+Déployez des DAG Airflow, des notebooks Jupyter et des workflows ML du développement à la production en toute confiance. Conçu pour les data scientists, les ingénieurs de données, les ingénieurs ML et les développeurs d'applications GenAI travaillant avec les équipes DevOps.
 
 **Fonctionne avec votre stratégie de déploiement :** Que vous utilisiez des branches git (basé sur les branches), des artefacts versionnés (basé sur les bundles), des tags git (basé sur les tags) ou un déploiement direct - ce CLI prend en charge votre workflow. Définissez votre application une fois, déployez-la à votre manière.
 
@@ -26,7 +26,7 @@ Déployez des DAG Airflow, des notebooks Jupyter et des workflows ML du dévelop
 ✅ **Couche d'abstraction AWS** - Le CLI encapsule toute la complexité d'AWS analytics, ML et SMUS - Les équipes DevOps n'appellent jamais directement les API AWS  
 ✅ **Séparation des préoccupations** - Les équipes data définissent QUOI déployer (manifest.yaml), les équipes DevOps définissent COMMENT et QUAND (workflows CI/CD)  
 ✅ **Workflows CI/CD génériques** - Le même workflow fonctionne pour Glue, SageMaker, Bedrock, QuickSight, ou toute combinaison de services AWS  
-✅ **Déployer en toute confiance** - Validation par simulation pré-déploiement et tests automatisés avant la production  
+✅ **Déployer en toute confiance** - Validation par simulation avant déploiement et tests automatisés avant la production  
 ✅ **Gestion multi-environnements** - Test → Prod avec configuration spécifique à chaque environnement  
 ✅ **Infrastructure as Code** - Manifestes d'application versionnés et déploiements reproductibles  
 ✅ **Workflows événementiels** - Déclencher automatiquement des workflows via EventBridge lors du déploiement  
@@ -161,7 +161,7 @@ S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
 Définit le PROCESSUS           Définit le CONTENU             Le workflow appelle :
 - Test lors du merge           - Jobs Glue                    aws-smus-cicd-cli deploy --manifest manifest.yaml
 - Approbation pour prod        - Entraînement SageMaker         ↓
-- Analyses de sécurité         - Requêtes Athena              Le CLI gère TOUTE la complexité AWS :
+- Scans de sécurité            - Requêtes Athena              Le CLI gère TOUTE la complexité AWS :
 - Règles de notification       - Structure de fichiers        - APIs DataZone
                                                               - APIs Glue/Athena/SageMaker
 Définit l'INFRASTRUCTURE                                      - Déploiement MWAA
@@ -199,7 +199,7 @@ ML/Analytics/GenAI nécessaire !
 
 **Résultat :** 
 - **Les équipes DevOps n'appellent jamais directement les APIs AWS** - elles appellent simplement `aws-smus-cicd-cli deploy`
-- **Les workflows CI/CD sont génériques** - le même workflow fonctionne pour les applications Glue, SageMaker ou Bedrock
+- **Les workflows CI/CD sont génériques** - le même workflow fonctionne pour les apps Glue, SageMaker ou Bedrock
 - Les équipes de données ne touchent jamais aux configurations CI/CD
 - Les deux équipes travaillent de manière indépendante en utilisant leur expertise
 
@@ -232,12 +232,12 @@ Un environnement de déploiement (dev, test, prod) mappé à un projet SageMaker
 - Paramètres spécifiques à l'environnement
 - Mappage de branche optionnel pour les déploiements basés sur git
 
-### Mappage Stage vers Projet
+### Mappage Stage-vers-Projet
 
 Chaque stage d'application se déploie vers un projet SageMaker Unified Studio (SMUS) dédié. Un projet peut héberger une seule application ou plusieurs applications selon votre architecture et votre méthodologie CI/CD. Les projets de stage sont des entités indépendantes avec leur propre gouvernance :
 
-- **Propriété et accès :** Chaque projet de stage possède son propre ensemble de propriétaires et de contributeurs, qui peuvent différer du projet de développement. Les projets de production ont généralement un accès restreint par rapport aux environnements de développement.
-- **Multi-domaines et multi-régions :** Les projets de stage peuvent appartenir à différents domaines SMUS, comptes AWS et régions. Par exemple, votre stage dev peut se déployer vers un domaine de développement dans us-east-1, tandis que prod se déploie vers un domaine de production dans eu-west-1.
+- **Propriété et accès :** Chaque projet de stage a son propre ensemble de propriétaires et de contributeurs, qui peuvent différer du projet de développement. Les projets de production ont généralement un accès restreint par rapport aux environnements de développement.
+- **Multi-domaine et multi-région :** Les projets de stage peuvent appartenir à différents domaines SMUS, comptes AWS et régions. Par exemple, votre stage dev peut se déployer vers un domaine de développement dans us-east-1, tandis que prod se déploie vers un domaine de production dans eu-west-1.
 - **Architecture flexible :** Les organisations peuvent choisir entre des projets dédiés par application (isolation) ou des projets partagés hébergeant plusieurs applications (consolidation), en fonction des exigences de sécurité, de conformité et opérationnelles.
 
 Cette séparation permet une véritable isolation des environnements avec des contrôles d'accès indépendants, des limites de conformité et des exigences de résidence des données régionales.
@@ -1211,7 +1211,7 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 
 ---
 
-## Avis de sécurité
+## Avertissement de sécurité
 
 Installez toujours à partir du package PyPI officiel d'AWS ou du code source.
 

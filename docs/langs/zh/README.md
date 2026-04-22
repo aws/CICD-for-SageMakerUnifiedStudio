@@ -15,7 +15,7 @@
 
 **自动化跨 SageMaker Unified Studio 环境部署数据应用程序**
 
-自信地将 Airflow DAG、Jupyter notebook 和 ML 工作流从开发环境部署到生产环境。专为与 DevOps 团队合作的数据科学家、数据工程师、ML 工程师和 GenAI 应用开发者打造。
+自信地将 Airflow DAG、Jupyter notebook 和 ML 工作流从开发环境部署到生产环境。专为与 DevOps 团队合作的数据科学家、数据工程师、ML 工程师和 GenAI 应用开发者构建。
 
 **适配您的部署策略:** 无论您使用 git 分支(基于分支)、版本化构件(基于包)、git 标签(基于标签)还是直接部署——此 CLI 都支持您的工作流。定义一次应用程序,按您的方式部署。
 
@@ -48,7 +48,7 @@ aws-smus-cicd-cli describe --manifest manifest.yaml --connect
 # 创建部署包（可选）
 aws-smus-cicd-cli bundle --manifest manifest.yaml
 
-# 预览部署（试运行）
+# 预览部署（演练模式）
 aws-smus-cicd-cli deploy --targets test --manifest manifest.yaml --dry-run
 
 # 部署到测试环境
@@ -91,7 +91,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 
 ---
 
-## 您可以部署什么?
+## 你可以部署什么?
 
 **📊 分析与 BI**
 - Glue ETL 作业和爬虫
@@ -199,7 +199,7 @@ S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
 
 **结果:** 
 - **DevOps 团队永远不直接调用 AWS APIs** - 他们只需调用 `aws-smus-cicd-cli deploy`
-- **CI/CD 工作流是通用的** - 同一个工作流适用于 Glue 应用、SageMaker 应用或 Bedrock 应用
+- **CI/CD 工作流是通用的** - 同一工作流适用于 Glue 应用、SageMaker 应用或 Bedrock 应用
 - 数据团队永远不接触 CI/CD 配置
 - 两个团队使用各自的专业知识独立工作
 
@@ -1177,7 +1177,7 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[GitHub 工作流应用程序指南](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-workflow-application-guide.md)** - 直接分支部署的应用程序管理员指南
 - **[GitHub 工作流 DevOps 指南](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-workflow-devops-guide.md)** - 直接分支部署的 DevOps 指南
 - **[部署指标](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pipeline-deployment-metrics.md)** - 使用 EventBridge 进行监控
-- **[目录导入/导出指南](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/catalog-import-export-guide.md)** - 跨环境提升 DataZone 目录资源
+- **[目录导入/导出指南](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/catalog-import-export-guide.md)** - 跨环境推广 DataZone 目录资源
 - **[目录导入/导出快速参考](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/catalog-import-export-quick-reference.md)** - 目录部署快速参考
 - **[MCP 配置](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/mcp-configuration.md)** - MCP 服务器配置指南
 - **[Q CLI 对话示例](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/q-cli-conversation-examples.md)** - 与 Q CLI 的对话示例
@@ -1201,7 +1201,7 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[开发者指南](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/developer-guide.md)** - 包含架构、测试和工作流的完整开发指南
 - **[开发指南](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/development.md)** - 开发工作流、测试和贡献指南
 - **[PyPI 发布](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pypi-publishing.md)** - PyPI 发布设置
-- **[AI 助手上下文](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/AmazonQ.md)** - AI 助手（Amazon Q、Kiro）的上下文
+- **[AI 助手上下文](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/AmazonQ.md)** - AI 助手的上下文（Amazon Q、Kiro）
 - **[测试概述](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/tests/README.md)** - 测试基础设施
 
 ### 支持

@@ -27,8 +27,8 @@ Distribuisci DAG Airflow, notebook Jupyter e workflow ML dallo sviluppo alla pro
 ✅ **Workflow CI/CD Generici** - Lo stesso workflow funziona per Glue, SageMaker, Bedrock, QuickSight o qualsiasi combinazione di servizi AWS  
 ✅ **Distribuzione con Sicurezza** - Validazione dry-run pre-distribuzione e test automatizzati prima della produzione  
 ✅ **Gestione Multi-Ambiente** - Test → Prod con configurazione specifica per ambiente  
-✅ **Infrastructure as Code** - Manifest applicativi versionati e distribuzioni riproducibili  
-✅ **Workflow Event-Driven** - Attivazione automatica dei workflow tramite EventBridge alla distribuzione  
+✅ **Infrastructure as Code** - Manifest delle applicazioni versionati e distribuzioni riproducibili  
+✅ **Workflow Basati su Eventi** - Attivazione automatica dei workflow tramite EventBridge alla distribuzione  
 
 ---
 
@@ -66,7 +66,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 
 ## A Chi È Rivolto?
 
-### 👨‍💻 Team Dati (Data Scientist, Data Engineer, Sviluppatori di Applicazioni GenAI)
+### 👨‍💻 Team di Dati (Data Scientist, Data Engineer, Sviluppatori di Applicazioni GenAI)
 **Ti concentri su:** La tua applicazione - cosa distribuire, dove distribuire e come viene eseguita  
 **Definisci:** Il manifest dell'applicazione (`manifest.yaml`) con il tuo codice, i workflow e le configurazioni  
 **Non hai bisogno di conoscere:** Pipeline CI/CD, GitHub Actions, automazione del deployment  
@@ -114,7 +114,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 **📓 Codice & Flussi di Lavoro**
 - Notebook Jupyter
 - Script Python
-- DAG di Airflow (MWAA e Amazon MWAA Serverless)
+- DAG Airflow (MWAA e Amazon MWAA Serverless)
 - Funzioni Lambda (futuro)
 
 **💾 Dati & Storage**
@@ -134,13 +134,13 @@ Distribuisci flussi di lavoro utilizzando questi servizi AWS attraverso la sinta
 ### 🤖 Machine Learning  
 **SageMaker Training** • **SageMaker Pipelines** • **Feature Store** • **Model Registry** • **Batch Transform**
 
-### 🧠 Intelligenza Artificiale Generativa
+### 🧠 AI Generativa
 **Amazon Bedrock** • **Bedrock Agents** • **Bedrock Knowledge Bases** • **Guardrails**
 
 ### 📊 Servizi Aggiuntivi
 S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
 
-**Consulta l'elenco completo:** [Riferimento Operatori AWS di Airflow](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-aws-operators.md)
+**Vedi l'elenco completo:** [Riferimento Operatori AWS di Airflow](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-aws-operators.md)
 
 ---
 
@@ -160,13 +160,13 @@ S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
 Definisce il PROCESSO          Definisce il CONTENUTO         Il workflow chiama:
 - Test al merge                - Job Glue                     aws-smus-cicd-cli deploy --manifest manifest.yaml
 - Approvazione per prod        - Training SageMaker             ↓
-- Scansioni di sicurezza       - Query Athena                 La CLI gestisce TUTTA la complessità AWS:
-- Regole di notifica           - Struttura dei file           - API DataZone
+- Scansioni di sicurezza       - Query Athena                 CLI gestisce TUTTA la complessità AWS:
+- Regole di notifica           - Struttura file               - API DataZone
                                                               - API Glue/Athena/SageMaker
 Definisce l'INFRASTRUTTURA                                    - Deployment MWAA
 - Account e region                                            - Gestione S3
 - Ruoli IAM                                                   - Configurazione IAM
-- Risorse                                                     - Provisioning dell'infrastruttura
+- Risorse                                                     - Provisioning infrastruttura
 
 Funziona per QUALSIASI app!
 Non serve conoscenza dei servizi
@@ -206,7 +206,7 @@ ML/Analytics/GenAI!
 
 ### Manifest dell'Applicazione
 Un file YAML dichiarativo (`manifest.yaml`) che definisce la tua applicazione dati:
-- **Dettagli dell'applicazione** - Nome, versione, descrizione
+- **Dettagli applicazione** - Nome, versione, descrizione
 - **Contenuto** - Codice da repository git, dati/modelli da storage, dashboard QuickSight
 - **Workflow** - DAG Airflow per orchestrazione e automazione
 - **Stage** - Dove effettuare il deploy (ambienti dev, test, prod)
@@ -215,7 +215,7 @@ Un file YAML dichiarativo (`manifest.yaml`) che definisce la tua applicazione da
 **Creato e gestito dai team dati.** Definisce **cosa** deployare e **dove**. Non richiede conoscenza di CI/CD.
 
 ### Applicazione
-Il tuo workload dati/analytics da deployare:
+Il tuo carico di lavoro dati/analytics da deployare:
 - DAG Airflow e script Python
 - Notebook Jupyter e file dati
 - Modelli ML e codice di training
@@ -235,8 +235,8 @@ Un ambiente di deployment (dev, test, prod) mappato a un progetto SageMaker Unif
 
 Ogni stage dell'applicazione viene deployato su un progetto dedicato di SageMaker Unified Studio (SMUS). Un progetto può ospitare una singola applicazione o più applicazioni a seconda dell'architettura e della metodologia CI/CD. I progetti stage sono entità indipendenti con la propria governance:
 
-- **Ownership e Accesso:** Ogni progetto stage ha il proprio set di owner e contributor, che possono differire dal progetto di sviluppo. I progetti di produzione hanno tipicamente accesso limitato rispetto agli ambienti di sviluppo.
-- **Multi-Domain e Multi-Region:** I progetti stage possono appartenere a diversi domini SMUS, account AWS e region. Ad esempio, il tuo stage dev potrebbe deployare su un dominio di sviluppo in us-east-1, mentre prod deploya su un dominio di produzione in eu-west-1.
+- **Proprietà e Accesso:** Ogni progetto stage ha il proprio set di proprietari e contributori, che possono differire dal progetto di sviluppo. I progetti di produzione hanno tipicamente accesso limitato rispetto agli ambienti di sviluppo.
+- **Multi-Dominio e Multi-Region:** I progetti stage possono appartenere a diversi domini SMUS, account AWS e region. Ad esempio, il tuo stage dev potrebbe deployare su un dominio di sviluppo in us-east-1, mentre prod deploya su un dominio di produzione in eu-west-1.
 - **Architettura Flessibile:** Le organizzazioni possono scegliere tra progetti dedicati per applicazione (isolamento) o progetti condivisi che ospitano più applicazioni (consolidamento), in base ai requisiti di sicurezza, conformità e operativi.
 
 Questa separazione consente un vero isolamento degli ambienti con controlli di accesso indipendenti, confini di conformità e requisiti di residenza dei dati regionali.
@@ -249,10 +249,10 @@ Logica di orchestrazione che esegue la tua applicazione. I workflow servono a du
 - Configurare connessioni e permessi
 - Configurare monitoraggio e logging
 
-**2. Runtime:** Eseguire pipeline dati e ML continuative
+**2. Runtime:** Eseguire pipeline dati e ML continue
 - Esecuzione schedulata (giornaliera, oraria, ecc.)
 - Trigger event-driven (upload S3, chiamate API)
-- Elaborazione e trasformazioni dei dati
+- Elaborazione e trasformazioni dati
 - Training e inferenza dei modelli
 
 I workflow sono definiti come DAG Airflow (Directed Acyclic Graphs) in formato YAML. Supporta [MWAA (Managed Workflows for Apache Airflow)](https://aws.amazon.com/managed-workflows-for-apache-airflow/) e [Amazon MWAA Serverless](https://aws.amazon.com/blogs/big-data/introducing-amazon-mwaa-serverless/) ([Guida Utente](https://docs.aws.amazon.com/mwaa/latest/mwaa-serverless-userguide/what-is-mwaa-serverless.html)).
@@ -266,7 +266,7 @@ Workflow GitHub Actions (o altri sistemi CI/CD) che automatizzano il deployment:
 - Applica policy di sicurezza e conformità
 - Esempio: `.github/workflows/deploy.yml`
 
-**Concetto chiave:** I team DevOps creano workflow generici e riutilizzabili che funzionano per QUALSIASI applicazione. Non hanno bisogno di sapere se l'app usa Glue, SageMaker o Bedrock - la CLI gestisce tutte le interazioni con i servizi AWS. Il workflow chiama semplicemente `aws-smus-cicd-cli deploy` e la CLI fa il resto.
+**Concetto chiave:** I team DevOps creano workflow generici e riutilizzabili che funzionano per QUALSIASI applicazione. Non hanno bisogno di sapere se l'app usa Glue, SageMaker o Bedrock - il CLI gestisce tutte le interazioni con i servizi AWS. Il workflow chiama semplicemente `aws-smus-cicd-cli deploy` e il CLI fa il resto.
 
 ### Modalità di Deployment
 
@@ -278,7 +278,7 @@ Workflow GitHub Actions (o altri sistemi CI/CD) che automatizzano il deployment:
 - Adatto per: workflow più semplici, iterazione rapida, git come fonte di verità
 - Comando: `aws-smus-cicd-cli deploy --manifest manifest.yaml --targets test`
 
-Entrambe le modalità funzionano con qualsiasi combinazione di sorgenti di contenuto da storage e git.
+Entrambe le modalità funzionano con qualsiasi combinazione di sorgenti di contenuto storage e git.
 
 ---
 
@@ -1181,7 +1181,7 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[Configurazione MCP](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/mcp-configuration.md)** - Guida alla configurazione del server MCP
 - **[Esempi di conversazione con Q CLI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/q-cli-conversation-examples.md)** - Esempi di conversazioni con Q CLI
 
-### Riferimento
+### Riferimenti
 - **[Schema del manifest](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest-schema.md)** - Validazione e struttura dello schema YAML
 - **[Operatori AWS per Airflow](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-aws-operators.md)** - Riferimento agli operatori personalizzati
 - **[Riepilogo di Airflow nel CI/CD di SMUS](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-smus-cicd-summary.md)** - Panoramica del ruolo di Airflow nel CI/CD di SMUS
@@ -1228,7 +1228,7 @@ pip install -e .
 
 ## Licenza
 
-Questo progetto è concesso in licenza secondo la licenza MIT. Consulta [LICENSE](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/LICENSE) per i dettagli.
+Questo progetto è concesso in licenza sotto la Licenza MIT. Consulta [LICENSE](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/LICENSE) per i dettagli.
 
 ---
 
