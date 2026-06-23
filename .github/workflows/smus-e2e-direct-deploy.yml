@@ -59,9 +59,7 @@ jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
-    # Run inside the per-stage GitHub Environment so OIDC role + vars resolve
-    # from `dev`, `test`, or `prod` based on the caller's `test_target` input.
-    environment: ${{ inputs.test_target }}
+    environment: ${{ fromJSON('{"dev":"dev-aws-account","test":"test-aws-account","prod":"prod-aws-account","dev-idc":"dev-aws-account","test-idc":"test-aws-account","prod-idc":"prod-aws-account"}')[inputs.test_target] || 'dev-aws-account' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -76,10 +74,28 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
+      - name: Determine AWS Role ARN
+        id: resolve-role
+        run: |
+          case "${{ inputs.test_target }}" in
+            dev|dev-idc)
+              echo "role-arn=${{ secrets.AWS_ROLE_ARN_DEV }}" >> $GITHUB_OUTPUT
+              ;;
+            test|test-idc)
+              echo "role-arn=${{ secrets.AWS_ROLE_ARN_TEST }}" >> $GITHUB_OUTPUT
+              ;;
+            prod|prod-idc)
+              echo "role-arn=${{ secrets.AWS_ROLE_ARN_PROD }}" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "role-arn=${{ secrets.AWS_ROLE_ARN_DEV }}" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-to-assume: ${{ steps.resolve-role.outputs.role-arn }}
           aws-region: ${{ vars.DOMAIN_REGION }}
           role-session-name: smus-e2e-deploy-session
 
@@ -217,7 +233,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: deploy
     if: ${{ !inputs.skip_tests }}
-    environment: ${{ inputs.test_target }}
+    environment: ${{ fromJSON('{"dev":"dev-aws-account","test":"test-aws-account","prod":"prod-aws-account","dev-idc":"dev-aws-account","test-idc":"test-aws-account","prod-idc":"prod-aws-account"}')[inputs.test_target] || 'dev-aws-account' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -232,10 +248,28 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
+      - name: Determine AWS Role ARN
+        id: resolve-role-test
+        run: |
+          case "${{ inputs.test_target }}" in
+            dev|dev-idc)
+              echo "role-arn=${{ secrets.AWS_ROLE_ARN_DEV }}" >> $GITHUB_OUTPUT
+              ;;
+            test|test-idc)
+              echo "role-arn=${{ secrets.AWS_ROLE_ARN_TEST }}" >> $GITHUB_OUTPUT
+              ;;
+            prod|prod-idc)
+              echo "role-arn=${{ secrets.AWS_ROLE_ARN_PROD }}" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "role-arn=${{ secrets.AWS_ROLE_ARN_DEV }}" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-to-assume: ${{ steps.resolve-role-test.outputs.role-arn }}
           aws-region: ${{ vars.DOMAIN_REGION }}
           role-session-name: smus-e2e-test-session
 

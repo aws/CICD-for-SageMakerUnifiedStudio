@@ -113,7 +113,7 @@ jobs:
     # Run this in the dev environment because that's where the registry lives
     # in our single-account topology. In multi-account, this would target a
     # dedicated registry account.
-    environment: dev
+    environment: dev-aws-account
     outputs:
       model_package_arn: ${{ steps.pick.outputs.arn }}
       model_package_version: ${{ steps.pick.outputs.version }}
@@ -175,7 +175,7 @@ jobs:
       - name: Authenticate via OIDC
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
           aws-region: ${{ vars.DOMAIN_REGION || 'us-east-1' }}
 
       - name: Install dependencies
@@ -258,7 +258,7 @@ jobs:
     needs: [prepare]
     if: ${{ needs.prepare.outputs.start_at == 'dev' && needs.prepare.result == 'success' }}
     runs-on: ubuntu-latest
-    environment: dev
+    environment: dev-aws-account
     env:
       STAGE: dev
       ENDPOINT_NAME: bank-mktg-prediction-dev
@@ -286,7 +286,7 @@ jobs:
       - name: Authenticate via OIDC
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
           aws-region: ${{ vars.DOMAIN_REGION || 'us-east-1' }}
 
       - name: Install CLI
@@ -433,7 +433,7 @@ jobs:
         needs.prepare.outputs.start_at == 'test'
       )
     runs-on: ubuntu-latest
-    environment: test
+    environment: test-aws-account
     env:
       STAGE: test
       ENDPOINT_NAME: bank-mktg-prediction-test
@@ -461,7 +461,7 @@ jobs:
       - name: Authenticate via OIDC
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_TEST }}
           aws-region: ${{ vars.DOMAIN_REGION || 'us-east-1' }}
 
       - name: Install CLI
@@ -602,7 +602,7 @@ jobs:
         needs.prepare.outputs.start_at == 'prod'
       )
     runs-on: ubuntu-latest
-    environment: prod
+    environment: prod-aws-account
     env:
       STAGE: prod
       ENDPOINT_NAME: bank-mktg-prediction-prod
@@ -630,7 +630,7 @@ jobs:
       - name: Authenticate via OIDC
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
           aws-region: ${{ vars.DOMAIN_REGION || 'us-east-1' }}
 
       - name: Install CLI
