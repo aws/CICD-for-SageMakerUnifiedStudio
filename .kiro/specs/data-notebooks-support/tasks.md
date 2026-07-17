@@ -2,225 +2,227 @@
 
 ## Overview
 
-Add native Data Notebooks support to the SMUS CI/CD CLI, enabling promotion of SageMaker Unified Studio notebooks across environments (dev → test → prod) using the DataZone Notebook Import/Export APIs. Implementation follows the existing catalog import/export architecture — new helper modules (`notebook_export.py`, `notebook_import.py`), manifest configuration, and integration into `bundle`, `deploy`, `destroy`, and `dry-run` commands.
+Implements native Data Notebooks support for the SMUS CI/CD CLI, enabling promotion of SageMaker Unified Studio notebooks across environments using DataZone Notebook APIs. The implementation follows the existing catalog import/export architecture with two new helper modules (`notebook_export.py` and `notebook_import.py`), manifest configuration extensions, and integration into the `bundle`, `deploy`, `destroy`, and `dry-run` commands.
 
 ## Tasks
 
-- [ ] 1. Manifest configuration and data models
-  - [ ] 1.1 Add NotebookConfig dataclass and update ContentConfig in `application_manifest.py`
-    - Add `NotebookConfig` dataclass with `enabled: bool`, `include_names: Optional[List[str]]`, `exclude_names: Optional[List[str]]`
-    - Add `notebooks: Optional[NotebookConfig] = None` field to `ContentConfig`
-    - Add `notebooks: Optional[Dict[str, Any]] = None` field to `DeploymentConfiguration`
-    - Add parsing logic in `ApplicationManifest.from_dict()` for `content.notebooks` section and `deployment_configuration.notebooks` section
-    - Validate that `include_names`/`exclude_names` cannot be empty lists (raise validation error)
-    - _Requirements: 1.1, 1.2, 1.9, 1.11_
+- [ ] 1. Extend manifest configuration and resource types
+  - [ ] 1.1 Add NotebookConfig dataclass and extend ContentConfig/DeploymentConfiguration in `application_manifest.py`
+    - Add `NotebookConfig` dataclass with `enabled: bool` and `notebook_ids: Optional[List[str]]` fields
+    - Add `notebooks: Optional[NotebookConfig] = None` to `ContentConfig`
+    - Add `notebooks: Optional[Dict[str, Any]] = None` to `DeploymentConfiguration`
+    - Update `ApplicationManifest.from_dict()` to parse `content.notebooks` and `deployment_configuration.notebooks` sections
+    - Validate `notebook_ids` entries match pattern `[a-zA-Z0-9_-]{1,36}` and list is non-empty when present
+    - _Requirements: 1.1, 1.2, 1.3, 1.8, 1.9_
 
-  - [ ] 1.2 Add "notebook" resource type to destroy models
-    - Add `"notebook"` to `DESTROY_SUPPORTED_RESOURCE_TYPES` in `src/smus_cicd/helpers/destroy_models.py`
-    - Update `resource_types.py` to include `"notebook"` in `DEPLOY_RESOURCE_TYPES` if applicable
-    - _Requirements: 9.1, 9.4_
+  - [ ] 1.2 Add `notebook` resource type to `resource_types.py` and `destroy.py`
+    - Add `"notebook"` to `DEPLOY_RESOURCE_TYPES` frozenset in `src/smus_cicd/resource_types.py`
+    - Add `"notebook"` to `DESTROY_SUPPORTED_RESOURCE_TYPES` in `src/smus_cicd/commands/destroy.py`
+    - Ensure the existing `TestDeployDestroyDrift` unit test still passes
+    - _Requirements: 9.6_
 
-  - [ ]* 1.3 Write unit tests for manifest NotebookConfig parsing
-    - Test enabled/disabled configurations
-    - Test include_names/exclude_names parsing
-    - Test empty list validation error
-    - Test deployment_configuration.notebooks.disable parsing
-    - **File**: `tests/unit/test_notebook_manifest_config.py`
-    - _Requirements: 1.1, 1.2, 1.9, 1.11_
-
-- [ ] 2. Implement notebook export helper
+- [ ] 2. Implement notebook export module
   - [ ] 2.1 Create `src/smus_cicd/helpers/notebook_export.py` with core export logic
-    - Implement `export_notebooks()` main entry point
-    - Implement `_list_all_notebooks()` with pagination via `nextToken`
-    - Implement `_apply_filters()` with include-first-then-exclude logic (case-sensitive exact match on notebook name)
-    - Implement `_matches_name_filter()` helper
-    - Implement `_warn_duplicate_names()` to enforce unique names in the filtered set
-    - Implement `_export_single_notebook()` calling StartNotebookExport, polling, and downloading
-    - Implement `_poll_export_status()` with exponential backoff (initial 2s, cap 30s, timeout 300s)
-    - Implement `_build_export_manifest()` to produce the `notebook_export_manifest.json` structure
-    - Implement `_retry_on_throttle()` decorator for ThrottlingException handling (max 3 retries)
-    - Define `ExportedNotebook` and `NotebookExportManifest` dataclasses
-    - _Requirements: 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.10, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11, 2.12, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 7.1, 7.2, 7.3, 7.6, 7.7, 11.1, 11.2, 11.3_
+    - Implement `export_notebooks()` public function with `domain_id`, `project_id`, `region`, `notebook_ids`, `polling_timeout` parameters
+    - Implement `_validate_notebook_ids()` — calls GetNotebook for each ID, collects invalid IDs, raises on any failure (fail-fast)
+    - Implement `_list_all_notebooks()` — paginated ListNotebooks with `owningProjectIdentifier` and `status=ACTIVE`
+    - Implement `_export_single_notebook()` — StartNotebookExport → poll → download from S3
+    - Implement `_poll_export_status()` — exponential backoff (initial 1s, double each poll, cap 30s) with jitter
+    - Implement `_build_export_manifest()` — builds the `notebook_export_manifest.json` structure
+    - Implement `_generate_client_token()` — deterministic, max 64 chars, from source ID + timestamp
+    - Define `ExportedNotebook` dataclass
+    - _Requirements: 1.4, 1.5, 1.6, 1.7, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 7.1, 7.2, 7.3, 7.6, 7.7_
 
-  - [ ]* 2.2 Write property test: Include/Exclude Name-Only Filter Algebra
-    - **Property 1: Include/Exclude Name-Only Filter Algebra**
-    - **Validates: Requirements 1.5, 1.7, 1.8, 9.2**
-    - **File**: `tests/unit/helpers/test_notebook_properties.py`
+  - [ ]* 2.2 Write property test for fail-fast validation completeness (Property 1)
+    - **Property 1: Fail-Fast Validation Completeness**
+    - Test that for any list of notebook IDs with at least one invalid, all IDs are validated, all invalid IDs are collected, and zero exports occur
+    - Use hypothesis strategies: random lists of IDs with random invalid subsets, mock GetNotebook responses
+    - **Validates: Requirements 1.4, 1.5, 2.1, 2.2**
 
-  - [ ]* 2.3 Write property test: Pagination Completeness
+  - [ ]* 2.3 Write property test for pagination completeness (Property 2)
     - **Property 2: Pagination Completeness**
-    - **Validates: Requirements 2.2**
-    - **File**: `tests/unit/helpers/test_notebook_properties.py`
+    - Test that for any paginated ListNotebooks response, all entries across all pages are accumulated correctly
+    - Use hypothesis strategies: random page counts (1-10) and page sizes (1-50), mock paginator
+    - **Validates: Requirements 2.3, 2.4, 9.1**
 
-  - [ ]* 2.4 Write property test: Export Manifest Schema Completeness
-    - **Property 3: Export Manifest Schema Completeness**
-    - **Validates: Requirements 3.2, 3.3, 3.4**
-    - **File**: `tests/unit/helpers/test_notebook_properties.py`
+  - [ ]* 2.4 Write property test for export manifest schema correctness (Property 3)
+    - **Property 3: Export Manifest Schema Correctness**
+    - Test that `_build_export_manifest()` always produces valid schema with correct metadata and required fields
+    - Use hypothesis strategies: random ExportedNotebook lists (0-20 entries)
+    - **Validates: Requirements 3.2, 3.3, 3.4, 3.6**
 
-  - [ ]* 2.5 Write property test: Bundle Internal Consistency
-    - **Property 4: Bundle Internal Consistency**
-    - **Validates: Requirements 3.5**
-    - **File**: `tests/unit/helpers/test_notebook_properties.py`
-
-  - [ ]* 2.6 Write property test: Unique Name Enforcement
-    - **Property 10: Unique Name Enforcement**
-    - **Validates: Requirements 11.1, 11.2**
-    - **File**: `tests/unit/helpers/test_notebook_properties.py`
-
-  - [ ]* 2.7 Write property test: Exponential Backoff Intervals
-    - **Property 8: Exponential Backoff Intervals**
-    - **Validates: Requirements 2.5, 7.6**
-    - **File**: `tests/unit/helpers/test_notebook_properties.py`
-
-  - [ ]* 2.8 Write unit tests for notebook export
-    - Test happy path: ListNotebooks → GetNotebook → StartNotebookExport → GetNotebookExport → S3 download
-    - Test partial failures (some notebooks fail, others succeed)
-    - Test duplicate notebook names (bundle fails)
-    - Test empty project (empty manifest produced)
-    - Test unmatched include_names (warning logged, continue)
-    - Test polling timeout handling
-    - **File**: `tests/unit/helpers/test_notebook_export.py`
-    - _Requirements: 2.1, 2.2, 2.7, 2.10, 2.11, 2.12, 3.6, 7.1, 7.2, 7.3, 11.1_
-
-- [ ] 3. Checkpoint - Ensure export tests pass
-  - Ensure all tests pass, ask the user if questions arise.
-
-- [ ] 4. Implement notebook import helper
-  - [ ] 4.1 Create `src/smus_cicd/helpers/notebook_import.py` with upsert import logic
-    - Implement `import_notebooks()` main entry point
-    - Implement `_validate_notebook_manifest()` to validate required manifest keys
-    - Implement `_warn_manifest_duplicates()` to reject duplicate names in manifest
-    - Implement `_list_existing_notebooks_by_name()` to discover old versions in target project
-    - Implement `_find_old_versions()` helper
-    - Implement `_upload_notebook_to_s3()` using `{s3Uri}/notebooks/imports/{sourceNotebookId}.ipynb`
-    - Implement `_generate_client_token()` (deterministic, max 64 chars)
-    - Implement `_import_single_notebook()` with full upsert flow: upload → StartNotebookImport → poll ACTIVE → UpdateNotebook → delete old versions
-    - Implement `_poll_notebook_active()` (exponential backoff: initial 1s, cap 10s, timeout 120s)
-    - Implement `_apply_notebook_metadata()` calling UpdateNotebook API
-    - Implement `_build_update_kwargs()` omitting empty fields
-    - Implement `_delete_old_versions()` with warning-only on failure
-    - Define `NotebookImportSummary`, `ImportResult`, `ImportStatus` dataclasses/enum
-    - Reuse `_retry_on_throttle()` from notebook_export or shared utility
-    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 4.10, 4.11, 4.12, 4.13, 4.14, 6.1, 6.2, 6.3, 6.4, 7.4, 7.5, 7.7, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 11.4, 11.5_
-
-  - [ ]* 4.2 Write property test: Client Token Determinism and Bounds
+  - [ ]* 2.5 Write property test for client token determinism and bounds (Property 5)
     - **Property 5: Client Token Determinism and Bounds**
-    - **Validates: Requirements 4.6**
-    - **File**: `tests/unit/helpers/test_notebook_properties.py`
+    - Test that `_generate_client_token()` is deterministic, ≤64 chars, and distinct inputs produce distinct tokens
+    - Use hypothesis strategies: random source IDs + timestamps
+    - **Validates: Requirements 4.7**
 
-  - [ ]* 4.3 Write property test: Manifest Validation Rejects Malformed Input
-    - **Property 6: Manifest Validation Rejects Malformed Input**
-    - **Validates: Requirements 7.4**
-    - **File**: `tests/unit/helpers/test_notebook_properties.py`
+  - [ ]* 2.6 Write property test for exponential backoff intervals (Property 8)
+    - **Property 8: Exponential Backoff Intervals**
+    - Test that delay for attempt i equals min(initial × 2^(i-1), max_interval)
+    - Use hypothesis strategies: random poll counts (1-20)
+    - **Validates: Requirements 2.6, 7.6**
 
-  - [ ]* 4.4 Write property test: UpdateNotebook Omits Empty Fields
-    - **Property 7: UpdateNotebook Omits Empty Fields**
-    - **Validates: Requirements 10.2, 10.3, 10.4**
-    - **File**: `tests/unit/helpers/test_notebook_properties.py`
+  - [ ]* 2.7 Write unit tests for notebook export (`tests/unit/helpers/test_notebook_export.py`)
+    - Test manifest parsing: `content.notebooks` section (enabled/disabled, with/without notebook_ids)
+    - Test fail-fast: `notebook_ids` with mix of valid/invalid IDs → error lists all invalid
+    - Test fail-fast: `notebook_ids` with empty list → validation error
+    - Test export happy path: GetNotebook → StartNotebookExport → GetNotebookExport → S3 download
+    - Test export partial failure: some notebooks fail export, others succeed
+    - Test polling timeout: elapsed time exceeds limit → notebook counted as failed
+    - _Requirements: 1.4, 1.5, 1.8, 2.5, 2.6, 2.7, 2.8, 2.11, 2.12, 2.13, 7.1, 7.2, 7.3_
 
-  - [ ]* 4.5 Write property test: Upsert Ordering Safety
-    - **Property 9: Upsert Ordering Safety**
-    - **Validates: Requirements 4.10, 10.1**
-    - **File**: `tests/unit/helpers/test_notebook_properties.py`
+- [ ] 3. Integrate notebook export into the bundle command
+  - [ ] 3.1 Modify `src/smus_cicd/commands/bundle.py` to call `export_notebooks()` when `content.notebooks.enabled` is true
+    - After catalog export section, add notebook export integration
+    - Check `content.notebooks.enabled` flag; skip if false/absent
+    - Call `export_notebooks()` with domain_id, project_id, region, and optional notebook_ids
+    - Write exported `.ipynb` files to `notebooks/` directory in bundle ZIP
+    - Write `notebooks/notebook_export_manifest.json` to bundle ZIP
+    - Handle export failures: exit non-zero if any notebooks failed
+    - _Requirements: 1.4, 1.5, 1.6, 1.7, 1.9, 2.9, 2.10, 2.13, 3.1, 3.5_
 
-  - [ ]* 4.6 Write unit tests for notebook import
-    - Test upsert happy path: old version found → upload → import → poll ACTIVE → UpdateNotebook → delete old
-    - Test new notebook import (no old version exists)
-    - Test missing file in bundle (counted as failed)
-    - Test UpdateNotebook failure (metadata warning, not failed)
-    - Test DeleteNotebook failure for old version (warning, not failed)
-    - Test manifest with duplicate names (validation error, import rejected)
-    - Test missing S3 connection (error raised, all imports skipped)
-    - Test malformed manifest (validation error before any API calls)
-    - **File**: `tests/unit/helpers/test_notebook_import.py`
-    - _Requirements: 4.1, 4.3, 4.10, 4.11, 4.12, 6.4, 7.4, 10.5, 10.6, 11.4, 11.5_
+  - [ ]* 3.2 Write property test for bundle internal consistency (Property 4)
+    - **Property 4: Bundle Internal Consistency**
+    - Test that every `filePath` in manifest corresponds to a file in the bundle, and every `.ipynb` file is referenced
+    - Use hypothesis strategies: random notebook sets with file content, end-to-end export pipeline (mocked APIs)
+    - **Validates: Requirements 3.5**
 
-- [ ] 5. Checkpoint - Ensure import tests pass
+- [ ] 4. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Integrate into bundle command
-  - [ ] 6.1 Modify `src/smus_cicd/commands/bundle.py` to call notebook export
-    - After catalog export section, check `content.notebooks.enabled`
-    - Call `export_notebooks()` with domain_id, project_id, region, include_names, exclude_names
-    - Write exported `.ipynb` files to `notebooks/` directory in the bundle ZIP
-    - Write `notebooks/notebook_export_manifest.json` to the bundle ZIP
-    - Fail bundle with non-zero exit code if any notebooks failed to export
-    - _Requirements: 1.3, 1.9, 2.1, 2.8, 2.9, 2.12_
+- [ ] 5. Implement notebook import/sync module
+  - [ ] 5.1 Create `src/smus_cicd/helpers/notebook_import.py` with core sync logic
+    - Implement `sync_notebooks()` public function with the 6-step deployment sequence
+    - Implement `_validate_notebook_manifest()` — checks required metadata/notebooks keys
+    - Implement `_discover_target_notebooks()` — ListNotebooks + GetNotebook → build source→target map from metadata
+    - Implement `_upload_notebook_to_s3()` — upload to `{s3Uri}/notebooks/imports/{sourceNotebookId}.ipynb`
+    - Implement `_sync_single_notebook()` — StartNotebookSync with/without notebookId, fallback on ResourceNotFoundException
+    - Implement `_apply_notebook_metadata()` — UpdateNotebook API with name, description, metadata, params, envConfig
+    - Implement `_build_update_kwargs()` — construct kwargs with conditional field inclusion
+    - Define `NotebookSyncSummary`, `SyncResult`, `SyncStatus` dataclasses/enum
+    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 4.10, 4.11, 4.12, 4.13, 6.1, 6.2, 6.3, 6.4, 7.4, 7.5, 7.7, 7.8, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8_
 
-  - [ ]* 6.2 Write unit tests for bundle command notebook integration
-    - Test bundle with notebooks enabled (exports included in ZIP)
-    - Test bundle with notebooks disabled (no notebook processing)
-    - Test bundle with partial export failures (non-zero exit)
-    - **File**: `tests/unit/test_bundle_notebooks.py`
-    - _Requirements: 1.9, 2.12_
+  - [ ]* 5.2 Write property test for manifest validation (Property 6)
+    - **Property 6: Manifest Validation Rejects Malformed Input**
+    - Test that any JSON missing required keys raises validation error before API calls
+    - Use hypothesis strategies: random dicts with strategically missing keys
+    - **Validates: Requirements 7.4**
 
-- [ ] 7. Integrate into deploy command
-  - [ ] 7.1 Modify `src/smus_cicd/commands/deploy.py` to call notebook import
-    - After storage and catalog deployments, check for `notebooks/notebook_export_manifest.json` in bundle
-    - Check `deployment_configuration.notebooks.disable` for the stage — skip if true
-    - Resolve `default.s3_shared` connection's S3 URI from the target project
-    - Call `import_notebooks()` with domain_id, project_id, region, manifest_data, notebook_files, s3_uri
-    - Report import summary (imported, updated, failed counts) in deployment output
-    - Fail deploy with non-zero exit code if any notebooks failed
-    - _Requirements: 4.1, 4.13, 4.14, 5.1, 5.2, 5.3, 5.4, 5.5_
+  - [ ]* 5.3 Write property test for UpdateNotebook kwargs construction (Property 7)
+    - **Property 7: UpdateNotebook Kwargs Construction**
+    - Test metadata always includes tracking key, parameters omitted when empty, environmentConfiguration omitted when None, name/description always present
+    - Use hypothesis strategies: random manifest entries with various empty/None/populated fields
+    - **Validates: Requirements 10.1, 10.2, 10.3, 10.4, 10.5**
 
-  - [ ]* 7.2 Write unit tests for deploy command notebook integration
-    - Test deploy with notebook manifest present (imports invoked)
-    - Test deploy with no manifest (skip silently)
-    - Test deploy with notebooks disabled in deployment_configuration
-    - Test deploy with import failures (non-zero exit)
-    - **File**: `tests/unit/commands/test_deploy_notebooks.py`
+  - [ ]* 5.4 Write property test for source-to-target metadata mapping (Property 9)
+    - **Property 9: Source-to-Target Metadata Mapping Correctness**
+    - Test that mapping includes exactly those notebooks with `smus-cicd-source-notebook-id` metadata
+    - Use hypothesis strategies: random notebooks with/without metadata key, mocked APIs
+    - **Validates: Requirements 4.3, 9.2, 9.3**
+
+  - [ ]* 5.5 Write property test for summary count invariant (Property 11)
+    - **Property 11: Summary Count Invariant**
+    - Test that `created + updated + failed` always equals total notebooks attempted
+    - Use hypothesis strategies: random sequences of SyncResult outcomes
+    - **Validates: Requirements 4.12, 10.7**
+
+  - [ ]* 5.6 Write unit tests for notebook import (`tests/unit/helpers/test_notebook_import.py`)
+    - Test sync happy path: upload → discover targets → StartNotebookSync (create) → UpdateNotebook
+    - Test sync update path: existing target found via metadata → StartNotebookSync WITH notebookId
+    - Test sync fallback: StartNotebookSync with notebookId → ResourceNotFoundException → retry without
+    - Test sync with UpdateNotebook failure → notebook counts as FAILED
+    - Test sync with missing file in bundle → count as FAILED
+    - Test manifest validation: missing keys → error before API calls
+    - Test S3 connection missing → raise error, skip all sync
+    - _Requirements: 4.3, 4.4, 4.5, 4.6, 4.8, 4.9, 4.10, 4.11, 6.2, 6.3, 6.4, 7.4, 7.8_
+
+- [ ] 6. Integrate notebook sync into the deploy command
+  - [ ] 6.1 Modify `src/smus_cicd/commands/deploy.py` to call `sync_notebooks()` after catalog import
+    - Add `_sync_notebooks_from_bundle()` function following `_import_catalog_from_bundle()` pattern
+    - Check `deployment_configuration.notebooks.disable` — skip with informational message if true
+    - Check bundle for `notebooks/notebook_export_manifest.json` — skip silently if absent
+    - Extract manifest and `.ipynb` files from bundle ZIP
+    - Resolve S3 connection (`default.s3_shared`) from target project
+    - Call `sync_notebooks()` with extracted data
+    - Report sync summary (created/updated/failed) in deployment output
+    - Return non-zero exit code if any notebooks failed
+    - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 7.5_
+
+  - [ ]* 6.2 Write unit tests for deploy notebook integration (`tests/unit/commands/test_deploy_notebook_sync.py`)
+    - Test `deployment_configuration.notebooks.disable: true` → skip with message
+    - Test no `notebook_export_manifest.json` in bundle → skip silently
+    - Test happy path: manifest present → sync invoked → summary reported
+    - Test sync failures → deploy exits non-zero
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 8. Integrate into destroy command
-  - [ ] 8.1 Add notebook discovery and deletion to destroy validator and executor
-    - Add `_discover_notebooks()` to `src/smus_cicd/helpers/destroy_validator.py` using ListNotebooks with pagination and name-only filters
-    - Add `_delete_notebook()` to `src/smus_cicd/helpers/destroy_executor.py` calling DeleteNotebook API
-    - Handle ResourceNotFoundException as `not_found`, other errors as `error`
+- [ ] 7. Implement destroy support for notebooks
+  - [ ] 7.1 Add notebook discovery and deletion to `destroy_validator.py` and `destroy_executor.py`
+    - Add `_discover_notebooks()` to `destroy_validator.py`: ListNotebooks + GetNotebook → filter by `smus-cicd-source-notebook-id` metadata → optional `notebook_ids` filter
+    - Integrate into `_validate_stage()` after catalog resources section
+    - Add `_delete_notebook()` to `destroy_executor.py`: DeleteNotebook API, handle ResourceNotFoundException (not_found) and other errors
     - Display notebooks in destruction plan under `notebook` resource type
-    - Report deleted/not_found/failed counts in destruction summary
-    - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8_
+    - Report counts (deleted, not_found, error) in destruction summary
+    - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8, 9.9, 9.10, 9.11_
 
-  - [ ]* 8.2 Write unit tests for destroy notebook integration
-    - Test notebook discovery with name filtering
-    - Test deletion with mixed results (deleted, not_found, error)
-    - Test ListNotebooks API failure during validation
-    - **File**: `tests/unit/commands/test_notebook_destroy.py`
-    - _Requirements: 9.1, 9.2, 9.3, 9.5, 9.6, 9.7, 9.8_
+  - [ ]* 7.2 Write property test for destroy metadata-based filtering (Property 10)
+    - **Property 10: Destroy Metadata-Based Filtering**
+    - Test that only notebooks with metadata key are included; when `notebook_ids` specified, further filter by matching source IDs
+    - Use hypothesis strategies: random target notebooks + random notebook_ids lists, mocked APIs
+    - **Validates: Requirements 9.2, 9.3, 9.4, 9.5**
 
-- [ ] 9. Implement dry-run notebook checker
-  - [ ] 9.1 Create `src/smus_cicd/commands/dry_run/checkers/notebook_checker.py`
-    - Implement `NotebookChecker` class with `check()` method
-    - Verify `default.s3_shared` connection exists and bucket is accessible (HEAD request)
-    - Verify IAM permissions via `iam:SimulatePrincipalPolicy`: `datazone:StartNotebookImport`, `datazone:UpdateNotebook`, `datazone:GetNotebook`, `datazone:DeleteNotebook`, `datazone:ListNotebooks`, `s3:PutObject`
-    - Report notebook count from manifest's `notebookCount` field
-    - Report WARNING findings for missing connection or denied permissions
-    - Register checker in the dry-run engine (`src/smus_cicd/commands/dry_run/engine.py`)
-    - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
+  - [ ]* 7.3 Write unit tests for notebook destroy (`tests/unit/commands/test_notebook_destroy.py`)
+    - Test discovery: filters by metadata correctly, respects `notebook_ids` list
+    - Test deletion: handles ResourceNotFoundException (not_found), other errors
+    - Test source environment: no metadata → zero deletions
+    - Test ListNotebooks API failure → validation error
+    - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.7, 9.8, 9.9, 9.10, 9.11_
 
-  - [ ]* 9.2 Write unit tests for dry-run notebook checker
-    - Test S3 connection found and accessible
-    - Test S3 connection missing (WARNING finding)
-    - Test IAM permissions denied (WARNING findings)
-    - Test notebook count reported correctly
-    - **File**: `tests/unit/commands/test_notebook_dry_run.py`
-    - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
-
-- [ ] 10. Checkpoint - Ensure all integration tests pass
+- [ ] 8. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 11. Create example and documentation
-  - [ ] 11.1 Create `examples/notebook-import-export/` example directory
-    - Create `examples/notebook-import-export/manifest.yaml` with `content.notebooks` configuration including `include_names`
-    - Create `examples/notebook-import-export/README.md` with usage documentation
-    - Create `examples/notebook-import-export/app_tests/test_notebook_lifecycle.py` end-to-end test
-    - Document name-based update semantics prominently with callout warning
-    - _Requirements: 12.1, 12.2, 12.3, 12.4_
+- [ ] 9. Implement dry-run checker for notebooks
+  - [ ] 9.1 Create `src/smus_cicd/commands/dry_run/checkers/notebook_checker.py`
+    - Implement `NotebookChecker` class following `catalog_checker.py` pattern
+    - Check S3 connection (`default.s3_shared`) exists and bucket is reachable (HEAD request)
+    - Check IAM permissions via SimulatePrincipalPolicy: `datazone:StartNotebookSync`, `datazone:UpdateNotebook`, `datazone:GetNotebook`, `datazone:ListNotebooks`, `s3:PutObject`
+    - Report notebook count from manifest's `notebookCount` field
+    - Report WARNING findings for missing connection or denied permissions
+    - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
-  - [ ]* 11.2 Write integration test for full notebook lifecycle
-    - Test flow: create notebooks → bundle → deploy (new) → verify → update source → bundle → deploy (upsert) → verify update → destroy → verify removed
-    - **File**: `examples/notebook-import-export/app_tests/test_notebook_lifecycle.py`
-    - _Requirements: 4.1, 4.10, 4.13, 9.5, 9.8_
+  - [ ] 9.2 Integrate `NotebookChecker` into the dry-run engine (`engine.py`)
+    - Register `NotebookChecker` in the checker list after catalog checker
+    - Invoke only when bundle contains `notebooks/notebook_export_manifest.json`
+    - _Requirements: 8.1, 8.2, 8.3_
+
+  - [ ]* 9.3 Write unit tests for notebook dry-run checker (`tests/unit/commands/test_notebook_dry_run.py`)
+    - Test S3 connection found and reachable → pass
+    - Test S3 connection missing → WARNING
+    - Test IAM permission denied → WARNING per denied action
+    - Test notebook count reported from manifest
+    - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
+
+- [ ] 10. Wire all property-based tests into a single test file
+  - [ ] 10.1 Create `tests/unit/helpers/test_notebook_properties.py` consolidating all 11 property tests
+    - Aggregate property tests from tasks 2.2-2.6, 3.2, 5.2-5.5, 7.2 into one file following `test_catalog_export_properties.py` pattern
+    - Each property uses `@settings(max_examples=100)` and `@given()` decorators
+    - Tag format: `# Feature: data-notebooks-support, Property {N}: {description}`
+    - Include shared hypothesis strategies for notebook IDs, manifest entries, metadata dicts
+    - _Requirements: All correctness properties P1-P11_
+
+- [ ] 11. Integration test following existing patterns
+  - [ ] 11.1 Create integration test directory and helpers at `tests/integration/data-notebooks/`
+    - Create `tests/integration/data-notebooks/__init__.py`
+    - Create `tests/integration/data-notebooks/notebook_test_helpers.py` with shared utilities (create test notebook, read metadata, find bundle)
+    - Create test manifest files (`manifest.yaml`, `manifest-notebooks-disabled.yaml`)
+    - _Requirements: 1.1, 5.2, 9.6_
+
+  - [ ]* 11.2 Create integration test `tests/integration/data-notebooks/test_notebook_round_trip.py`
+    - Follow `test_catalog_round_trip.py` pattern, extend `IntegrationTestBase`
+    - Test full round-trip: bundle with `notebook_ids` → deploy to target (create) → verify metadata/params → deploy again (update in-place) → verify run history preserved → destroy → verify only CI/CD-managed notebooks deleted
+    - Test `deployment_configuration.notebooks.disable: true` → skip
+    - Test empty project (no notebooks) → valid manifest with zero entries
+    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.8, 5.1, 5.2, 9.2, 9.3, 9.7, 10.1, 10.2_
 
 - [ ] 12. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
@@ -230,11 +232,11 @@ Add native Data Notebooks support to the SMUS CI/CD CLI, enabling promotion of S
 - Tasks marked with `*` are optional and can be skipped for faster MVP
 - Each task references specific requirements for traceability
 - Checkpoints ensure incremental validation
-- Property tests validate universal correctness properties from the design document (Properties 1–10)
-- Unit tests validate specific examples, edge cases, and error paths
-- The implementation mirrors the existing `catalog_export.py` / `catalog_import.py` architecture
-- All property tests go in a single file `tests/unit/helpers/test_notebook_properties.py` following the existing `test_catalog_export_properties.py` pattern
-- The `_retry_on_throttle()` utility may be shared between export and import modules or extracted to a common helper
+- Property tests validate universal correctness properties defined in the design
+- Unit tests validate specific examples and edge cases
+- The implementation language is Python, matching the existing codebase
+- All new modules follow the existing `catalog_export.py` / `catalog_import.py` patterns
+- Integration tests extend `IntegrationTestBase` and follow `test_catalog_round_trip.py` structure
 
 ## Task Dependency Graph
 
@@ -242,14 +244,14 @@ Add native Data Notebooks support to the SMUS CI/CD CLI, enabling promotion of S
 {
   "waves": [
     { "id": 0, "tasks": ["1.1", "1.2"] },
-    { "id": 1, "tasks": ["1.3", "2.1"] },
-    { "id": 2, "tasks": ["2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8"] },
-    { "id": 3, "tasks": ["4.1"] },
-    { "id": 4, "tasks": ["4.2", "4.3", "4.4", "4.5", "4.6"] },
-    { "id": 5, "tasks": ["6.1", "8.1", "9.1"] },
-    { "id": 6, "tasks": ["6.2", "7.1", "8.2", "9.2"] },
-    { "id": 7, "tasks": ["7.2"] },
-    { "id": 8, "tasks": ["11.1"] },
+    { "id": 1, "tasks": ["2.1"] },
+    { "id": 2, "tasks": ["2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "3.1"] },
+    { "id": 3, "tasks": ["3.2", "5.1"] },
+    { "id": 4, "tasks": ["5.2", "5.3", "5.4", "5.5", "5.6", "6.1"] },
+    { "id": 5, "tasks": ["6.2", "7.1"] },
+    { "id": 6, "tasks": ["7.2", "7.3", "9.1"] },
+    { "id": 7, "tasks": ["9.2", "9.3"] },
+    { "id": 8, "tasks": ["10.1", "11.1"] },
     { "id": 9, "tasks": ["11.2"] }
   ]
 }
