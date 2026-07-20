@@ -151,16 +151,22 @@ jobs:
         # pinned. Manual workflow_dispatch lets you start mid-cascade
         # (e.g. start_at=test) for re-promotion scenarios.
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          CLIENT_PAYLOAD_ARN: ${{ github.event.client_payload.model_package_arn }}
+          INPUT_START_AT: ${{ inputs.start_at }}
+          INPUT_MODEL_PACKAGE_ARN: ${{ inputs.model_package_arn }}
+          INPUT_RUN_SMOKE_TEST: ${{ inputs.run_smoke_test }}
         run: |
-          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+          if [ "$EVENT_NAME" = "repository_dispatch" ]; then
             START="dev"
-            ARN_OVERRIDE="${{ github.event.client_payload.model_package_arn }}"
+            ARN_OVERRIDE="$CLIENT_PAYLOAD_ARN"
             SMOKE="true"
             echo "Trigger: Lambda repository_dispatch (full cascade from dev)"
           else
-            START="${{ inputs.start_at }}"
-            ARN_OVERRIDE="${{ inputs.model_package_arn }}"
-            SMOKE="${{ inputs.run_smoke_test }}"
+            START="$INPUT_START_AT"
+            ARN_OVERRIDE="$INPUT_MODEL_PACKAGE_ARN"
+            SMOKE="$INPUT_RUN_SMOKE_TEST"
             echo "Trigger: workflow_dispatch (cascade from $START)"
           fi
           echo "  start_at:           $START"
@@ -293,10 +299,12 @@ jobs:
         run: pip install aws-smus-cicd-cli pyyaml boto3 -q
 
       - name: Export workflow env for manifest substitution
+        env:
+          PREPARE_MODEL_PACKAGE_ARN: ${{ needs.prepare.outputs.model_package_arn }}
         run: |
           {
             echo "GIT_COMMIT=${{ github.sha }}"
-            echo "MODEL_PACKAGE_ARN=${{ needs.prepare.outputs.model_package_arn }}"
+            echo "MODEL_PACKAGE_ARN=$PREPARE_MODEL_PACKAGE_ARN"
             # SMUS CLI manifest validator rejects empty env vars; "none"
             # is the sentinel deploy_model.py treats as "no override".
             echo "MODEL_DATA_URL_OVERRIDE=none"
@@ -353,12 +361,14 @@ jobs:
       - name: Record deploy on model package metadata
         if: ${{ needs.prepare.outputs.run_smoke_test == 'true' }}
         shell: bash
+        env:
+          MODEL_PKG_ARN: ${{ needs.prepare.outputs.model_package_arn }}
         run: |
           # AWS does not allow `add-tags` on a Model Package version (only on
           # the group), so promotion state is recorded via
           # CustomerMetadataProperties. update-model-package replaces the map,
           # so we merge existing keys before writing.
-          ARN="${{ needs.prepare.outputs.model_package_arn }}"
+          ARN="$MODEL_PKG_ARN"
           aws sagemaker describe-model-package --model-package-name "$ARN" \
             --query 'CustomerMetadataProperties' --output json > /tmp/props.json || echo '{}' > /tmp/props.json
           jq --arg ts "$(date -u +%FT%TZ)" \
@@ -468,15 +478,18 @@ jobs:
         run: pip install aws-smus-cicd-cli pyyaml boto3 -q
 
       - name: Export workflow env for manifest substitution
+        env:
+          STAGED_URL_TEST: ${{ needs.prepare.outputs.staged_url_test }}
+          PREPARE_MODEL_PACKAGE_ARN: ${{ needs.prepare.outputs.model_package_arn }}
         run: |
-          OVERRIDE='${{ needs.prepare.outputs.staged_url_test }}'
+          OVERRIDE="$STAGED_URL_TEST"
           if [ -z "$OVERRIDE" ]; then
             echo "::error::staged_url_test missing from prepare outputs"
             exit 1
           fi
           {
             echo "GIT_COMMIT=${{ github.sha }}"
-            echo "MODEL_PACKAGE_ARN=${{ needs.prepare.outputs.model_package_arn }}"
+            echo "MODEL_PACKAGE_ARN=$PREPARE_MODEL_PACKAGE_ARN"
             echo "MODEL_DATA_URL_OVERRIDE=$OVERRIDE"
           } >> $GITHUB_ENV
 
@@ -529,8 +542,10 @@ jobs:
       - name: Record deploy on model package metadata
         if: ${{ needs.prepare.outputs.run_smoke_test == 'true' }}
         shell: bash
+        env:
+          MODEL_PKG_ARN: ${{ needs.prepare.outputs.model_package_arn }}
         run: |
-          ARN="${{ needs.prepare.outputs.model_package_arn }}"
+          ARN="$MODEL_PKG_ARN"
           aws sagemaker describe-model-package --model-package-name "$ARN" \
             --query 'CustomerMetadataProperties' --output json > /tmp/props.json || echo '{}' > /tmp/props.json
           jq --arg ts "$(date -u +%FT%TZ)" \
@@ -637,15 +652,18 @@ jobs:
         run: pip install aws-smus-cicd-cli pyyaml boto3 -q
 
       - name: Export workflow env for manifest substitution
+        env:
+          STAGED_URL_PROD: ${{ needs.prepare.outputs.staged_url_prod }}
+          PREPARE_MODEL_PACKAGE_ARN: ${{ needs.prepare.outputs.model_package_arn }}
         run: |
-          OVERRIDE='${{ needs.prepare.outputs.staged_url_prod }}'
+          OVERRIDE="$STAGED_URL_PROD"
           if [ -z "$OVERRIDE" ]; then
             echo "::error::staged_url_prod missing from prepare outputs"
             exit 1
           fi
           {
             echo "GIT_COMMIT=${{ github.sha }}"
-            echo "MODEL_PACKAGE_ARN=${{ needs.prepare.outputs.model_package_arn }}"
+            echo "MODEL_PACKAGE_ARN=$PREPARE_MODEL_PACKAGE_ARN"
             echo "MODEL_DATA_URL_OVERRIDE=$OVERRIDE"
           } >> $GITHUB_ENV
 
@@ -698,8 +716,10 @@ jobs:
       - name: Record deploy on model package metadata
         if: ${{ needs.prepare.outputs.run_smoke_test == 'true' }}
         shell: bash
+        env:
+          MODEL_PKG_ARN: ${{ needs.prepare.outputs.model_package_arn }}
         run: |
-          ARN="${{ needs.prepare.outputs.model_package_arn }}"
+          ARN="$MODEL_PKG_ARN"
           aws sagemaker describe-model-package --model-package-name "$ARN" \
             --query 'CustomerMetadataProperties' --output json > /tmp/props.json || echo '{}' > /tmp/props.json
           jq --arg ts "$(date -u +%FT%TZ)" \

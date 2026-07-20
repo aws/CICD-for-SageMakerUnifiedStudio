@@ -58,8 +58,11 @@ jobs:
     steps:
       - id: set
         shell: bash
+        env:
+          INPUT_STAGE: ${{ inputs.stage }}
+          INPUT_MODEL_PACKAGE_ARN: ${{ inputs.model_package_arn }}
         run: |
-          STAGE="${{ inputs.stage }}"
+          STAGE="$INPUT_STAGE"
           STAGE="${STAGE:-dev}"
 
           if [ "$STAGE" = "all" ]; then
@@ -70,7 +73,7 @@ jobs:
 
           # Sentinel "none" lets the SMUS CLI manifest validator pass when no
           # model-package override is supplied.
-          ARN="${{ inputs.model_package_arn }}"
+          ARN="$INPUT_MODEL_PACKAGE_ARN"
           echo "model_package_arn=${ARN:-none}" >> $GITHUB_OUTPUT
           echo "model_package_group=bank-mktg-prediction-models" >> $GITHUB_OUTPUT
 
@@ -164,11 +167,14 @@ jobs:
         # SMUS CLI rejects unresolved substitutions in the manifest. Set sentinels
         # for the model-promotion vars and expose GIT_COMMIT so the manifest can
         # pin to the dispatching commit.
+        env:
+          RESOLVE_MODEL_PACKAGE_ARN: ${{ needs.resolve.outputs.model_package_arn }}
+          RESOLVE_MODEL_PACKAGE_GROUP: ${{ needs.resolve.outputs.model_package_group }}
         run: |
           {
             echo "GIT_COMMIT=${{ github.sha }}"
-            echo "MODEL_PACKAGE_ARN=${{ needs.resolve.outputs.model_package_arn }}"
-            echo "MODEL_PACKAGE_GROUP=${{ needs.resolve.outputs.model_package_group }}"
+            echo "MODEL_PACKAGE_ARN=$RESOLVE_MODEL_PACKAGE_ARN"
+            echo "MODEL_PACKAGE_GROUP=$RESOLVE_MODEL_PACKAGE_GROUP"
             echo "MODEL_DATA_URL_OVERRIDE=none"
           } >> $GITHUB_ENV
 

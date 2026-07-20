@@ -324,6 +324,7 @@ def start_workflow_run(
     run_name: str = None,
     connection_info: Dict[str, Any] = None,
     region: str = None,
+    override_parameters: Dict[str, str] = None,
 ) -> Dict[str, Any]:
     """Start a serverless Airflow workflow run."""
     logger = get_logger("airflow_serverless")
@@ -335,6 +336,8 @@ def start_workflow_run(
         # Note: RunName is not supported by the API, using ClientToken for uniqueness if needed
         if run_name:
             params["ClientToken"] = run_name
+        if override_parameters:
+            params["OverrideParameters"] = override_parameters
 
         logger.info(f"Starting workflow run for: {workflow_arn}")
         response = client.start_workflow_run(**params)
@@ -809,6 +812,7 @@ def start_workflow_run_verified(
     connection_info: Dict[str, Any] = None,
     verify_started: bool = True,
     wait_seconds: int = 10,
+    override_parameters: Dict[str, str] = None,
 ) -> Dict[str, Any]:
     """
     Start workflow run and optionally verify it actually started.
@@ -823,6 +827,7 @@ def start_workflow_run_verified(
         connection_info: Optional connection info
         verify_started: Whether to verify workflow started (default: True)
         wait_seconds: Seconds to wait before verification (default: 10)
+        override_parameters: Optional parameters to pass to workflow at runtime
 
     Returns:
         Dict with run_id, status, workflow_arn, success
@@ -838,6 +843,7 @@ def start_workflow_run_verified(
         run_name=run_name,
         connection_info=connection_info,
         region=region,
+        override_parameters=override_parameters,
     )
 
     if not result.get("success"):

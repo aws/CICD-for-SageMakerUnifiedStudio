@@ -1,4 +1,4 @@
-absl-py==2.4.0
+absl-py==2.5.0
 aiobotocore==3.7.0
 aiohappyeyeballs==2.6.1
 aiohttp==3.14.1
@@ -10,7 +10,7 @@ altair==5.5.0
 annotated-doc==0.0.4
 annotated-types==0.7.0
 antlr4-python3-runtime==4.9.3
-anyio==4.11.0
+anyio==4.14.1
 asn1crypto==1.5.1
 asttokens==3.0.1
 astunparse==1.6.3
@@ -42,7 +42,7 @@ cryptography==48.0.1
 cycler==0.12.1
 databricks-sdk==0.105.0
 dataclasses-json==0.6.7
-datasets==4.3.0
+datasets==5.0.0
 debugpy==1.8.17
 decorator==5.3.1
 deprecated==1.3.1
@@ -112,8 +112,8 @@ keras==3.13.2
 kiwisolver==1.4.9
 langchain==1.3.9
 langchain-core==1.4.0
-langgraph==1.0.10rc1
-langgraph-checkpoint==4.0.0
+langgraph==1.2.8
+langgraph-checkpoint==4.1.1
 langgraph-prebuilt==1.0.4
 langgraph-sdk==0.3.15
 langsmith==0.8.18
@@ -133,7 +133,7 @@ llama-index-llms-openai==0.7.5
 llama-index-multi-modal-llms-openai==0.6.2
 llama-index-program-openai==0.3.2
 llama-index-question-gen-openai==0.3.1
-llama-index-readers-file==0.4.8
+llama-index-readers-file==0.6.0
 llama-index-readers-llama-parse==0.4.0
 llama-index-workflows==2.17.3
 llama-parse==0.6.94
@@ -145,7 +145,7 @@ markupsafe==3.0.3
 marshmallow==3.26.2
 matplotlib==3.10.7
 matplotlib-inline==0.2.1
-mcp==1.23.0
+mcp==1.27.2
 mdurl==0.1.2
 ml-dtypes==0.5.4
 mlflow==3.5.1
@@ -154,7 +154,7 @@ mlflow-tracing==3.5.1
 mmh3==5.2.1
 mock==4.0.3
 mpmath==1.4.1
-multidict==6.7.0
+multidict==6.7.1
 multiprocess==0.70.16
 mypy-extensions==1.1.0
 namex==0.1.0
@@ -177,7 +177,7 @@ opt-einsum==3.4.0
 optree==0.18.0
 orjson==3.11.6
 ormsgpack==1.12.2
-packaging==26.0
+packaging==26.2
 pandas==2.3.3
 parso==0.8.5
 pathable==0.4.4
@@ -185,7 +185,7 @@ pathos==0.3.5
 pathspec==1.0.4
 pexpect==4.9.0
 pillow==12.2.0
-pip==26.1
+pip==26.1.2
 platformdirs==4.5.0
 plotly==6.3.1
 pluggy==1.6.0
@@ -197,7 +197,7 @@ prance==25.4.8.0
 prompt-toolkit==3.0.52
 propcache==0.4.1
 proto-plus==1.26.1
-protobuf==6.33.5
+protobuf==7.35.1
 psutil==7.1.3
 psycopg2-binary==2.9.11
 ptyprocess==0.7.0
@@ -217,7 +217,7 @@ pydynamodb==0.8.2
 pygments==2.20.0
 pyiceberg==0.10.0
 pyjwt==2.13.0
-pymssql==2.3.9
+pymssql==2.3.13
 pymysql==1.1.2
 pyopenssl==26.0.0
 pyparsing==3.2.5
@@ -227,7 +227,7 @@ pyspark==3.5.7
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
 python-lsp-jsonrpc==1.1.2
-python-lsp-server==1.13.1
+python-lsp-server==1.14.0
 python-multipart==0.0.31
 pytokens==0.4.1
 pytz==2025.2
@@ -246,7 +246,7 @@ ruamel-yaml==0.18.16
 ruamel-yaml-clib==0.2.15
 s3fs==2025.9.0
 s3transfer==0.14.0
-safetensors==0.6.2
+safetensors==0.8.0
 sagemaker==3.8.0
 sagemaker-core==2.14.0
 sagemaker-mlflow==0.1.1
@@ -267,7 +267,7 @@ sniffio==1.3.1
 snowflake-connector-python==3.18.0
 snowflake-sqlalchemy==1.7.7
 sortedcontainers==2.4.0
-soupsieve==2.8
+soupsieve==2.8.4
 sqlalchemy==2.0.44
 sqlalchemy-bigquery==1.16.0
 sqlean-py==3.50.4.5
@@ -289,7 +289,7 @@ tensorflow==2.20.0
 termcolor==3.2.0
 threadpoolctl==3.6.0
 tiktoken==0.12.0
-tokenizers==0.22.1
+tokenizers==0.23.1
 toml==0.10.2
 tomlkit==0.13.3
 torch==2.12.0
@@ -297,9 +297,9 @@ torchvision==0.26.0
 tornado==6.5.7
 tqdm==4.67.1
 traitlets==5.15.0
-transformers==5.0.0rc3
+transformers==5.5.0
 typer==0.20.0
-typing-extensions==4.15.0
+typing-extensions==4.16.0
 typing-inspect==0.9.0
 typing-inspection==0.4.2
 tzdata==2025.2
@@ -313,7 +313,7 @@ werkzeug==3.1.6
 wheel==0.46.3
 wrapt==1.17.3
 xgboost-cpu==3.1.1
-xxhash==3.6.0
+xxhash==3.8.1
 xyzservices==2026.3.0
 yarl==1.22.0
 zipp==3.23.0

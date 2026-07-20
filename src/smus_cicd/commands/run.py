@@ -585,7 +585,18 @@ def _execute_airflow_serverless_workflows(
                 typer.echo(f"🔗 ARN: {workflow_arn}")
 
             # Start workflow run (workflow uses role specified during creation)
-            result = airflow_serverless.start_workflow_run(workflow_arn, region=region)
+            # Pass environment_variables as override parameters for runtime resolution
+            override_parameters = None
+            if (
+                hasattr(target_config, "environment_variables")
+                and target_config.environment_variables
+            ):
+                override_parameters = {
+                    k: str(v) for k, v in target_config.environment_variables.items()
+                }
+            result = airflow_serverless.start_workflow_run(
+                workflow_arn, region=region, override_parameters=override_parameters
+            )
 
             if result.get("success"):
                 run_id = result.get("run_id")

@@ -9,7 +9,7 @@ from smus_cicd.helpers.context_resolver import ContextResolver
 @patch('smus_cicd.helpers.datazone.get_project_user_role_arn')
 @patch('smus_cicd.helpers.datazone.get_project_id_by_name')
 def test_resolve_env_variables(mock_get_project_id, mock_get_role, mock_get_connections):
-    """Test resolving environment variables."""
+    """Test resolving environment variables to Jinja template syntax."""
     mock_get_project_id.return_value = "proj123"
     mock_get_role.return_value = "arn:aws:iam::123:role/TestRole"
     mock_get_connections.return_value = {}
@@ -26,7 +26,7 @@ def test_resolve_env_variables(mock_get_project_id, mock_get_role, mock_get_conn
     content = "Region: {env.AWS_REGION}, Prefix: {env.S3_PREFIX}"
     result = resolver.resolve(content)
     
-    assert result == "Region: us-east-1, Prefix: test"
+    assert result == "Region: {{ params.AWS_REGION }}, Prefix: {{ params.S3_PREFIX }}"
 
 
 @patch('smus_cicd.helpers.connections.get_project_connections')
@@ -117,7 +117,7 @@ def test_resolve_mlflow_connection(mock_get_project_id, mock_get_role, mock_get_
 @patch('smus_cicd.helpers.datazone.get_project_user_role_arn')
 @patch('smus_cicd.helpers.datazone.get_project_id_by_name')
 def test_resolve_missing_variable(mock_get_project_id, mock_get_role, mock_get_connections):
-    """Test that missing variables are left unchanged."""
+    """Test that missing env variables raise an error at deploy time."""
     mock_get_project_id.return_value = "proj123"
     mock_get_role.return_value = "arn:aws:iam::123:role/TestRole"
     mock_get_connections.return_value = {}
@@ -170,7 +170,7 @@ def test_resolve_complex_yaml(mock_get_project_id, mock_get_role, mock_get_conne
     
     assert "s3://my-bucket/etl/script.py" in result
     assert "arn:aws:iam::123:role/TestRole" in result
-    assert "us-east-1" in result
+    assert "{{ params.AWS_REGION }}" in result
 
 
 @patch('smus_cicd.helpers.connections.get_project_connections')

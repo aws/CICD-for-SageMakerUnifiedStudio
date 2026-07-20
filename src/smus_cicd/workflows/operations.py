@@ -48,9 +48,27 @@ class WorkflowOperations:
             workflow_name=full_workflow_name, region=region
         )
 
+        # Pass environment_variables as override parameters for runtime resolution.
+        # The workflow YAML contains {{ params.VAR }} Jinja placeholders that get
+        # substituted by MWAA Serverless at execution time using these parameters.
+        override_parameters = None
+        if (
+            hasattr(target_config, "environment_variables")
+            and target_config.environment_variables
+        ):
+            override_parameters = {
+                k: str(v) for k, v in target_config.environment_variables.items()
+            }
+            logger.info(
+                f"Passing {len(override_parameters)} override parameters to workflow"
+            )
+
         # Start workflow run with verification
         result = airflow_serverless.start_workflow_run_verified(
-            workflow_arn=workflow_arn, region=region, verify_started=True
+            workflow_arn=workflow_arn,
+            region=region,
+            verify_started=True,
+            override_parameters=override_parameters,
         )
 
         logger.info(

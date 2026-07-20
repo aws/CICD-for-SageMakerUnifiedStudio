@@ -39,14 +39,14 @@ def test_env_variables(mock_aws_calls):
         env_vars=env_vars
     )
     
-    # Test single env var
-    assert resolver.resolve("{env.AWS_REGION}") == "us-east-1"
-    assert resolver.resolve("{env.S3_PREFIX}") == "test"
-    assert resolver.resolve("{env.CUSTOM_VAR}") == "value123"
+    # Test single env var - now converts to Jinja params
+    assert resolver.resolve("{env.AWS_REGION}") == "{{ params.AWS_REGION }}"
+    assert resolver.resolve("{env.S3_PREFIX}") == "{{ params.S3_PREFIX }}"
+    assert resolver.resolve("{env.CUSTOM_VAR}") == "{{ params.CUSTOM_VAR }}"
     
     # Test multiple env vars
     result = resolver.resolve("Region: {env.AWS_REGION}, Prefix: {env.S3_PREFIX}")
-    assert result == "Region: us-east-1, Prefix: test"
+    assert result == "Region: {{ params.AWS_REGION }}, Prefix: {{ params.S3_PREFIX }}"
 
 
 def test_stage_properties(mock_aws_calls):
@@ -254,7 +254,7 @@ def test_complex_workflow_yaml(mock_aws_calls):
     
     assert "s3://my-bucket/shared/scripts/process.py" in result
     assert "ProjectRole" in result
-    assert "us-east-1" in result
+    assert "{{ params.AWS_REGION }}" in result
     assert "4.0" in result
     assert "dev" in result
 
