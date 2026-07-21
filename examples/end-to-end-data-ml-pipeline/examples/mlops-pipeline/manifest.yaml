@@ -1,9 +1,9 @@
 # =============================================================================
 # MLOps Pipeline - SageMaker Airflow Operators
 # =============================================================================
-# End-to-end ML pipeline using SageMaker Airflow operators:
-#   SageMakerTrainingOperator, SageMakerModelOperator,
-#   SageMakerTransformOperator, SageMakerEndpointOperator
+# End-to-end ML pipeline using Airflow operators:
+#   GlueJobOperator, SageMakerTrainingOperator, SageMakerProcessingOperator,
+#   SageMakerRegisterModelVersionOperator
 #
 # Project layout:
 #   src/           - Training script, feature engineering (Glue), notebooks
@@ -27,13 +27,21 @@ content:
         - __pycache__/
         - "*.pyc"
 
+    # Script-mode source bundle for the training_pipeline `train_model` task
+    # (SageMakerTrainingOperator). Packaged into train_model_sourcedir.tar.gz at
+    # deploy time and referenced by that task's sagemaker_submit_directory.
+    # Only deployed in the dev stage (see deployment_configuration.storage) —
+    # test/prod run only deploy_pipeline, which reads src/ directly and never
+    # uses this bundle. Named per-job and scoped to just its entry script +
+    # requirements so each script-mode job gets its own bundle.
+    - name: train_model_sourcedir
+      include:
+        - "src/train_xgboost.py"
+        - "src/requirements.txt"
+
     - name: workflows
       include:
         - "workflows/"
-
-    - name: notebooks
-      include:
-        - "src/notebooks/"
 
   workflows:
     - workflowName: training_pipeline
@@ -45,23 +53,14 @@ stages:
   dev:
     stage: DEV
     domain:
-      name: "${DEV_DOMAIN_NAME}"
+      tags:
+        purpose: ${DOMAIN_TAG_PURPOSE:smus-cicd-testing}
       region: ${DEV_DOMAIN_REGION}
     project:
-      name: ${DEV_PROJECT_NAME}
-      owners:
-        - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
+      name: ${DEV_PROJECT_NAME:e2e-data-ml-ops-dev}
     environment_variables:
-      ATHENA_DB_NAME: bank_mktg_dev
-      ACCOUNT_ID: "${AWS_ACCOUNT_ID}"
-      EXPERIMENT_NAME: bank-mktg-experiments
       ENDPOINT_NAME: bank-mktg-prediction-dev
-      MLFLOW_TRACKING_SERVER_NAME: "${MLFLOW_TRACKING_SERVER_NAME}"
-      MLFLOW_TRACKING_SERVER_ARN: "${MLFLOW_TRACKING_SERVER_ARN}"
-      # Promotion overrides — set by the GitHub workflow. "none" sentinel
-      # means "no override" so deploy_model.py falls back to "latest Approved"
-      # / the package's own ModelDataUrl. GIT_COMMIT is informational and
-      # gets stamped on the deployment report for traceability.
+      MLFLOW_TRACKING_SERVER_NAME: "${MLFLOW_TRACKING_SERVER_NAME:smus-integration-mlflow-us-east-1}"
       MODEL_PACKAGE_ARN: "${MODEL_PACKAGE_ARN:none}"
       MODEL_DATA_URL_OVERRIDE: "${MODEL_DATA_URL_OVERRIDE:none}"
       GIT_COMMIT: "${GIT_COMMIT:unset}"
@@ -73,8 +72,8 @@ stages:
           name: mlflow-tracking
           connection_type: MLFLOW
           properties:
-            trackingServerArn: "${MLFLOW_TRACKING_SERVER_ARN}"
-            trackingServerName: "${MLFLOW_TRACKING_SERVER_NAME}"
+            trackingServerArn: "arn:aws:sagemaker:${DEV_DOMAIN_REGION}:${AWS_ACCOUNT_ID}:mlflow-tracking-server/${MLFLOW_TRACKING_SERVER_NAME:smus-integration-mlflow-us-east-1}"
+            trackingServerName: "${MLFLOW_TRACKING_SERVER_NAME:smus-integration-mlflow-us-east-1}"
         - type: workflow.create
           workflowName: training_pipeline
         - type: workflow.create
@@ -87,21 +86,22 @@ stages:
         - name: workflows
           connectionName: default.s3_shared
           targetDirectory: bank-mktg/mlops_pipeline/workflows
+        - name: train_model_sourcedir
+          connectionName: default.s3_shared
+          targetDirectory: bank-mktg/mlops_pipeline/src
+          compression: tar.gz
 
   test:
     stage: TEST
     domain:
-      name: "${TEST_DOMAIN_NAME}"
-      region: ${TEST_DOMAIN_REGION}
+      tags:
+        purpose: ${DOMAIN_TAG_PURPOSE:smus-cicd-testing}
+      region: ${TEST_DOMAIN_REGION:us-east-1}
     project:
-      name: ${TEST_PROJECT_NAME}
+      name: ${TEST_PROJECT_NAME:e2e-data-ml-ops-test}
     environment_variables:
-      ATHENA_DB_NAME: bank_mktg_test
-      ACCOUNT_ID: "${AWS_ACCOUNT_ID}"
-      EXPERIMENT_NAME: bank-mktg-experiments
       ENDPOINT_NAME: bank-mktg-prediction-test
-      MLFLOW_TRACKING_SERVER_NAME: "${MLFLOW_TRACKING_SERVER_NAME}"
-      MLFLOW_TRACKING_SERVER_ARN: "${MLFLOW_TRACKING_SERVER_ARN}"
+      MLFLOW_TRACKING_SERVER_NAME: "${MLFLOW_TRACKING_SERVER_NAME:smus-integration-mlflow-us-east-1}"
       MODEL_PACKAGE_ARN: "${MODEL_PACKAGE_ARN:none}"
       MODEL_DATA_URL_OVERRIDE: "${MODEL_DATA_URL_OVERRIDE:none}"
       GIT_COMMIT: "${GIT_COMMIT:unset}"
@@ -113,9 +113,8 @@ stages:
           name: mlflow-tracking
           connection_type: MLFLOW
           properties:
-            trackingServerArn: "${MLFLOW_TRACKING_SERVER_ARN}"
-            trackingServerName: "${MLFLOW_TRACKING_SERVER_NAME}"
-        # Test only deploys promoted models; training happens in dev.
+            trackingServerArn: "arn:aws:sagemaker:${TEST_DOMAIN_REGION:us-east-1}:${AWS_ACCOUNT_ID}:mlflow-tracking-server/${MLFLOW_TRACKING_SERVER_NAME:smus-integration-mlflow-us-east-1}"
+            trackingServerName: "${MLFLOW_TRACKING_SERVER_NAME:smus-integration-mlflow-us-east-1}"
         - type: workflow.create
           workflowName: deploy_pipeline
     deployment_configuration:
@@ -130,17 +129,14 @@ stages:
   prod:
     stage: PROD
     domain:
-      name: "${PROD_DOMAIN_NAME}"
-      region: ${PROD_DOMAIN_REGION}
+      tags:
+        purpose: ${DOMAIN_TAG_PURPOSE:smus-cicd-testing}
+      region: ${PROD_DOMAIN_REGION:us-east-1}
     project:
-      name: ${PROD_PROJECT_NAME}
+      name: ${PROD_PROJECT_NAME:e2e-data-ml-ops-prod}
     environment_variables:
-      ATHENA_DB_NAME: bank_mktg_prod
-      ACCOUNT_ID: "${AWS_ACCOUNT_ID}"
-      EXPERIMENT_NAME: bank-mktg-experiments
       ENDPOINT_NAME: bank-mktg-prediction-prod
-      MLFLOW_TRACKING_SERVER_NAME: "${MLFLOW_TRACKING_SERVER_NAME}"
-      MLFLOW_TRACKING_SERVER_ARN: "${MLFLOW_TRACKING_SERVER_ARN}"
+      MLFLOW_TRACKING_SERVER_NAME: "${MLFLOW_TRACKING_SERVER_NAME:smus-integration-mlflow-us-east-1}"
       MODEL_PACKAGE_ARN: "${MODEL_PACKAGE_ARN:none}"
       MODEL_DATA_URL_OVERRIDE: "${MODEL_DATA_URL_OVERRIDE:none}"
       GIT_COMMIT: "${GIT_COMMIT:unset}"
@@ -152,9 +148,8 @@ stages:
           name: mlflow-tracking
           connection_type: MLFLOW
           properties:
-            trackingServerArn: "${MLFLOW_TRACKING_SERVER_ARN}"
-            trackingServerName: "${MLFLOW_TRACKING_SERVER_NAME}"
-        # Prod only deploys promoted models; training happens in dev.
+            trackingServerArn: "arn:aws:sagemaker:${PROD_DOMAIN_REGION:us-east-1}:${AWS_ACCOUNT_ID}:mlflow-tracking-server/${MLFLOW_TRACKING_SERVER_NAME:smus-integration-mlflow-us-east-1}"
+            trackingServerName: "${MLFLOW_TRACKING_SERVER_NAME:smus-integration-mlflow-us-east-1}"
         - type: workflow.create
           workflowName: deploy_pipeline
     deployment_configuration:

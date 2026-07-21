@@ -80,7 +80,7 @@ training_pipeline:
           MaxRuntimeInSeconds: 3600
         HyperParameters:
           sagemaker_program: "train_xgboost.py"
-          sagemaker_submit_directory: "{proj.connection.default.s3_shared.s3Uri}bank-mktg/mlops_pipeline/src/sourcedir.tar.gz"
+          sagemaker_submit_directory: "{proj.connection.default.s3_shared.s3Uri}bank-mktg/mlops_pipeline/src/train_model_sourcedir.tar.gz"
           tracking_server_arn: "{proj.connection.mlflow-tracking.trackingServerArn}"
           experiment_name: "bank-mktg-experiments"
           objective: "binary:logistic"

@@ -173,6 +173,6 @@ to-delete/
 coverage-artifacts/
 coverage-combined/
 
-# MLOps training source bundle is built at deploy time (see
-# scripts/build-mlops-sourcedir.sh, run by the deploy workflow), not committed.
-examples/end-to-end-data-ml-pipeline/examples/mlops-pipeline/src/sourcedir.tar.gz
+# MLOps training source bundle is packaged at deploy time by the CLI from the
+# manifest's `train_model_sourcedir` storage item (compression: tar.gz), not committed.
+examples/end-to-end-data-ml-pipeline/examples/mlops-pipeline/src/train_model_sourcedir.tar.gz

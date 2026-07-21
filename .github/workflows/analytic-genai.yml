@@ -21,7 +21,7 @@ jobs:
   deploy:
     uses: ./.github/workflows/smus-direct-deploy.yml
     secrets:
-      AWS_ROLE_ARN_TEST: ${{ secrets.AWS_ROLE_ARN_TEST }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN_TEST }}
     with:
       manifest_path: 'examples/analytic-workflow/genai/manifest.yaml'
-      test_target: 'test'
+      target: 'test'

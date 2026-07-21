@@ -8,36 +8,133 @@ on:
     paths:
       - 'examples/end-to-end-data-ml-pipeline/examples/mlops-pipeline/**'
       - 'src/**'
-      - '.github/workflows/smus-e2e-direct-deploy.yml'
+      - '.github/workflows/smus-direct-deploy.yml'
       - '.github/workflows/e2e-mlops-pipeline.yml'
   workflow_dispatch:
     inputs:
-      environment:
-        description: "Target environment to deploy"
+      stages:
+        description: "Stage(s) to deploy ('all' = dev -> test -> prod)"
         required: true
-        default: "dev"
+        default: "all"
         type: choice
-        options: [dev, test, prod]
+        options: [all, dev, test, prod]
+      setup_infra:
+        description: "Provision MLOps infra (EventBridge + Lambda deploy trigger) — runs once in dev"
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   id-token: write
   contents: read
 
+# Single source of truth for per-stage config. Change a value here and every
+# job picks it up via needs.resolve-config.outputs.*.
+env:
+  DEV_ENVIRONMENT: dev-aws-account
+  TEST_ENVIRONMENT: dev-aws-account
+  PROD_ENVIRONMENT: dev-aws-account
+  # SMUS_ prefix keeps these from being read as the CLI's manifest *_PROJECT_NAME vars.
+  SMUS_DEV_PROJECT_NAME: e2e-data-ml-ops-dev
+  SMUS_TEST_PROJECT_NAME: e2e-data-ml-ops-test
+  SMUS_PROD_PROJECT_NAME: e2e-data-ml-ops-prod
+  # OIDC role secret name per stage (single account today -> all AWS_ROLE_ARN_DEV).
+  # Point a stage at its own account by changing just its secret name here.
+  DEV_ROLE_SECRET: AWS_ROLE_ARN_DEV
+  TEST_ROLE_SECRET: AWS_ROLE_ARN_DEV
+  PROD_ROLE_SECRET: AWS_ROLE_ARN_DEV
+
 jobs:
-  # Deploy to the single environment chosen from the dispatch dropdown.
-  # Push events (no input) default to dev. The job runs inside the matching
-  # GitHub Environment so OIDC role + vars resolve per stage.
+  # Exposes the env values as job outputs, since the job-level `environment:` key
+  # can't read the workflow `env` context directly.
+  resolve-config:
+    runs-on: ubuntu-latest
+    outputs:
+      dev_environment: ${{ steps.vars.outputs.dev_environment }}
+      test_environment: ${{ steps.vars.outputs.test_environment }}
+      prod_environment: ${{ steps.vars.outputs.prod_environment }}
+      dev_project_name: ${{ steps.vars.outputs.dev_project_name }}
+      test_project_name: ${{ steps.vars.outputs.test_project_name }}
+      prod_project_name: ${{ steps.vars.outputs.prod_project_name }}
+      dev_role_secret: ${{ steps.vars.outputs.dev_role_secret }}
+      test_role_secret: ${{ steps.vars.outputs.test_role_secret }}
+      prod_role_secret: ${{ steps.vars.outputs.prod_role_secret }}
+    steps:
+      - id: vars
+        run: |
+          echo "dev_environment=$DEV_ENVIRONMENT" >> "$GITHUB_OUTPUT"
+          echo "test_environment=$TEST_ENVIRONMENT" >> "$GITHUB_OUTPUT"
+          echo "prod_environment=$PROD_ENVIRONMENT" >> "$GITHUB_OUTPUT"
+          echo "dev_project_name=$SMUS_DEV_PROJECT_NAME" >> "$GITHUB_OUTPUT"
+          echo "test_project_name=$SMUS_TEST_PROJECT_NAME" >> "$GITHUB_OUTPUT"
+          echo "prod_project_name=$SMUS_PROD_PROJECT_NAME" >> "$GITHUB_OUTPUT"
+          echo "dev_role_secret=$DEV_ROLE_SECRET" >> "$GITHUB_OUTPUT"
+          echo "test_role_secret=$TEST_ROLE_SECRET" >> "$GITHUB_OUTPUT"
+          echo "prod_role_secret=$PROD_ROLE_SECRET" >> "$GITHUB_OUTPUT"
+
+  # Provision the deploy trigger (EventBridge + Lambda) once, in dev.
+  setup-infra:
+    name: Setup ML Training Pipeline Infrastructure (dev)
+    needs: [resolve-config]
+    if: ${{ (github.event_name != 'workflow_dispatch' || inputs.setup_infra) && (inputs.stages == '' || inputs.stages == 'all' || inputs.stages == 'dev') }}
+    runs-on: ubuntu-latest
+    environment: ${{ needs.resolve-config.outputs.dev_environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
+          aws-region: ${{ vars.DOMAIN_REGION }}
+          role-session-name: smus-mlops-infra-session
+
+      - name: Get AWS Account ID
+        id: aws-account
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "account-id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Provision MLOps infra
+        env:
+          # Dispatch events back to the repo running this workflow (fork-portable).
+          GITHUB_REPO: ${{ github.repository }}
+          # Pass expressions via env, never inline ${{ }} in run:, to avoid shell injection.
+          ACCOUNT_ID: ${{ steps.aws-account.outputs.account-id }}
+          REGION: ${{ vars.DOMAIN_REGION }}
+          PROJECT_NAME: ${{ needs.resolve-config.outputs.dev_project_name }}
+        run: |
+          bash examples/end-to-end-data-ml-pipeline/scripts/setup-mlops-infra.sh \
+            "dev" \
+            "$ACCOUNT_ID" \
+            "$REGION" \
+            "$PROJECT_NAME"
+
+  # Deploy the selected stage(s) sequentially via the shared reusable. Each matrix
+  # entry carries its own role secret and environment so a stage can later move to
+  # a distinct role/account by editing just the env block.
   deploy:
-    uses: ./.github/workflows/smus-e2e-direct-deploy.yml
+    name: Deploy MLOps Pipeline (${{ matrix.stage }})
+    needs: [resolve-config, setup-infra]
+    if: ${{ always() && needs.setup-infra.result != 'failure' && needs.setup-infra.result != 'cancelled' }}
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        include: >-
+          ${{ fromJSON(
+          inputs.stages == 'dev' && format('[{{"stage":"dev","role_secret":"{0}","environment":"{1}"}}]', needs.resolve-config.outputs.dev_role_secret, needs.resolve-config.outputs.dev_environment)
+          || inputs.stages == 'test' && format('[{{"stage":"test","role_secret":"{0}","environment":"{1}"}}]', needs.resolve-config.outputs.test_role_secret, needs.resolve-config.outputs.test_environment)
+          || inputs.stages == 'prod' && format('[{{"stage":"prod","role_secret":"{0}","environment":"{1}"}}]', needs.resolve-config.outputs.prod_role_secret, needs.resolve-config.outputs.prod_environment)
+          || format('[{{"stage":"dev","role_secret":"{0}","environment":"{1}"}},{{"stage":"test","role_secret":"{2}","environment":"{3}"}},{{"stage":"prod","role_secret":"{4}","environment":"{5}"}}]', needs.resolve-config.outputs.dev_role_secret, needs.resolve-config.outputs.dev_environment, needs.resolve-config.outputs.test_role_secret, needs.resolve-config.outputs.test_environment, needs.resolve-config.outputs.prod_role_secret, needs.resolve-config.outputs.prod_environment)
+          ) }}
+    uses: ./.github/workflows/smus-direct-deploy.yml
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets[matrix.role_secret] }}
     with:
       manifest_path: 'examples/end-to-end-data-ml-pipeline/examples/mlops-pipeline/manifest.yaml'
-      test_target: ${{ inputs.environment || 'dev' }}
-      setup_mlflow: true
-      # Rebuild the training sourcedir.tar.gz (train script + requirements.txt)
-      # before deploy so the uploaded bundle is always in sync.
-      prebuild_script: 'examples/end-to-end-data-ml-pipeline/scripts/build-mlops-sourcedir.sh'
-      # Infra (EventBridge + Lambda deploy trigger) only belongs in dev:
-      # model approval happens in dev's registry and all stages share one
-      # account, so the trigger is a single account-scoped resource.
-      setup_infra: ${{ (inputs.environment || 'dev') == 'dev' }}
+      target: ${{ matrix.stage }}
+      environment_name: ${{ matrix.environment }}
       skip_tests: true
+      # Ensures the MLflow tracking server exists (creates it only if missing).
+      setup_mlflow: true

@@ -39,15 +39,13 @@ stages:
   dev:
     stage: DEV
     domain:
-      name: "${DEV_DOMAIN_NAME}"
+      tags:
+        purpose: ${DOMAIN_TAG_PURPOSE:smus-cicd-testing}
       region: ${DEV_DOMAIN_REGION}
     project:
-      name: ${DEV_PROJECT_NAME}
-      owners:
-        - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
+      name: ${DEV_PROJECT_NAME:e2e-data-ml-ops-dev}
     environment_variables:
       ATHENA_DB_NAME: bank_mktg_dev
-      ACCOUNT_ID: "${AWS_ACCOUNT_ID}"
     bootstrap:
       actions:
         - type: datazone.create_environment

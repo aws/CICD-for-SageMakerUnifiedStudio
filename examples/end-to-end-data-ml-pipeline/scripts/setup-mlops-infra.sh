@@ -241,7 +241,17 @@ PYEOF
 
 (cd "$LAMBDA_DIR" && zip -q function.zip lambda_function.py)
 
-GITHUB_REPO="${GITHUB_REPO:-velpualvi/blog-smus-ops}"
+# GITHUB_REPO is required so the deploy trigger dispatches model-approved
+# events to the correct repository. Fail fast with a clear message if it's
+# missing or not in owner/repo format.
+if [[ -z "${GITHUB_REPO:-}" ]]; then
+  echo "ERROR: GITHUB_REPO is not set. Export it as 'owner/repo' before running this script." >&2
+  exit 1
+fi
+if [[ "$GITHUB_REPO" != */* ]]; then
+  echo "ERROR: GITHUB_REPO must be in 'owner/repo' format (got: '$GITHUB_REPO')." >&2
+  exit 1
+fi
 GITHUB_TOKEN_SECRET_ARN="arn:aws:secretsmanager:${REGION}:${ACCOUNT_ID}:secret:bank-mktg/github-token"
 
 if aws lambda get-function --function-name "$FUNCTION_NAME" &>/dev/null; then

@@ -93,24 +93,58 @@ def cmd_select_package(args: argparse.Namespace) -> int:
 # =============================================================================
 
 
-def _resolve_domain_id(dz, domain_name: str) -> str:
-    paginator = dz.get_paginator("list_domains")
-    for page in paginator.paginate():
-        for domain in page.get("items", []):
-            if domain["name"] == domain_name:
-                return domain["id"]
-    raise ValueError(f"Domain '{domain_name}' not found")
+def _parse_domain_tags(raw: str) -> dict[str, str]:
+    """Parse a comma-separated 'key=value' string into a tag dict."""
+    tags: dict[str, str] = {}
+    for item in raw.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        if "=" not in item:
+            raise ValueError(f"Invalid --domain-tags entry '{item}', expected key=value")
+        key, value = item.split("=", 1)
+        tags[key.strip()] = value.strip()
+    if not tags:
+        raise ValueError("--domain-tags provided but no key=value pairs parsed")
+    return tags
 
 
-def _resolve_project_bucket(dz, sts, domain_id: str, project_name: str, region: str) -> str:
-    paginator = dz.get_paginator("list_projects")
-    for page in paginator.paginate(domainIdentifier=domain_id):
-        for project in page.get("items", []):
-            if project["name"] == project_name:
-                project_id = project["id"]
-                account_id = sts.get_caller_identity()["Account"]
-                return f"amazon-sagemaker-{account_id}-{region}-{project_id}"
-    raise ValueError(f"Project '{project_name}' not found in domain {domain_id}")
+def _resolve_domain_id(
+    region: str,
+    domain_name: str | None = None,
+    domain_tags: dict[str, str] | None = None,
+) -> str:
+    """Resolve a domain id via the packaged SMUS CLI helper.
+
+    Reuses ``smus_cicd.helpers.datazone.resolve_domain_id`` — the same
+    name/tags/auto-detect resolution the CLI uses for manifest deploys — instead
+    of reimplementing domain lookup here. Raises loudly if no domain matches.
+    """
+    from smus_cicd.helpers import datazone as smus_datazone
+
+    domain_id, _ = smus_datazone.resolve_domain_id(
+        domain_name=domain_name, domain_tags=domain_tags, region=region
+    )
+    if not domain_id:
+        raise ValueError(
+            f"No domain found in region {region} "
+            f"(name={domain_name!r}, tags={domain_tags!r})"
+        )
+    return domain_id
+
+
+def _resolve_project_bucket(sts, domain_id: str, project_name: str, region: str) -> str:
+    """Resolve a project's shared S3 bucket name from its DataZone project id.
+
+    Reuses ``smus_cicd.helpers.datazone.get_project_id_by_name`` for the lookup.
+    """
+    from smus_cicd.helpers import datazone as smus_datazone
+
+    project_id = smus_datazone.get_project_id_by_name(project_name, domain_id, region)
+    if not project_id:
+        raise ValueError(f"Project '{project_name}' not found in domain {domain_id}")
+    account_id = sts.get_caller_identity()["Account"]
+    return f"amazon-sagemaker-{account_id}-{region}-{project_id}"
 
 
 def _get_source_url_and_version(sm, model_package_arn: str) -> tuple[str, int]:
@@ -170,7 +204,6 @@ def cmd_stage_artifact(args: argparse.Namespace) -> int:
     """Copy model.tar.gz from the source bucket to a target stage bucket."""
     sm = boto3.client("sagemaker", region_name=args.region)
     s3 = boto3.client("s3", region_name=args.region)
-    dz = boto3.client("datazone", region_name=args.region)
     sts = boto3.client("sts", region_name=args.region)
 
     logger.info("=" * 60)
@@ -178,7 +211,16 @@ def cmd_stage_artifact(args: argparse.Namespace) -> int:
     logger.info("=" * 60)
     logger.info(f"  Package ARN  : {args.model_package_arn}")
     logger.info(f"  Target proj  : {args.target_project_name}")
-    domain_id = args.domain_id or _resolve_domain_id(dz, args.domain_name)
+    if args.domain_id:
+        domain_id = args.domain_id
+    elif args.domain_name:
+        domain_id = _resolve_domain_id(args.region, domain_name=args.domain_name)
+    elif args.domain_tags:
+        domain_id = _resolve_domain_id(
+            args.region, domain_tags=_parse_domain_tags(args.domain_tags)
+        )
+    else:
+        domain_id = _resolve_domain_id(args.region)
     logger.info(f"  Domain       : {domain_id}")
     logger.info("=" * 60)
 
@@ -186,7 +228,7 @@ def cmd_stage_artifact(args: argparse.Namespace) -> int:
     logger.info(f"Source : {source_url}")
     logger.info(f"Version: {version}")
 
-    dest_bucket = _resolve_project_bucket(dz, sts, domain_id, args.target_project_name, args.region)
+    dest_bucket = _resolve_project_bucket(sts, domain_id, args.target_project_name, args.region)
     dest_key = f"{args.target_prefix.rstrip('/')}/v{version}/model.tar.gz"
     dest_url = f"s3://{dest_bucket}/{dest_key}"
     logger.info(f"Dest   : {dest_url}")
@@ -480,9 +522,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser("stage-artifact", help="Copy model.tar.gz to a stage bucket.")
     sp.add_argument("--model-package-arn", required=True)
-    domain = sp.add_mutually_exclusive_group(required=True)
+    domain = sp.add_mutually_exclusive_group(required=False)
     domain.add_argument("--domain-id", help="DataZone domain id (dzd-...)")
     domain.add_argument("--domain-name", help="DataZone domain name")
+    domain.add_argument(
+        "--domain-tags",
+        help=(
+            "Comma-separated key=value tags to match a domain (mirrors the "
+            "manifest region+tags resolution), e.g. 'purpose=smus-cicd-testing'. "
+            "If none of --domain-id/--domain-name/--domain-tags is given, the "
+            "single domain in the region is auto-detected."
+        ),
+    )
     sp.add_argument("--target-project-name", required=True)
     sp.add_argument("--region", required=True)
     sp.add_argument(

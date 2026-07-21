@@ -21,17 +21,17 @@ jobs:
   deploy:
     uses: ./.github/workflows/smus-direct-deploy.yml
     secrets:
-      AWS_ROLE_ARN_TEST: ${{ secrets.AWS_ROLE_ARN_TEST }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN_TEST }}
     with:
       manifest_path: 'examples/analytic-workflow/ml/training/manifest.yaml'
-      test_target: 'test'
+      target: 'test'
       setup_mlflow: true
 
   deploy-idc:
     uses: ./.github/workflows/smus-direct-deploy.yml
     secrets:
-      AWS_ROLE_ARN_TEST: ${{ secrets.AWS_ROLE_ARN_TEST }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN_TEST }}
     with:
       manifest_path: 'examples/analytic-workflow/ml/training/manifest-idc.yaml'
-      test_target: 'test-idc'
+      target: 'test-idc'
       setup_mlflow: true

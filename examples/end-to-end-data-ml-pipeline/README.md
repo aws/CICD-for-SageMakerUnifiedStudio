@@ -2,141 +2,41 @@
 
 ## Overview
 
-This project provides a framework for deploying end-to-end data and ML pipelines to Amazon SageMaker Unified Studio using the [`aws-smus-cicd-cli`](https://github.com/aws/CICD-for-SageMakerUnifiedStudio). One manifest format. One CLI. One CI/CD pattern — whether you're ingesting raw data with Glue ETL or training an XGBoost model with SageMaker.
+> **Note:** This is a reference example. To run it, copy it into **your own GitHub repository and AWS account**, then configure the GitHub secrets/variables and OIDC role there (see [Deployment & Configuration](#deployment--configuration)). The workflows under `.github/workflows/` exist to exercise and demonstrate the deploy/promote pattern in this repo.
 
-It includes two production-ready example pipelines that form a data lineage chain:
+This example demonstrates deploying end-to-end data and ML pipelines to Amazon SageMaker Unified Studio using the [`aws-smus-cicd-cli`](https://github.com/aws/CICD-for-SageMakerUnifiedStudio). One manifest format. One CLI. One CI/CD pattern — whether you're ingesting raw data with Glue ETL or training an XGBoost model with SageMaker.
+
+It includes three example pipelines that form a data lineage chain:
 
 - **DataOps** — ingests, transforms, and validates bank marketing data using Glue and Athena
-- **MLOps** — trains, evaluates, and deploys an XGBoost binary classifier using SageMaker Airflow operators
+- **MLOps** — trains, evaluates, and registers an XGBoost binary classifier using SageMaker Airflow operators
+- **Deploy** — deploys approved models to a real-time endpoint, triggered automatically on model approval
 
-Both pipelines follow the same declarative workflow: define resources in YAML, deploy with one command, orchestrate on MWAA Serverless, and promote across environments (dev → test → prod) without code changes.
+They all follow the same declarative workflow: define resources in YAML, deploy with one command, orchestrate on MWAA Serverless, and promote across environments (dev → test → prod) without code changes.
 
-## Prerequisites
+## Table of Contents
 
-| Tool | Version | Purpose |
-| ---- | ------- | ------- |
-| Python | 3.11+ | Runtime for CLI and Glue scripts |
-| AWS CLI | v2 | AWS resource management |
-| `aws-smus-cicd-cli` | latest | Pipeline deployment and orchestration |
-| `jq` | any | JSON parsing for shell scripts |
+**Understand the system**
 
-You also need:
+- [Architecture](#architecture)
+- [Pipelines](#pipelines)
+- [How the SMUS CLI Deploys](#how-the-smus-cli-deploys)
 
-- An AWS account with permissions for SageMaker, Glue, Athena, S3, IAM, and MWAA
-- A SageMaker Unified Studio domain and project with MWAA Serverless enabled
-- Environment variables set for every stage the manifest defines
+**Get set up**
 
-These environment variables are the same values configured as GitHub repo/environment variables for CI (the source of truth). Set them in your shell for local runs:
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
 
-```bash
-pip install aws-smus-cicd-cli
+**Deploy and promote**
 
-export AWS_ACCOUNT_ID=<your-account-id>
+- [Deployment & Configuration](#deployment--configuration)
 
-# DataOps example (dev stage only):
-export DEV_DOMAIN_NAME=<your-domain-name>
-export DEV_DOMAIN_REGION=<your-region>
-export DEV_PROJECT_NAME=<your-dev-project>
+**Reference**
 
-# MLOps example also validates test/prod, so additionally set:
-export TEST_DOMAIN_NAME=<your-domain-name>
-export TEST_DOMAIN_REGION=<your-region>
-export TEST_PROJECT_NAME=<your-test-project>
-export PROD_DOMAIN_NAME=<your-domain-name>
-export PROD_DOMAIN_REGION=<your-region>
-export PROD_PROJECT_NAME=<your-prod-project>
-export MLFLOW_TRACKING_SERVER_NAME=<your-mlflow-server-name>
-export MLFLOW_TRACKING_SERVER_ARN=arn:aws:sagemaker:<region>:<account-id>:mlflow-tracking-server/<your-mlflow-server-name>
-```
-
-Each pipeline has its own README with detailed walkthroughs: [`examples/dataops-pipeline/README.md`](examples/dataops-pipeline/README.md) and [`examples/mlops-pipeline/README.md`](examples/mlops-pipeline/README.md).
-
-## CLI Commands
-
-The `aws-smus-cicd-cli` provides the following commands for managing the pipeline lifecycle. See the [CLI Commands Reference](../../docs/cli-commands.md) for full options and examples.
-
-| Command | Purpose |
-| ------- | ------- |
-| `create` | Create a new bundle manifest |
-| `describe` | Validate and show bundle configuration (use `--connect` to pull live AWS info) |
-| `bundle` | Package workflow and storage files from a source environment |
-| `deploy` | Deploy a bundle to a target environment (auto-initializes if needed) |
-| `run` | Trigger a workflow or run an Airflow CLI command |
-| `logs` | Fetch workflow logs from CloudWatch |
-| `monitor` | Monitor workflow status (use `--live` to poll until complete) |
-| `test` | Run tests for pipeline targets |
-| `integrate` | Integrate with external tools (e.g. Q CLI MCP server) |
-| `destroy` | Delete all resources deployed by the manifest |
-
-## Quick Start
-
-```bash
-# Deploy and run the DataOps pipeline
-cd examples/dataops-pipeline
-aws-smus-cicd-cli describe --manifest manifest.yaml --targets dev --connect
-aws-smus-cicd-cli deploy --manifest manifest.yaml --targets dev
-aws-smus-cicd-cli run --manifest manifest.yaml --targets dev --workflow data_pipeline
-aws-smus-cicd-cli monitor --manifest manifest.yaml --targets dev --live
-```
-
-## How the SMUS CLI Deploys
-
-```mermaid
-flowchart TD
-    subgraph LocalRepo[Repository]
-        manifest[manifest.yaml]:::input
-        workflows[workflows/*.yaml]:::input
-        src[src/*.py]:::input
-        data[data/*.csv]:::input
-    end
-
-    manifest --> CLI
-    workflows --> CLI
-    src --> CLI
-    data --> CLI
-
-    subgraph CLI[SMUS CLI]
-        direction LR
-        Describe[aws-smus-cicd-cli describe]:::process
-        DeployCLI[aws-smus-cicd-cli deploy]:::process
-        RunCLI[aws-smus-cicd-cli run]:::process
-        Monitor[aws-smus-cicd-cli monitor]:::process
-        Describe --> DeployCLI --> RunCLI --> Monitor
-    end
-
-    CLI --> S3
-    CLI --> Studio
-    CLI --> MWAA
-
-    subgraph AWSServices[AWS Services]
-        S3[Amazon S3<br/>Data, Artifacts,<br/>Models, Scripts]:::success
-        Studio[SageMaker Unified Studio<br/>Domain, Project]:::info
-        MWAA[MWAA Serverless<br/>Airflow DAGs,<br/>Scheduling]:::warning
-    end
-
-    S3 --> Execution
-    MWAA --> Execution
-
-    subgraph Execution[Workflow Execution]
-        MLOps[MLOps Pipelines]:::process
-        DataOps[DataOps Pipelines]:::alert
-    end
-
-    classDef input fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#1a1a1a
-    classDef success fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1a1a1a
-    classDef warning fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#1a1a1a
-    classDef process fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#1a1a1a
-    classDef info fill:#e0f2f1,stroke:#00695c,stroke-width:2px,color:#1a1a1a
-    classDef hook fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px,color:#1a1a1a
-    classDef alert fill:#fff8e1,stroke:#f9a825,stroke-width:2px,color:#1a1a1a
-
-    style LocalRepo fill:transparent,stroke:#01579b,stroke-width:2px
-    style CLI fill:transparent,stroke:#7b1fa2,stroke-width:2px
-    style AWSServices fill:transparent,stroke:#2e7d32,stroke-width:2px
-    style Execution fill:transparent,stroke:#7b1fa2,stroke-width:2px
-```
-
-The SMUS CLI handles resource provisioning in dependency order, stage-specific configuration substitution, and the full deployment lifecycle. GitHub Actions automates this across environments using OIDC authentication with two-hop role assumption (no long-lived credentials).
+- [CI/CD](#cicd)
+- [Infrastructure](#infrastructure)
+- [CLI Commands](#cli-commands)
+- [Project Structure](#project-structure)
 
 ## Architecture
 
@@ -220,7 +120,259 @@ The EventBridge rule is intentionally permissive — it matches every `Model Pac
 | **MLOps Training** | [`examples/mlops-pipeline/`](examples/mlops-pipeline/) | Feature engineering, SageMaker training, evaluation, model registry |
 | **Deploy (Event-Driven)** | [`examples/mlops-pipeline/workflows/deploy_pipeline.yaml`](examples/mlops-pipeline/workflows/deploy_pipeline.yaml) | EventBridge → Lambda → GitHub Actions → deploy_pipeline DAG → endpoint |
 
-The MLOps pipeline depends on DataOps — run DataOps first to create the `campaign_results` table.
+The MLOps pipeline depends on DataOps — run DataOps first to create the `campaign_results` table. Per-pipeline walkthroughs live in each sub-README (linked above).
+
+## How the SMUS CLI Deploys
+
+```mermaid
+flowchart TD
+    subgraph LocalRepo[Repository]
+        manifest[manifest.yaml]:::input
+        workflows[workflows/*.yaml]:::input
+        src[src/*.py]:::input
+        data[data/*.csv]:::input
+    end
+
+    manifest --> CLI
+    workflows --> CLI
+    src --> CLI
+    data --> CLI
+
+    subgraph CLI[SMUS CLI]
+        direction LR
+        Describe[aws-smus-cicd-cli describe]:::process
+        DeployCLI[aws-smus-cicd-cli deploy]:::process
+        RunCLI[aws-smus-cicd-cli run]:::process
+        Monitor[aws-smus-cicd-cli monitor]:::process
+        Describe --> DeployCLI --> RunCLI --> Monitor
+    end
+
+    CLI --> S3
+    CLI --> Studio
+    CLI --> MWAA
+
+    subgraph AWSServices[AWS Services]
+        S3[Amazon S3<br/>Data, Artifacts,<br/>Models, Scripts]:::success
+        Studio[SageMaker Unified Studio<br/>Domain, Project]:::info
+        MWAA[MWAA Serverless<br/>Airflow DAGs,<br/>Scheduling]:::warning
+    end
+
+    S3 --> Execution
+    MWAA --> Execution
+
+    subgraph Execution[Workflow Execution]
+        MLOps[MLOps Pipelines]:::process
+        DataOps[DataOps Pipelines]:::alert
+    end
+
+    classDef input fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#1a1a1a
+    classDef success fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1a1a1a
+    classDef warning fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#1a1a1a
+    classDef process fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#1a1a1a
+    classDef info fill:#e0f2f1,stroke:#00695c,stroke-width:2px,color:#1a1a1a
+    classDef hook fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px,color:#1a1a1a
+    classDef alert fill:#fff8e1,stroke:#f9a825,stroke-width:2px,color:#1a1a1a
+
+    style LocalRepo fill:transparent,stroke:#01579b,stroke-width:2px
+    style CLI fill:transparent,stroke:#7b1fa2,stroke-width:2px
+    style AWSServices fill:transparent,stroke:#2e7d32,stroke-width:2px
+    style Execution fill:transparent,stroke:#7b1fa2,stroke-width:2px
+```
+
+The SMUS CLI handles resource provisioning in dependency order, stage-specific configuration substitution, and the full deployment lifecycle. In CI, GitHub Actions drives these same commands — see [CI/CD](#cicd) for the OIDC and multi-stage setup.
+
+## Prerequisites
+
+| Tool | Version | Purpose |
+| ---- | ------- | ------- |
+| Python | 3.11+ | Runtime for CLI and Glue scripts |
+| AWS CLI | v2 | AWS resource management |
+| `aws-smus-cicd-cli` | latest | Pipeline deployment and orchestration |
+| `jq` | any | JSON parsing for shell scripts |
+
+You also need:
+
+- An AWS account with permissions for SageMaker, Glue, Athena, S3, IAM, and MWAA
+- A SageMaker Unified Studio domain and project with MWAA Serverless enabled
+- Environment variables set for every stage the manifest defines
+
+These are the same values configured as GitHub variables/secrets for CI (the source of truth — see [GitHub configuration](#github-configuration-ci-source-of-truth)). For local runs, export them for each stage your manifest defines. Account ID and domain are auto-resolved — do not export them; only `DEV_DOMAIN_REGION` is strictly required, and the rest have manifest defaults.
+
+```bash
+# DataOps (dev stage only):
+export DEV_DOMAIN_REGION=<your-region>               # required
+export DEV_PROJECT_NAME=<your-dev-project>           # optional (default: e2e-data-ml-ops-dev)
+export DOMAIN_TAG_PURPOSE=<your-domain-purpose-tag>  # optional (default: smus-cicd-testing)
+
+# MLOps also deploys test/prod, so additionally export (all optional, have defaults):
+export TEST_DOMAIN_REGION=<your-region>
+export TEST_PROJECT_NAME=<your-test-project>
+export PROD_DOMAIN_REGION=<your-region>
+export PROD_PROJECT_NAME=<your-prod-project>
+export MLFLOW_TRACKING_SERVER_NAME=<your-mlflow-server-name>
+```
+
+## Quick Start
+
+- **Minimal local run:** follow the [DataOps pipeline walkthrough](examples/dataops-pipeline/) (describe → deploy → run → monitor against `dev`).
+- **Full CI-driven setup** and the dev → test → prod promotion: see [Deployment & Configuration](#deployment--configuration).
+
+## Deployment & Configuration
+
+End-to-end path from an empty repo to an automated dev → test → prod promotion. [One-time setup](#one-time-setup) (steps 1–4) prepares the repo and AWS account; the [deploy and promote flow](#deploy-and-promote-flow) (steps 5–9) is what you repeat for every model.
+
+### One-time setup
+
+#### 1. Install prerequisites and set environment variables
+
+Install the CLI and export the stage variables listed in [Prerequisites](#prerequisites):
+
+```bash
+pip install aws-smus-cicd-cli
+aws sts get-caller-identity        # confirm your AWS credentials/account
+```
+
+#### 2. Configure GitHub for CI/CD
+
+All jobs run in a single GitHub Environment named `dev-aws-account`, which holds the OIDC role secret and region. Add them there:
+
+```bash
+REPO=<owner>/<repo>
+
+# Single OIDC role secret, assumed directly by every job
+gh secret set AWS_ROLE_ARN_DEV --repo "$REPO" --env dev-aws-account --body "arn:aws:iam::<acct>:role/<dev-oidc-role>"
+
+# Region (feeds every stage's *_DOMAIN_REGION); everything else has manifest defaults
+gh variable set DOMAIN_REGION --repo "$REPO" --env dev-aws-account --body "us-east-1"
+```
+
+See [GitHub configuration](#github-configuration-ci-source-of-truth) for the full list of variables and secrets.
+
+#### 3. Enable Issues (required for the promote approval gates)
+
+The promote workflow's `approve-test` / `approve-prod` gates open a tracking **issue** and wait for an approver. Enable Issues once (needs repo admin):
+
+```bash
+gh api -X PATCH repos/<owner>/<repo> -f has_issues=true
+```
+
+#### 4. Provision the OIDC provider and IAM role
+
+```bash
+cd examples/end-to-end-data-ml-pipeline
+./scripts/setup-github-oidc.sh     # GitHub OIDC provider + IAM role for CI/CD
+```
+
+Because every stage uses the same OIDC role (`AWS_ROLE_ARN_DEV`), that role must be a **member/owner** of each SMUS project it deploys to (`e2e-data-ml-ops-dev`, `-test`, `-prod`). The deploying role automatically becomes the owner of any project it creates; for pre-existing projects, add the role as a member so it can list connections and deploy. (If it is only a member of the dev project, only `dev` deploys succeed.)
+
+### Deploy and promote flow
+
+#### 5. Deploy the DataOps pipeline (dev)
+
+DataOps must run first — it creates the `campaign_results` table the MLOps pipeline reads. Push to `main` (path-filtered) or trigger manually:
+
+```bash
+gh workflow run e2e-dataops-pipeline.yml --ref main
+```
+
+#### 6. Deploy the MLOps training pipeline
+
+Deploys the training/deploy DAGs and provisions the event-driven deploy trigger in dev (checkbox `setup_infra`, default on). First store the GitHub token the trigger Lambda uses (see [Setting up the event-driven deploy trigger](#setting-up-the-event-driven-deploy-trigger)), then:
+
+```bash
+gh workflow run e2e-mlops-pipeline.yml --ref main -f stages=all -f setup_infra=true
+```
+
+#### 7. Train and register a model
+
+The deployed training DAG runs on schedule (or trigger it) in dev's project, trains the XGBoost model, and registers it in the `bank-mktg-prediction-models` registry as `PendingManualApproval`.
+
+#### 8. Approve the model → automatic promote cascade
+
+Approve the model version in the SageMaker Model Registry (console, SMUS UI, or API). That fires **EventBridge → Lambda → `repository_dispatch` → `e2e-mlops-promote.yml`**, which runs `prepare → deploy-dev → approve-test → deploy-test → approve-prod → deploy-prod`. Respond `approved` on each approval issue to advance. See [Deploy trigger behavior](#deploy-trigger-behavior).
+
+#### 9. Monitor and validate
+
+```bash
+gh run list  --workflow=e2e-mlops-promote.yml
+gh run view <run-id>
+```
+
+Each deploy job validates the target, runs the DAG, verifies the SageMaker processing job, runs an endpoint smoke test, and uploads deploy logs as an artifact.
+
+## CI/CD
+
+These GitHub Actions workflows (at the repository root) are this example's own end-to-end CI/CD — they exist to exercise the pipelines and demonstrate the deploy/promote pattern in practice, not as workflows customers author or edit. They run the single-account deploy for this example:
+
+| Workflow | File | Purpose |
+| -------- | ---- | ------- |
+| DataOps | [`e2e-dataops-pipeline.yml`](../../.github/workflows/e2e-dataops-pipeline.yml) | Deploy and run the data pipeline |
+| MLOps Training | [`e2e-mlops-pipeline.yml`](../../.github/workflows/e2e-mlops-pipeline.yml) | Deploy training pipeline + provision MLOps infra (dev) |
+| MLOps Promote | [`e2e-mlops-promote.yml`](../../.github/workflows/e2e-mlops-promote.yml) | Event-driven dev → test → prod promote cascade on model approval |
+
+CI/CD uses OIDC authentication (no long-lived credentials). Each stage's GitHub Environment, OIDC role secret, and SMUS project name are defined once at the top of every workflow's `env` block and surfaced through a small `resolve-config` job, so these values live in one place. Today all three stages resolve to the same environment (`dev-aws-account`) and role (`AWS_ROLE_ARN_DEV`) — single-hop, single account — but because they are kept per stage, moving a stage to its own account is a one-line edit (e.g. set `PROD_ROLE_SECRET` / `PROD_ENVIRONMENT` in the `env` block and add that secret). The DataOps and MLOps deploy jobs call the shared [`smus-direct-deploy.yml`](../../.github/workflows/smus-direct-deploy.yml) reusable, mapping the stage's role secret into its generic `AWS_ROLE_ARN` and passing the stage's environment; stages otherwise differ only by the manifest target (project + region). The MLOps training workflow provisions the EventBridge + Lambda deploy trigger in dev only — model approval happens in dev's registry and drives the promote cascade across stages.
+
+The promote workflow's stage gates (`approve-test`, `approve-prod`) run [`scripts/await_issue_approval.sh`](scripts/await_issue_approval.sh), which opens a tracking **issue** and waits for a comment of `approved` (or `approve`/`lgtm`/`yes`) to proceed, or `denied`/`deny`/`no` to cancel. Any user with **write/triage access** to the repository may approve — read-only users and non-collaborators are ignored, so there's no separate approver list. This requires **Issues enabled** on the repository (see [step 3](#3-enable-issues-required-for-the-promote-approval-gates)) and the workflow's `issues: write` permission (it uses only the built-in `GITHUB_TOKEN`). Approvals time out after 24h.
+
+### GitHub configuration (CI source of truth)
+
+Runtime inputs come from GitHub Actions **variables** and **secrets** — there is no separate config file checked into the repo. The OIDC role secret (`AWS_ROLE_ARN_DEV`) and `DOMAIN_REGION` live in the `dev-aws-account` environment. Per-stage **defaults** — GitHub Environment name, OIDC role-secret name, and SMUS project name — are centralized in each workflow's top-level `env` block (exposed via the `resolve-config` job), so they can be changed in one place.
+
+Some values are derived at runtime and do not need to be set:
+
+- **`AWS_ACCOUNT_ID`** — resolved via `aws sts get-caller-identity`.
+- **Domain** — resolved by region + the `purpose` tag on the manifest's domain block (default `smus-cicd-testing`), so no domain *name* variable is needed.
+- **Project owner** — the deploying principal is already the project owner, so the manifests no longer hardcode an owner role.
+
+**Secrets** (stored in the `dev-aws-account` environment):
+
+| Secret | Purpose |
+| ------ | ------- |
+| `AWS_ROLE_ARN_DEV` | Single OIDC role assumed by every job (all stages); mapped into the reusable's generic `AWS_ROLE_ARN` |
+
+**Variables:**
+
+| Variable | Scope | Purpose |
+| -------- | ----- | ------- |
+| `DOMAIN_REGION` | environment (`dev-aws-account`) | Region for all stages (feeds `*_DOMAIN_REGION`) |
+| `DEV_PROJECT_NAME` / `TEST_PROJECT_NAME` / `PROD_PROJECT_NAME` | repo | SMUS project per stage (optional; manifest and workflows default to `e2e-data-ml-ops-{dev,test,prod}`) |
+| `MLFLOW_TRACKING_SERVER_NAME` | repo/environment | MLflow tracking server name (optional; manifest has a default) |
+| `DOMAIN_TAG_PURPOSE` | repo/environment | Optional override for the domain `purpose` tag (defaults to `smus-cicd-testing`) |
+
+### Note: Moving to a multi-account deployment
+
+By default this example is **single-account**: all three stages resolve to the same GitHub Environment (`dev-aws-account`) and assume the same OIDC role (`AWS_ROLE_ARN_DEV`). Because the per-stage values are already kept separate in each workflow's `env` block, you can promote `test` and/or `prod` into their own AWS accounts with a few targeted changes:
+
+1. **Create a GitHub Environment per account.** Add environments such as `test-aws-account` and `prod-aws-account` alongside `dev-aws-account`. Each holds that account's `DOMAIN_REGION` variable and its own OIDC role secret.
+
+2. **Store a per-account OIDC role secret.** In each new environment, add the role ARN that lives in that account, for example:
+
+   ```bash
+   REPO=<owner>/<repo>
+   gh secret set AWS_ROLE_ARN_TEST --repo "$REPO" --env test-aws-account --body "arn:aws:iam::<test-acct>:role/<test-oidc-role>"
+   gh secret set AWS_ROLE_ARN_PROD --repo "$REPO" --env prod-aws-account --body "arn:aws:iam::<prod-acct>:role/<prod-oidc-role>"
+   gh variable set DOMAIN_REGION --repo "$REPO" --env test-aws-account --body "us-east-1"
+   gh variable set DOMAIN_REGION --repo "$REPO" --env prod-aws-account --body "us-east-1"
+   ```
+
+3. **Provision OIDC + IAM in each account.** Run [`scripts/setup-github-oidc.sh`](scripts/setup-github-oidc.sh) once per account (with that account's credentials) so the GitHub OIDC provider and IAM role exist there. Ensure the role is a **member/owner** of the SMUS project it deploys to in that account.
+
+4. **Point each stage at its environment.** In the workflow `env` blocks, change the per-stage environment names so they no longer all resolve to `dev-aws-account`:
+
+   ```yaml
+   # e2e-mlops-promote.yml (and analogous env in the DataOps/MLOps workflows)
+   DEV_ENVIRONMENT: dev-aws-account
+   TEST_ENVIRONMENT: test-aws-account
+   PROD_ENVIRONMENT: prod-aws-account
+   ```
+
+5. **Assume the stage's role in each job.** The promote workflow's per-stage jobs currently hardcode `role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}`. Update the `deploy-test` / `deploy-prod` jobs (and their staging steps) to reference the matching secret (`AWS_ROLE_ARN_TEST`, `AWS_ROLE_ARN_PROD`). The reusable [`smus-direct-deploy.yml`](../../.github/workflows/smus-direct-deploy.yml) already maps whatever role secret you pass into its generic `AWS_ROLE_ARN`, so for the DataOps/MLOps deploy jobs you only change which secret is passed and which `environment_name` is used.
+
+6. **Cross-account artifact staging (MLOps only).** The promote `prepare` job stages the model artifact into the target project's bucket. When `test`/`prod` live in other accounts, the staging step must run with (or assume) credentials for that account, and the source (dev) bucket/KMS key must grant read access to the target account. Adjust the `stage-artifact` steps accordingly.
+
+7. **Event-driven trigger placement.** The approval → deploy trigger is provisioned in `dev` only, and model approval happens in dev's registry — this stays the same in multi-account. If you instead want each account to own its trigger, run [`scripts/setup-mlops-infra.sh`](scripts/setup-mlops-infra.sh) in each account.
+
+After these edits each stage authenticates to, and deploys into, its own account while the manifest and CLI commands remain unchanged.
 
 ## Infrastructure
 
@@ -233,7 +385,7 @@ The MLOps pipeline depends on DataOps — run DataOps first to create the `campa
 
 `setup-mlops-infra.sh` provisions the approval → deploy trigger (Lambda + EventBridge rule + IAM role) that fires the promote pipeline whenever a model is approved in the registry.
 
-> **In CI/CD this script runs automatically.** The MLOps training workflow ([`e2e-mlops-pipeline.yml`](../../.github/workflows/e2e-mlops-pipeline.yml)) passes `setup_infra: true` for the `dev` environment, and the reusable deploy workflow's "Provision MLOps infra" step runs `setup-mlops-infra.sh` before deploying. In CI, `GITHUB_REPO` defaults to the current repository, so only the Secrets Manager token (step 1) must exist beforehand. The manual steps below are for provisioning the trigger outside CI.
+> In CI/CD this runs automatically — the MLOps training workflow provisions the trigger in `dev` (`setup_infra: true`), so only the Secrets Manager token (step 1) must exist beforehand. The steps below are for provisioning it manually, outside CI.
 
 **1. Store a GitHub personal access token in Secrets Manager** (required for both CI and manual setup). The Lambda reads this token to send a `repository_dispatch` event to GitHub Actions. The token needs `repo` scope (or `contents: write` for a fine-grained token on the target repo).
 
@@ -260,44 +412,9 @@ The script is idempotent — re-running it updates the existing Lambda code and 
 
 Once provisioned, the rule is `ENABLED` immediately. Approving a model version in `bank-mktg-prediction-models` then triggers the dev → test → prod promote cascade through GitHub Actions. See [Deploy trigger behavior](#deploy-trigger-behavior) for how the trigger handles approvals and avoids re-deploy loops.
 
-## CI/CD
+## CLI Commands
 
-GitHub Actions workflows (at the repository root) automate multi-account deployment for this example:
-
-| Workflow | File | Purpose |
-| -------- | ---- | ------- |
-| DataOps | [`e2e-dataops-pipeline.yml`](../../.github/workflows/e2e-dataops-pipeline.yml) | Deploy and run the data pipeline |
-| MLOps Training | [`e2e-mlops-pipeline.yml`](../../.github/workflows/e2e-mlops-pipeline.yml) | Deploy training pipeline + provision MLOps infra (dev) |
-| MLOps Promote | [`e2e-mlops-promote.yml`](../../.github/workflows/e2e-mlops-promote.yml) | Event-driven dev → test → prod promote cascade on model approval |
-| MLOps Deploy | [`e2e-mlops-deploy.yml`](../../.github/workflows/e2e-mlops-deploy.yml) | Deploy the model endpoint for a stage |
-| Reusable Deploy | [`smus-e2e-direct-deploy.yml`](../../.github/workflows/smus-e2e-direct-deploy.yml) | Shared deploy workflow used by the pipelines above |
-
-CI/CD uses OIDC authentication with two-hop role assumption (no long-lived credentials). The MLOps training workflow provisions the EventBridge + Lambda deploy trigger in dev only — model approval happens in dev's registry and drives the promote cascade across stages.
-
-### GitHub variables (CI source of truth)
-
-The workflows read all configuration from GitHub Actions variables — there is no config file checked into the repo. Repo-level variables apply to every environment; environment-scoped variables are set per `dev`/`test`/`prod` environment.
-
-| Variable | Scope | Purpose |
-| -------- | ----- | ------- |
-| `AWS_REGION` | repo | Region for all stages (feeds `*_DOMAIN_REGION`) |
-| `DEV_DOMAIN_NAME` / `TEST_DOMAIN_NAME` / `PROD_DOMAIN_NAME` | repo | SMUS domain per stage |
-| `DEV_PROJECT_NAME` / `TEST_PROJECT_NAME` / `PROD_PROJECT_NAME` | repo | SMUS project per stage |
-| `MLOPS_APPROVERS` | repo | Promote-gate approver list (promote workflow) |
-| `AWS_ROLE_ARN` | environment | OIDC role assumed by the workflow |
-| `AWS_ACCOUNT_ID` | environment | Account for the stage |
-| `DEPLOYMENT_ROLE_NAME` | environment | Project role assumed for AWS calls |
-| `MLFLOW_TRACKING_SERVER_NAME` | environment | MLflow tracking server name |
-| `MLFLOW_TRACKING_SERVER_ARN` | environment | MLflow tracking server ARN |
-
-For local runs, export the equivalent values in your shell (see [Prerequisites](#prerequisites)).
-
-## Documentation
-
-| Document | Description |
-| -------- | ----------- |
-| [DataOps pipeline README](examples/dataops-pipeline/README.md) | Glue ETL + Athena catalog walkthrough |
-| [MLOps pipeline README](examples/mlops-pipeline/README.md) | Training, evaluation, model registry, and event-driven deploy |
+This example drives the `aws-smus-cicd-cli` (`describe`, `deploy`, `run`, `monitor`) throughout the [Deployment & Configuration](#deployment--configuration) flow. For the full command list, options, and examples, see the [CLI Commands Reference](../../docs/cli-commands.md).
 
 ## Project Structure
 
@@ -327,7 +444,6 @@ For local runs, export the equivalent values in your shell (see [Prerequisites](
 └── scripts/                           # Setup and helper scripts
     ├── setup-mlops-infra.sh           # EventBridge + Lambda deploy trigger
     ├── setup-github-oidc.sh           # GitHub OIDC provider + IAM role
-    ├── build-mlops-sourcedir.sh       # Build training sourcedir.tar.gz
     ├── mlops_helper.py                # Deploy status / smoke-test helpers
     └── test-deploy-trigger-event.json # Sample EventBridge event for testing
 ```
