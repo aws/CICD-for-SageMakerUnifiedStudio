@@ -58,7 +58,13 @@ def handle_workflow_create(
     # Get required info from context
     project_name = target_config.project.name
     region = config["region"]
-    stage_name = config.get("stage_name", "unknown")
+    # Prefer the explicit "stage" field from the manifest (e.g. "TEST"), fall back to
+    # the target key name (e.g. "test-idc") which is stored in context as "stage_name"/"stage"
+    stage_name = (
+        getattr(target_config, "stage", None)
+        or context.get("stage_name")
+        or context.get("stage", "unknown")
+    )
 
     # Get project info from metadata (resolved once in deploy)
     project_info = metadata.get("project_info", {})
@@ -189,6 +195,16 @@ def handle_workflow_create(
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
 
+        # Build the canonical tag set for this workflow - used for both creation and recovery
+        workflow_tags = {
+            "Pipeline": manifest.application_name,
+            "Target": target_config.project.name,
+            "STAGE": stage_name.upper(),
+            "CreatedBy": "SMUS-CICD",
+            "AmazonDataZoneDomain": domain_id,
+            "AmazonDataZoneProject": project_id,
+        }
+
         # Create workflow using resolved YAML
         typer.echo(f"🔧 Creating workflow '{workflow_name}' with role: {role_arn}")
         result = airflow_serverless.create_workflow(
@@ -196,20 +212,22 @@ def handle_workflow_create(
             dag_s3_location=resolved_location,
             role_arn=role_arn,
             description=f"SMUS CI/CD workflow for {manifest.application_name}",
-            tags={
-                "Pipeline": manifest.application_name,
-                "Target": target_config.project.name,
-                "STAGE": stage_name.upper(),
-                "CreatedBy": "SMUS-CICD",
-            },
+            tags=workflow_tags,
             region=region,
         )
 
         if result.get("success"):
             workflow_arn = result["workflow_arn"]
+            already_existed = result.get("already_exists", False)
             workflows_created.append({"name": workflow_name, "arn": workflow_arn})
-            typer.echo(f"✅ Created workflow: {workflow_name}")
+            if already_existed:
+                typer.echo(f"♻️  Workflow already existed, updated: {workflow_name}")
+            else:
+                typer.echo(f"✅ Created workflow: {workflow_name}")
             typer.echo(f"   ARN: {workflow_arn}")
+
+            # Ensure all required tags are present (handles both new and pre-existing workflows)
+            _ensure_workflow_tags(workflow_arn, workflow_tags, region)
 
             # Validate status
             workflow_status = airflow_serverless.get_workflow_status(
@@ -233,3 +251,41 @@ def handle_workflow_create(
     else:
         typer.echo("⚠️ No workflows were created")
         return True
+
+
+def _ensure_workflow_tags(
+    workflow_arn: str,
+    desired_tags: Dict[str, str],
+    region: str,
+) -> None:
+    """
+    Check the current tags on a workflow and add any that are missing.
+
+    This allows recovery of pre-existing workflows that were created before
+    tagging was introduced.
+
+    Args:
+        workflow_arn: ARN of the MWAA Serverless workflow
+        desired_tags: Full set of tags the workflow should have
+        region: AWS region
+    """
+    client = airflow_serverless.create_airflow_serverless_client(region=region)
+
+    try:
+        response = client.list_tags_for_resource(ResourceArn=workflow_arn)
+        current_tags = response.get("Tags", {})
+    except Exception as e:
+        typer.echo(f"   ⚠️  Could not read tags for {workflow_arn}: {e}")
+        return
+
+    missing_tags = {k: v for k, v in desired_tags.items() if k not in current_tags}
+
+    if not missing_tags:
+        typer.echo("   🏷️  All required tags already present")
+        return
+
+    try:
+        client.tag_resource(ResourceArn=workflow_arn, Tags=missing_tags)
+        typer.echo(f"   🏷️  Added missing tags: {list(missing_tags.keys())}")
+    except Exception as e:
+        typer.echo(f"   ⚠️  Could not add tags to {workflow_arn}: {e}")
