@@ -307,6 +307,8 @@ src/smus_cicd/helpers/
 ├── project_manager.py        # Project lifecycle management
 ├── catalog_export.py         # Export catalog assets for bundling
 ├── catalog_import.py         # Import catalog assets during deploy
+├── notebook_export.py        # Export notebooks from source project for bundling
+├── notebook_import.py        # Sync notebooks into target project during deploy
 ├── bundle_storage.py         # Bundle storage and retrieval
 ├── event_emitter.py          # Deployment event emission
 ├── eventbridge_client.py     # EventBridge client wrapper
@@ -354,11 +356,16 @@ src/smus_cicd/helpers/
    - Export catalog assets from source environments for bundling
    - Import catalog assets into target environments during deploy
 
-6. **Event Emitter** (`event_emitter.py`, `eventbridge_client.py`):
+6. **Notebook Export/Sync** (`notebook_export.py`, `notebook_import.py`):
+   - Export notebooks from source project via StartNotebookExport API
+   - Sync notebooks to target projects via StartNotebookSync API
+   - Track source-to-target mapping via metadata for idempotent updates
+
+7. **Event Emitter** (`event_emitter.py`, `eventbridge_client.py`):
    - Emit deployment lifecycle events to EventBridge
    - Configurable event bus targeting
 
-7. **Project Manager** (`project_manager.py`):
+8. **Project Manager** (`project_manager.py`):
    - Project lifecycle management (create, update, delete)
    - Project-level resource coordination
 
