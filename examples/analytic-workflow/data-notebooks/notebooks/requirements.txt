@@ -179,7 +179,7 @@ orjson==3.11.6
 ormsgpack==1.12.2
 packaging==26.2
 pandas==2.3.3
-parso==0.8.5
+parso==0.8.7
 pathable==0.4.4
 pathos==0.3.5
 pathspec==1.0.4
