@@ -90,11 +90,7 @@ def _discover_notebooks(
             params["nextToken"] = next_token
         resp = dz_client.list_notebooks(**params)
         for item in resp.get("items", []):
-            nb_id = (
-                item.get("id")
-                or item.get("notebookId")
-                or item.get("identifier")
-            )
+            nb_id = item.get("id") or item.get("notebookId") or item.get("identifier")
             if nb_id:
                 target_ids.append(nb_id)
         next_token = resp.get("nextToken")
@@ -112,7 +108,8 @@ def _discover_notebooks(
         except Exception as exc:
             logger.warning(
                 "GetNotebook failed for target notebook %s during destroy discovery: %s",
-                target_id, exc,
+                target_id,
+                exc,
             )
             continue
 

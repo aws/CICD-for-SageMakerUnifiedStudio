@@ -76,8 +76,11 @@ def _get_s3_client(region: str):
 # ── throttle retry decorator ─────────────────────────────────────────────────
 
 
-def _call_with_throttle_retry(func, max_retries: int = _THROTTLE_MAX_RETRIES,
-                               initial_delay: float = _THROTTLE_INITIAL_DELAY):
+def _call_with_throttle_retry(
+    func,
+    max_retries: int = _THROTTLE_MAX_RETRIES,
+    initial_delay: float = _THROTTLE_INITIAL_DELAY,
+):
     """
     Call *func* (a zero-argument callable) retrying on ThrottlingException.
 
@@ -100,10 +103,12 @@ def _call_with_throttle_retry(func, max_retries: int = _THROTTLE_MAX_RETRIES,
         except ClientError as exc:
             code = exc.response["Error"]["Code"]
             if code == "ThrottlingException" and attempt < max_retries:
-                delay = initial_delay * (2 ** attempt) + random.uniform(0, 0.5)
+                delay = initial_delay * (2**attempt) + random.uniform(0, 0.5)
                 logger.debug(
                     "ThrottlingException on attempt %d/%d, retrying in %.1fs",
-                    attempt + 1, max_retries, delay,
+                    attempt + 1,
+                    max_retries,
+                    delay,
                 )
                 time.sleep(delay)
             else:
@@ -226,8 +231,11 @@ def _get_notebook_details(
     return resp
 
 
-def _compute_backoff_delay(attempt: int, initial: float = _POLL_INITIAL_INTERVAL,
-                            cap: float = _POLL_MAX_INTERVAL) -> float:
+def _compute_backoff_delay(
+    attempt: int,
+    initial: float = _POLL_INITIAL_INTERVAL,
+    cap: float = _POLL_MAX_INTERVAL,
+) -> float:
     """
     Compute exponential backoff delay with jitter for poll attempt *attempt*
     (0-indexed from the first wait).
@@ -238,7 +246,7 @@ def _compute_backoff_delay(attempt: int, initial: float = _POLL_INITIAL_INTERVAL
     (i is 1-indexed; here we pass 0-indexed attempt so initial × 2^attempt
     equals initial × 2^(i-1) when i = attempt+1).
     """
-    base = min(initial * (2 ** attempt), cap)
+    base = min(initial * (2**attempt), cap)
     return base + random.uniform(0, 0.5)
 
 
@@ -292,7 +300,9 @@ def _poll_export_status(
             error_msg = resp.get("error", {}).get("message", "unknown error")
             logger.error(
                 "Export FAILED for notebook %s (export %s): %s",
-                notebook_id, export_id, error_msg,
+                notebook_id,
+                export_id,
+                error_msg,
             )
             return None
 
@@ -300,7 +310,9 @@ def _poll_export_status(
         if elapsed >= polling_timeout:
             logger.warning(
                 "Export polling timed out for notebook %s after %.0fs (export %s)",
-                notebook_id, elapsed, export_id,
+                notebook_id,
+                elapsed,
+                export_id,
             )
             return None
 
@@ -371,7 +383,10 @@ def _export_single_notebook(
     env_config = notebook_details.get("environmentConfiguration")
 
     if not notebook_id:
-        logger.error("Cannot export notebook — missing identifier in details: %s", notebook_details)
+        logger.error(
+            "Cannot export notebook — missing identifier in details: %s",
+            notebook_details,
+        )
         return None
 
     # Start the export
@@ -386,9 +401,7 @@ def _export_single_notebook(
         )
         export_id = start_resp.get("id")
     except Exception as exc:
-        logger.error(
-            "StartNotebookExport failed for notebook %s: %s", notebook_id, exc
-        )
+        logger.error("StartNotebookExport failed for notebook %s: %s", notebook_id, exc)
         return None
 
     if not export_id:
@@ -413,7 +426,9 @@ def _export_single_notebook(
     except Exception as exc:
         logger.error(
             "Failed to download export for notebook %s from %s: %s",
-            notebook_id, output_location, exc,
+            notebook_id,
+            output_location,
+            exc,
         )
         return None
 
@@ -544,7 +559,9 @@ def export_notebooks(
             )
 
         logger.info(
-            "Validated %d notebook ID(s) for project %s", len(valid_notebooks), project_id
+            "Validated %d notebook ID(s) for project %s",
+            len(valid_notebooks),
+            project_id,
         )
         notebooks_to_export = valid_notebooks
     else:
@@ -560,7 +577,8 @@ def export_notebooks(
         if not notebook_summaries:
             logger.info(
                 "No active notebooks found for project %s in domain %s",
-                project_id, domain_id,
+                project_id,
+                domain_id,
             )
             manifest = _build_export_manifest([], domain_id, project_id)
             return [], manifest
@@ -581,7 +599,8 @@ def export_notebooks(
             except Exception as exc:
                 logger.error(
                     "GetNotebook failed for notebook %s during discovery: %s",
-                    nb_id, exc,
+                    nb_id,
+                    exc,
                 )
                 # Count it as a failure below by not adding to the list —
                 # we still proceed with the rest
@@ -597,7 +616,12 @@ def export_notebooks(
             or notebook_details.get("identifier")
         )
         result = _export_single_notebook(
-            dz_client, s3_client, domain_id, project_id, notebook_details, polling_timeout
+            dz_client,
+            s3_client,
+            domain_id,
+            project_id,
+            notebook_details,
+            polling_timeout,
         )
         if result:
             exported.append(result)

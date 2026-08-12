@@ -625,7 +625,13 @@ def _deploy_bundle_to_target(
     # Return overall success - storage must succeed, git is optional
     storage_success = all(r[0] is not None for r in storage_results)
     git_success = all(r[0] is not None for r in git_results) if git_results else True
-    return storage_success and git_success and asset_success and catalog_import_success and notebook_sync_success
+    return (
+        storage_success
+        and git_success
+        and asset_success
+        and catalog_import_success
+        and notebook_sync_success
+    )
 
 
 def _resolve_and_upload_workflows(
@@ -1418,6 +1424,7 @@ def _sync_notebooks_from_bundle(
             # ── Extract manifest ──────────────────────────────────────────
             with zip_ref.open("notebooks/notebook_export_manifest.json") as mf:
                 import json as _json
+
                 manifest_data = _json.load(mf)
 
             # ── Extract all .ipynb files referenced in the manifest ───────

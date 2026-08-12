@@ -479,8 +479,12 @@ def bundle_command(
                     typer.echo("Exporting notebooks...")
 
                     # Resolve domain_id and project_id (may already be set from catalog block)
-                    nb_domain_id = project_info.get("domain_id") or project_info.get("domainId")
-                    nb_project_id = project_info.get("project_id") or project_info.get("id")
+                    nb_domain_id = project_info.get("domain_id") or project_info.get(
+                        "domainId"
+                    )
+                    nb_project_id = project_info.get("project_id") or project_info.get(
+                        "id"
+                    )
 
                     if not nb_domain_id or not nb_project_id:
                         typer.echo(
@@ -504,9 +508,7 @@ def bundle_command(
                             os.makedirs(notebooks_dir, exist_ok=True)
 
                             for nb in exported_notebooks:
-                                ipynb_path = os.path.join(
-                                    temp_bundle_dir, nb.file_path
-                                )
+                                ipynb_path = os.path.join(temp_bundle_dir, nb.file_path)
                                 os.makedirs(os.path.dirname(ipynb_path), exist_ok=True)
                                 with open(ipynb_path, "wb") as f:
                                     f.write(nb.file_content)

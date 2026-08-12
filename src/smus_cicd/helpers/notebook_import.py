@@ -37,7 +37,12 @@ SOURCE_NOTEBOOK_METADATA_KEY = "smus-cicd-source-notebook-id"
 
 # Required top-level keys in notebook_export_manifest.json
 _REQUIRED_MANIFEST_KEYS = {"metadata", "notebooks"}
-_REQUIRED_METADATA_KEYS = {"sourceProjectId", "sourceDomainId", "exportTimestamp", "notebookCount"}
+_REQUIRED_METADATA_KEYS = {
+    "sourceProjectId",
+    "sourceDomainId",
+    "exportTimestamp",
+    "notebookCount",
+}
 
 # S3 import prefix inside the project's s3_shared bucket
 _S3_IMPORT_PREFIX = "notebooks/imports"
@@ -104,8 +109,11 @@ def _get_s3_client(region: str):
 # ── throttle retry ───────────────────────────────────────────────────────────
 
 
-def _call_with_throttle_retry(func, max_retries: int = _THROTTLE_MAX_RETRIES,
-                               initial_delay: float = _THROTTLE_INITIAL_DELAY):
+def _call_with_throttle_retry(
+    func,
+    max_retries: int = _THROTTLE_MAX_RETRIES,
+    initial_delay: float = _THROTTLE_INITIAL_DELAY,
+):
     """Retry *func* on ThrottlingException with exponential backoff + jitter."""
     for attempt in range(max_retries + 1):
         try:
@@ -113,10 +121,12 @@ def _call_with_throttle_retry(func, max_retries: int = _THROTTLE_MAX_RETRIES,
         except ClientError as exc:
             code = exc.response["Error"]["Code"]
             if code == "ThrottlingException" and attempt < max_retries:
-                delay = initial_delay * (2 ** attempt) + random.uniform(0, 0.5)
+                delay = initial_delay * (2**attempt) + random.uniform(0, 0.5)
                 logger.debug(
                     "ThrottlingException on attempt %d/%d, retrying in %.1fs",
-                    attempt + 1, max_retries, delay,
+                    attempt + 1,
+                    max_retries,
+                    delay,
                 )
                 time.sleep(delay)
             else:
@@ -234,11 +244,7 @@ def _discover_target_notebooks(
             lambda params=params: dz_client.list_notebooks(**params)
         )
         for item in resp.get("items", []):
-            nb_id = (
-                item.get("id")
-                or item.get("notebookId")
-                or item.get("identifier")
-            )
+            nb_id = item.get("id") or item.get("notebookId") or item.get("identifier")
             if nb_id:
                 target_ids.append(nb_id)
 
@@ -262,7 +268,8 @@ def _discover_target_notebooks(
         except Exception as exc:
             logger.warning(
                 "Could not GetNotebook for target notebook %s during discovery: %s",
-                target_id, exc,
+                target_id,
+                exc,
             )
 
     return source_to_target
@@ -349,16 +356,18 @@ def _apply_notebook_metadata(
 
     Returns True on success, False on any error (notebook counts as FAILED).
     """
-    kwargs = _build_update_kwargs(domain_id, project_id, target_notebook_id, notebook_entry)
+    kwargs = _build_update_kwargs(
+        domain_id, project_id, target_notebook_id, notebook_entry
+    )
     try:
-        _call_with_throttle_retry(
-            lambda: dz_client.update_notebook(**kwargs)
-        )
+        _call_with_throttle_retry(lambda: dz_client.update_notebook(**kwargs))
         return True
     except Exception as exc:
         logger.error(
             "UpdateNotebook failed for notebook %s (target %s): %s",
-            notebook_entry.get("sourceNotebookId"), target_notebook_id, exc,
+            notebook_entry.get("sourceNotebookId"),
+            target_notebook_id,
+            exc,
         )
         return False
 
@@ -394,14 +403,17 @@ def _wait_for_sync_complete(
         except Exception as exc:
             logger.debug(
                 "GetNotebook failed while waiting for sync on %s: %s",
-                notebook_id, exc,
+                notebook_id,
+                exc,
             )
 
         elapsed = _time.monotonic() - start
         if elapsed >= timeout:
             logger.warning(
                 "Timed out waiting for notebook %s (source %s) to leave SYNC_IN_PROGRESS after %.0fs",
-                notebook_id, source_id, elapsed,
+                notebook_id,
+                source_id,
+                elapsed,
             )
             return False
 
@@ -447,7 +459,9 @@ def _sync_single_notebook(
             params["description"] = notebook_entry["description"]
         if with_nb_id:
             params["notebookId"] = with_nb_id
-        return _call_with_throttle_retry(lambda: dz_client.start_notebook_sync(**params))
+        return _call_with_throttle_retry(
+            lambda: dz_client.start_notebook_sync(**params)
+        )
 
     intended_update = target_notebook_id is not None
     synced_as_update = False
@@ -463,7 +477,8 @@ def _sync_single_notebook(
                     logger.warning(
                         "Target notebook %s not found (may have been manually deleted) "
                         "for source %s — creating new notebook instead.",
-                        target_notebook_id, source_id,
+                        target_notebook_id,
+                        source_id,
                     )
                     sync_resp = _do_sync(None)
                     synced_as_update = False
@@ -516,7 +531,11 @@ def _sync_single_notebook(
             message="UpdateNotebook failed — see logs for details",
         )
 
-    final_status = SyncStatus.UPDATED if (intended_update or synced_as_update) else SyncStatus.CREATED
+    final_status = (
+        SyncStatus.UPDATED
+        if (intended_update or synced_as_update)
+        else SyncStatus.CREATED
+    )
     return SyncResult(
         status=final_status,
         source_notebook_id=source_id,
@@ -586,9 +605,7 @@ def sync_notebooks(
 
     notebook_entries: List[Dict[str, Any]] = manifest_data.get("notebooks", [])
     if not notebook_entries:
-        logger.info(
-            "Notebook export manifest contains no notebooks — nothing to sync."
-        )
+        logger.info("Notebook export manifest contains no notebooks — nothing to sync.")
         return summary
 
     deployment_timestamp = str(int(time.time()))
@@ -604,7 +621,8 @@ def sync_notebooks(
         if file_path not in notebook_files:
             logger.error(
                 "Notebook file missing from bundle for source %s (filePath=%s) — skipping",
-                source_id, file_path,
+                source_id,
+                file_path,
             )
             summary.failed += 1
             summary.failed_ids.append(source_id)
@@ -657,25 +675,30 @@ def sync_notebooks(
             summary.created += 1
             logger.info(
                 "Created target notebook %s from source %s",
-                result.target_notebook_id, source_id,
+                result.target_notebook_id,
+                source_id,
             )
         elif result.status == SyncStatus.UPDATED:
             summary.updated += 1
             logger.info(
                 "Updated target notebook %s from source %s",
-                result.target_notebook_id, source_id,
+                result.target_notebook_id,
+                source_id,
             )
         else:
             summary.failed += 1
             summary.failed_ids.append(source_id)
             logger.error(
                 "Failed to sync source notebook %s: %s",
-                source_id, result.message,
+                source_id,
+                result.message,
             )
 
     # ── Step 6: report ───────────────────────────────────────────────────────
     logger.info(
         "Notebook sync complete: %d created, %d updated, %d failed",
-        summary.created, summary.updated, summary.failed,
+        summary.created,
+        summary.updated,
+        summary.failed,
     )
     return summary

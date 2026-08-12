@@ -171,7 +171,9 @@ class NotebookChecker:
             try:
                 from smus_cicd.helpers.boto3_client import create_client
 
-                s3_client = create_client("s3", region=context.target_region or "us-east-1")
+                s3_client = create_client(
+                    "s3", region=context.target_region or "us-east-1"
+                )
                 s3_client.head_bucket(Bucket=bucket)
                 findings.append(
                     Finding(
@@ -241,7 +243,9 @@ class NotebookChecker:
 
             # Build resource ARNs for simulation
             domain_id = context.target_domain_id or "*"
-            datazone_resource = f"arn:aws:datazone:{region}:{account_id}:domain/{domain_id}"
+            datazone_resource = (
+                f"arn:aws:datazone:{region}:{account_id}:domain/{domain_id}"
+            )
 
             s3_resource = "*"
             if s3_uri:
