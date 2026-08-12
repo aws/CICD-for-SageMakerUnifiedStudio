@@ -39,5 +39,7 @@ DEPLOY_RESOURCE_TYPES = frozenset(
         "catalog_asset_type",
         "catalog_asset",
         "catalog_data_product",
+        # Notebook resources (via notebook sync)
+        "notebook",
     }
 )

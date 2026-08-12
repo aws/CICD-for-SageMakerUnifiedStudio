@@ -467,6 +467,73 @@ def bundle_command(
                 except Exception as e:
                     typer.echo(f"Error exporting catalog resources: {e}", err=True)
 
+            # Export notebooks if enabled
+            if (
+                manifest.content
+                and manifest.content.notebooks
+                and manifest.content.notebooks.enabled
+            ):
+                try:
+                    from ..helpers.notebook_export import export_notebooks
+
+                    typer.echo("Exporting notebooks...")
+
+                    # Resolve domain_id and project_id (may already be set from catalog block)
+                    nb_domain_id = project_info.get("domain_id") or project_info.get("domainId")
+                    nb_project_id = project_info.get("project_id") or project_info.get("id")
+
+                    if not nb_domain_id or not nb_project_id:
+                        typer.echo(
+                            "Warning: Could not resolve domain_id or project_id for notebook export",
+                            err=True,
+                        )
+                    else:
+                        notebook_ids = manifest.content.notebooks.notebook_ids
+                        # export_notebooks() raises SystemExit on invalid IDs or
+                        # export failures — let it propagate so bundle exits non-zero
+                        exported_notebooks, notebook_manifest = export_notebooks(
+                            domain_id=nb_domain_id,
+                            project_id=nb_project_id,
+                            region=region,
+                            notebook_ids=notebook_ids,
+                        )
+
+                        if exported_notebooks:
+                            # Write each .ipynb file to notebooks/ in the temp dir
+                            notebooks_dir = os.path.join(temp_bundle_dir, "notebooks")
+                            os.makedirs(notebooks_dir, exist_ok=True)
+
+                            for nb in exported_notebooks:
+                                ipynb_path = os.path.join(
+                                    temp_bundle_dir, nb.file_path
+                                )
+                                os.makedirs(os.path.dirname(ipynb_path), exist_ok=True)
+                                with open(ipynb_path, "wb") as f:
+                                    f.write(nb.file_content)
+
+                            total_files_added += len(exported_notebooks)
+
+                        # Always write the manifest (may have zero notebooks)
+                        notebooks_dir = os.path.join(temp_bundle_dir, "notebooks")
+                        os.makedirs(notebooks_dir, exist_ok=True)
+                        manifest_path = os.path.join(
+                            notebooks_dir, "notebook_export_manifest.json"
+                        )
+                        with open(manifest_path, "w", encoding="utf-8") as f:
+                            json.dump(notebook_manifest, f, indent=2, default=str)
+                        total_files_added += 1
+
+                        typer.echo(
+                            f"  Exported {len(exported_notebooks)} notebook(s) to bundle"
+                        )
+
+                except SystemExit:
+                    # Re-raise so bundle exits with non-zero code
+                    raise
+                except Exception as e:
+                    typer.echo(f"Error exporting notebooks: {e}", err=True)
+                    raise typer.Exit(1)
+
             # Process Git repositories (supports both dict and list formats)
             git_repos = (
                 manifest.content.git

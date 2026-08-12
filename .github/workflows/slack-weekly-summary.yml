@@ -39,6 +39,7 @@ jobs:
             "Deploy ML Training"
             "Translate Documentation"
             "Deploy Catalog Import Export"
+            "E2E Notebook Sync"
           )
 
           WORKFLOW_SUMMARY=""

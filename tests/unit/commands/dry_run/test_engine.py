@@ -34,10 +34,10 @@ PHASE_ORDER = list(Phase)
 
 
 class TestPhaseOrdering:
-    """Verify all 12 phases run in the correct order."""
+    """Verify all phases run in the correct order."""
 
     def test_all_phases_run_in_order(self):
-        """When manifest validation passes, all 12 phases should execute in order."""
+        """When manifest validation passes, all phases should execute in order."""
         engine = DryRunEngine(
             manifest_file="manifest.yaml",
             stage_name="dev",
@@ -63,7 +63,7 @@ class TestPhaseOrdering:
         report = engine.run()
 
         assert call_order == PHASE_ORDER
-        assert len(report.findings_by_phase) == 13
+        assert len(report.findings_by_phase) == len(PHASE_ORDER)
         for phase in PHASE_ORDER:
             assert phase in report.findings_by_phase
 

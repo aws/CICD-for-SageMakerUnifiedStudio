@@ -1,0 +1,53 @@
+name: E2E Notebook Sync
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'examples/e2e-notebook-sync/**'
+      - 'src/**'
+      - '.github/workflows/smus-bundle-deploy.yml'
+      - '.github/workflows/e2e-notebook-sync.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-notebook-sync-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  # -------------------------------------------------------------------
+  # IAM domain: bundle from dev → deploy to test → deploy to prod
+  # -------------------------------------------------------------------
+  deploy-iam:
+    uses: ./.github/workflows/smus-bundle-deploy.yml
+    secrets:
+      AWS_ROLE_ARN_DEV: ${{ secrets.AWS_ROLE_ARN_DEV }}
+      AWS_ROLE_ARN_TEST: ${{ secrets.AWS_ROLE_ARN_TEST }}
+      AWS_ROLE_ARN_PROD: ${{ secrets.AWS_ROLE_ARN_PROD }}
+    with:
+      manifest_path: 'examples/e2e-notebook-sync/manifest.yaml'
+      test_target: 'test'
+      prod_target: 'prod'
+      deploy_to_prod: ${{ github.ref == 'refs/heads/main' }}
+      destroy_test_after_deploy: true
+
+  # -------------------------------------------------------------------
+  # IdC domain: bundle from dev-idc → deploy to test-idc → deploy to prod-idc
+  # -------------------------------------------------------------------
+  deploy-idc:
+    uses: ./.github/workflows/smus-bundle-deploy.yml
+    secrets:
+      AWS_ROLE_ARN_DEV: ${{ secrets.AWS_ROLE_ARN_DEV }}
+      AWS_ROLE_ARN_TEST: ${{ secrets.AWS_ROLE_ARN_TEST }}
+      AWS_ROLE_ARN_PROD: ${{ secrets.AWS_ROLE_ARN_PROD }}
+    with:
+      manifest_path: 'examples/e2e-notebook-sync/manifest-idc.yaml'
+      test_target: 'test-idc'
+      prod_target: 'prod-idc'
+      deploy_to_prod: ${{ github.ref == 'refs/heads/main' }}
+      destroy_test_after_deploy: true

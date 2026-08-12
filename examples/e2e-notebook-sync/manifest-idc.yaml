@@ -1,0 +1,64 @@
+# E2E Notebook Sync — IdC domain variant
+#
+# Tests the full notebook export → bundle → sync lifecycle on IdC-based
+# domains (domain resolved by name instead of tags):
+#   - DEV-IDC stage: source of truth (notebooks created by setup_notebooks.py)
+#   - TEST-IDC stage: first target for notebook sync
+#   - PROD-IDC stage: second target for notebook sync
+#
+# content.notebooks.notebook_ids filters to only 3 of the 4 notebooks
+# created by the setup script. "exploratory-analysis" is intentionally
+# excluded to verify that filtering works correctly.
+#
+# Each ID uses ${ENV_VAR:default_id} syntax — the defaults are the actual
+# notebook IDs from our test environment. Override via environment variables
+# if you need to point at different notebooks.
+
+applicationName: E2ENotebookSyncIdC
+content:
+  notebooks:
+    enabled: true
+    # Only sync the first 3 notebooks — excludes "exploratory-analysis"
+    notebook_ids:
+    - ${E2E_NOTEBOOK_DATA_PREP_ID:55rimt88sy6uc0}
+    - ${E2E_NOTEBOOK_FEATURE_ENG_ID:aj3t33nr2cghe8}
+    - ${E2E_NOTEBOOK_MODEL_TRAINING_ID:bb677gubj6ahzk}
+stages:
+  dev-idc:
+    stage: DEV
+    domain:
+      name: smus-idc-dev-domain
+      region: us-west-2
+    project:
+      name: dev-marketing
+      owners:
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
+    deployment_configuration:
+      notebooks: {}
+  test-idc:
+    stage: TEST
+    domain:
+      name: smus-idc-test-domain
+      region: ${TEST_DOMAIN_REGION}
+    project:
+      name: test-marketing
+      owners:
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
+    deployment_configuration:
+      notebooks: {}
+  prod-idc:
+    stage: PROD
+    domain:
+      name: smus-idc-prod-domain
+      region: ${PROD_DOMAIN_REGION}
+    project:
+      name: prod-marketing
+      owners:
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
+    deployment_configuration:
+      notebooks: {}
+tests:
+  folder: examples/e2e-notebook-sync/app_tests/

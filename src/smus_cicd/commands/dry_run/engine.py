@@ -20,6 +20,7 @@ from smus_cicd.commands.dry_run.checkers.connectivity_checker import Connectivit
 from smus_cicd.commands.dry_run.checkers.dependency_checker import DependencyChecker
 from smus_cicd.commands.dry_run.checkers.git_checker import GitChecker
 from smus_cicd.commands.dry_run.checkers.manifest_checker import ManifestChecker
+from smus_cicd.commands.dry_run.checkers.notebook_checker import NotebookChecker
 from smus_cicd.commands.dry_run.checkers.permission_checker import PermissionChecker
 from smus_cicd.commands.dry_run.checkers.preflight_checker import PreflightChecker
 from smus_cicd.commands.dry_run.checkers.project_checker import ProjectChecker
@@ -66,6 +67,7 @@ class DryRunEngine:
             (Phase.CATALOG_IMPORT, CatalogChecker()),
             (Phase.DEPENDENCY_VALIDATION, DependencyChecker()),
             (Phase.WORKFLOW_VALIDATION, WorkflowChecker()),
+            (Phase.NOTEBOOK_SYNC, NotebookChecker()),
             (Phase.BOOTSTRAP_ACTIONS, BootstrapChecker()),
         ]
 

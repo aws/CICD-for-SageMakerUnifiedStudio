@@ -1,0 +1,69 @@
+# E2E Notebook Sync — IAM domain variant
+#
+# Tests the full notebook export → bundle → sync lifecycle:
+#   - DEV stage: source of truth (notebooks created by setup_notebooks.py)
+#   - TEST stage: first target for notebook sync
+#   - PROD stage: second target for notebook sync
+#
+# content.notebooks.notebook_ids filters to only 3 of the 4 notebooks
+# created by the setup script. "exploratory-analysis" is intentionally
+# excluded to verify that filtering works correctly.
+#
+# Each ID uses ${ENV_VAR:default_id} syntax — the defaults are the actual
+# notebook IDs from our test environment. Override via environment variables
+# if you need to point at different notebooks.
+
+applicationName: E2ENotebookSyncIAM
+content:
+  notebooks:
+    enabled: true
+    # Only sync the first 3 notebooks — excludes "exploratory-analysis"
+    notebook_ids:
+    - ${E2E_NOTEBOOK_DATA_PREP_ID:chjdveqzk3b0kn}
+    - ${E2E_NOTEBOOK_FEATURE_ENG_ID:5jt3em9urdh3fr}
+    - ${E2E_NOTEBOOK_MODEL_TRAINING_ID:5t4wg7lwzxkraf}
+stages:
+  dev:
+    stage: DEV
+    domain:
+      region: ${DEV_DOMAIN_REGION}
+      tags:
+        purpose: smus-cicd-testing
+    project:
+      name: dev-marketing
+      owners:
+      - Eng1
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
+    deployment_configuration:
+      notebooks: {}
+  test:
+    stage: TEST
+    domain:
+      region: ${TEST_DOMAIN_REGION}
+      tags:
+        purpose: smus-cicd-testing
+    project:
+      name: test-marketing
+      owners:
+      - Eng1
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
+    deployment_configuration:
+      notebooks: {}
+  prod:
+    stage: PROD
+    domain:
+      region: ${PROD_DOMAIN_REGION}
+      tags:
+        purpose: smus-cicd-production
+    project:
+      name: prod-marketing
+      owners:
+      - Eng1
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
+    deployment_configuration:
+      notebooks: {}
+tests:
+  folder: examples/e2e-notebook-sync/app_tests/

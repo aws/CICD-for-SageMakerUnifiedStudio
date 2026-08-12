@@ -36,6 +36,107 @@ logger = get_logger("destroy")
 # ---------------------------------------------------------------------------
 
 
+def _discover_notebooks(
+    domain_id: str,
+    project_id: str,
+    region: str,
+    notebook_ids_filter=None,
+    _dz_client_override=None,
+):
+    """
+    Discover target notebooks that were deployed by this CI/CD tool.
+
+    Steps:
+      1. ListNotebooks with owningProjectIdentifier + status=ACTIVE (paginated).
+      2. GetNotebook for each to read metadata.
+      3. Include only notebooks whose metadata contains ``smus-cicd-source-notebook-id``.
+      4. If *notebook_ids_filter* is specified, further filter to only those
+         whose ``smus-cicd-source-notebook-id`` value is in the filter list.
+
+    Property 10: notebooks WITHOUT the metadata key are never included regardless
+    of configuration; when notebook_ids_filter is given only matching source IDs
+    are included.
+
+    Args:
+        domain_id: DataZone domain identifier.
+        project_id: DataZone project identifier (target project).
+        region: AWS region string.
+        notebook_ids_filter: Optional list of source notebook IDs to restrict
+            deletion to. None means include all notebooks that have the tracking
+            metadata key.
+
+    Returns:
+        List of dicts with keys: target_notebook_id, source_notebook_id, name.
+
+    Raises:
+        Exception: If the ListNotebooks API fails.
+    """
+    from ..helpers.boto3_client import create_client as _create_client
+
+    SOURCE_KEY = "smus-cicd-source-notebook-id"
+
+    dz_client = _dz_client_override or _create_client("datazone", region=region)
+
+    # Paginated list of active notebooks
+    target_ids = []
+    next_token = None
+    while True:
+        params = {
+            "domainIdentifier": domain_id,
+            "owningProjectIdentifier": project_id,
+            "status": "ACTIVE",
+        }
+        if next_token:
+            params["nextToken"] = next_token
+        resp = dz_client.list_notebooks(**params)
+        for item in resp.get("items", []):
+            nb_id = (
+                item.get("id")
+                or item.get("notebookId")
+                or item.get("identifier")
+            )
+            if nb_id:
+                target_ids.append(nb_id)
+        next_token = resp.get("nextToken")
+        if not next_token:
+            break
+
+    # GetNotebook for each to check metadata
+    result = []
+    for target_id in target_ids:
+        try:
+            detail = dz_client.get_notebook(
+                domainIdentifier=domain_id,
+                identifier=target_id,
+            )
+        except Exception as exc:
+            logger.warning(
+                "GetNotebook failed for target notebook %s during destroy discovery: %s",
+                target_id, exc,
+            )
+            continue
+
+        nb_metadata = detail.get("metadata") or {}
+        source_id = nb_metadata.get(SOURCE_KEY)
+        if not source_id:
+            # Not managed by this tool — skip
+            continue
+
+        # Apply notebook_ids_filter if specified
+        if notebook_ids_filter is not None and source_id not in notebook_ids_filter:
+            continue
+
+        result.append(
+            {
+                "target_notebook_id": target_id,
+                "source_notebook_id": source_id,
+                "name": detail.get("name", target_id),
+            }
+        )
+
+    return result
+
+
 def _discover_workflow_created_resources(
     workflow_yaml: dict, stage_name: str
 ) -> List[ResourceToDelete]:
@@ -564,6 +665,43 @@ def _validate_stage(
         elif catalog_disabled:
             warnings.append(
                 f"[{stage_name}] Catalog deletion is disabled (disable: true) — skipping."
+            )
+
+    # --- Notebook resources ---
+    if (
+        manifest.content
+        and manifest.content.notebooks
+        and manifest.content.notebooks.enabled
+        and project_id
+        and domain_id
+    ):
+        notebook_ids_filter = (
+            manifest.content.notebooks.notebook_ids
+        )  # None means "all"; list means "filter to these source IDs"
+        try:
+            discovered_notebooks = _discover_notebooks(
+                domain_id=domain_id,
+                project_id=project_id,
+                region=effective_region,
+                notebook_ids_filter=notebook_ids_filter,
+            )
+            for nb in discovered_notebooks:
+                resources.append(
+                    ResourceToDelete(
+                        resource_type="notebook",
+                        resource_id=nb["target_notebook_id"],
+                        stage=stage_name,
+                        metadata={
+                            "name": nb["name"],
+                            "source_notebook_id": nb["source_notebook_id"],
+                            "domain_id": domain_id,
+                        },
+                    )
+                )
+        except Exception as e:
+            errors.append(
+                f"[{stage_name}] ListNotebooks API failed during notebook "
+                f"discovery for project '{project_id}': {e}"
             )
 
     # --- Bootstrap connections ---
