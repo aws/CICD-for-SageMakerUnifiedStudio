@@ -11,6 +11,21 @@ from ...helpers.boto3_client import create_client
 from ...helpers.bundle_storage import ensure_bundle_local
 from ..models import BootstrapAction
 
+# Tags that SMUS CI/CD manages on every workflow it creates. Custom tags
+# supplied via the workflow.create action must not collide with these - the
+# DataZone tags in particular carry functional meaning (project/domain
+# association), so a collision is treated as a manifest error.
+RESERVED_WORKFLOW_TAG_KEYS = frozenset(
+    {
+        "Pipeline",
+        "Target",
+        "STAGE",
+        "CreatedBy",
+        "AmazonDataZoneDomain",
+        "AmazonDataZoneProject",
+    }
+)
+
 
 def handle_workflow_create(
     action: BootstrapAction,
@@ -21,6 +36,10 @@ def handle_workflow_create(
 
     Properties:
     - workflowName (optional): Specific workflow to create, omit to create all
+    - tags (optional): Custom {key: value} tags applied to every workflow this
+      action creates, in addition to the SMUS-managed tags. Keys must not
+      collide with the reserved SMUS tag keys (see RESERVED_WORKFLOW_TAG_KEYS);
+      a collision fails the deploy with a clear error.
 
     Args:
         action: Bootstrap action configuration (BootstrapAction object)
@@ -36,6 +55,26 @@ def handle_workflow_create(
     metadata = context.get("metadata", {})
 
     workflow_name_filter = action.parameters.get("workflowName")
+
+    # Custom tags for the workflows this action creates. Reject up front (before
+    # creating anything) if any key collides with a reserved SMUS-managed tag.
+    custom_tags = action.parameters.get("tags") or {}
+    if custom_tags:
+        if not isinstance(custom_tags, dict):
+            typer.echo(
+                "❌ workflow.create 'tags' must be a mapping of string keys to "
+                "string values"
+            )
+            return False
+        reserved_collisions = sorted(set(custom_tags) & RESERVED_WORKFLOW_TAG_KEYS)
+        if reserved_collisions:
+            typer.echo(
+                "❌ Custom workflow tag key(s) "
+                f"{reserved_collisions} are reserved by SMUS CI/CD and cannot be "
+                "overridden. Please rename or remove them in the workflow.create "
+                "action's 'tags'."
+            )
+            return False
 
     # Get workflows from manifest
     if not hasattr(manifest.content, "workflows") or not manifest.content.workflows:
@@ -241,15 +280,20 @@ def handle_workflow_create(
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
 
-        # Build the canonical tag set for this workflow - used for both creation and recovery
-        workflow_tags = {
-            "Pipeline": manifest.application_name,
-            "Target": target_config.project.name,
-            "STAGE": stage_name.upper(),
-            "CreatedBy": "SMUS-CICD",
-            "AmazonDataZoneDomain": domain_id,
-            "AmazonDataZoneProject": project_id,
-        }
+        # Build the canonical tag set for this workflow - used for both creation
+        # and recovery. Custom tags go first; SMUS-managed tags are applied on
+        # top so they always win (collisions were already rejected above).
+        workflow_tags = dict(custom_tags)
+        workflow_tags.update(
+            {
+                "Pipeline": manifest.application_name,
+                "Target": target_config.project.name,
+                "STAGE": stage_name.upper(),
+                "CreatedBy": "SMUS-CICD",
+                "AmazonDataZoneDomain": domain_id,
+                "AmazonDataZoneProject": project_id,
+            }
+        )
 
         # For IdC-based domains, build the domain/project-namespaced log group.
         log_group_name = None

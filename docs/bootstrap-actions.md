@@ -60,6 +60,7 @@ stages:
 
 **Properties:**
 - `workflowName` (optional): Specific workflow name to create. Omit to create all workflows defined in `workflows:` section.
+- `tags` (optional): A map of custom `key: value` tags applied to every workflow this action creates, in addition to the tags SMUS CI/CD manages automatically. Keys must be strings. See the note on reserved keys below.
 
 **Use Case:** Create workflows after all required connections exist, allowing workflow definitions to reference connections like MLflow tracking servers.
 
@@ -69,6 +70,29 @@ bootstrap:
   actions:
     - type: workflow.create  # Creates all workflows from workflows: section
 ```
+
+**Example - Custom tags:**
+```yaml
+bootstrap:
+  actions:
+    - type: workflow.create
+      workflowName: ml_training_workflow
+      tags:
+        CostCenter: "1234"
+        Team: analytics
+        Environment: test
+```
+
+Because `tags` lives on the action, tags can differ per stage (each stage has its
+own `workflow.create` action) and per workflow (use separate actions with distinct
+`workflowName` values). Newly created workflows receive the tags immediately;
+existing workflows have any missing tags added on the next deploy.
+
+**Reserved tag keys:** SMUS CI/CD manages these keys on every workflow and they
+cannot be overridden by custom `tags` - supplying any of them fails the deploy
+with a clear error, so rename or remove them:
+`Pipeline`, `Target`, `STAGE`, `CreatedBy`, `AmazonDataZoneDomain`,
+`AmazonDataZoneProject`.
 
 ---
 

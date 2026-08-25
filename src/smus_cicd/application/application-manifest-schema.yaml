@@ -254,6 +254,13 @@ properties:
             templatePath:
               type: string
               description: "Path to CloudFormation template (for type: cloudformation)"
+
+            # Workflow tagging (for type: workflow.create)
+            tags:
+              type: object
+              description: "Custom tags applied to workflows created by this workflow.create action (keys must not collide with SMUS-managed tags)"
+              additionalProperties:
+                type: string
           
           additionalProperties: false
     additionalProperties: false

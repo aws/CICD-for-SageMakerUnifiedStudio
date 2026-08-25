@@ -271,3 +271,81 @@ def test_handle_workflow_create_workflow_not_found(mock_action, mock_context):
     result = handle_workflow_create(mock_action, mock_context)
 
     assert result is False
+
+
+def test_handle_workflow_create_reserved_tag_key_is_hard_error(
+    mock_action, mock_context
+):
+    """A custom tag key that collides with a reserved SMUS tag fails the deploy."""
+    mock_action.parameters = {"tags": {"CostCenter": "1234", "STAGE": "override"}}
+
+    result = handle_workflow_create(mock_action, mock_context)
+
+    # Fails fast, before any workflow is created.
+    assert result is False
+
+
+def test_handle_workflow_create_non_dict_tags_is_hard_error(mock_action, mock_context):
+    """Non-mapping 'tags' value fails the deploy."""
+    mock_action.parameters = {"tags": ["not", "a", "dict"]}
+
+    result = handle_workflow_create(mock_action, mock_context)
+
+    assert result is False
+
+
+def test_handle_workflow_create_merges_custom_tags(mock_action, mock_context):
+    """Custom tags are merged with SMUS-managed tags and passed to create_workflow."""
+    mock_action.parameters = {"tags": {"CostCenter": "1234", "Team": "analytics"}}
+
+    with patch(
+        "smus_cicd.bootstrap.handlers.workflow_create_handler.datazone"
+    ) as mock_dz, patch(
+        "smus_cicd.bootstrap.handlers.workflow_create_handler.create_client"
+    ), patch(
+        "smus_cicd.commands.deploy._find_dag_files_in_s3"
+    ) as mock_find, patch(
+        "smus_cicd.commands.deploy._generate_workflow_name"
+    ) as mock_name, patch(
+        "smus_cicd.helpers.context_resolver.ContextResolver"
+    ) as mock_resolver, patch(
+        "smus_cicd.bootstrap.handlers.workflow_create_handler.airflow_serverless"
+    ) as mock_airflow, patch(
+        "tempfile.NamedTemporaryFile"
+    ), patch(
+        "os.path.exists", return_value=False
+    ), patch(
+        "builtins.open"
+    ):
+
+        mock_dz.get_project_user_role_arn.return_value = "arn:aws:iam::123:role/test"
+        mock_dz.get_tooling_network_and_encryption_config.return_value = {
+            "subnet_ids": [],
+            "security_group_ids": [],
+            "kms_key_id": None,
+        }
+        mock_dz.is_idc_domain.return_value = False
+        mock_find.return_value = [("s3-key.yaml", "test_workflow")]
+        mock_name.return_value = "TestApp_test_project_test_workflow"
+        mock_resolver.return_value.resolve.return_value = "resolved: yaml"
+        mock_airflow.create_workflow.return_value = {
+            "success": True,
+            "workflow_arn": "arn:aws:airflow-serverless:us-east-1:123:workflow/w-abc",
+        }
+        mock_airflow.get_workflow_status.return_value = {
+            "success": True,
+            "status": "READY",
+        }
+
+        result = handle_workflow_create(mock_action, mock_context)
+
+    assert result is True
+    _, kwargs = mock_airflow.create_workflow.call_args
+    tags = kwargs["tags"]
+    # Custom tags present...
+    assert tags["CostCenter"] == "1234"
+    assert tags["Team"] == "analytics"
+    # ...alongside the SMUS-managed tags.
+    assert tags["CreatedBy"] == "SMUS-CICD"
+    assert tags["AmazonDataZoneDomain"] == "domain-123"
+    assert tags["AmazonDataZoneProject"] == "project-123"
