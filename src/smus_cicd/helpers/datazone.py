@@ -1,7 +1,7 @@
 import os
 import time
 from time import sleep
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 """
 DataZone integration functions for SMUS CI/CD CLI.
@@ -175,6 +175,333 @@ def get_project_user_role_arn(project_name: str, domain_name: str, region: str) 
     except Exception as e:
         logger.error(f"Failed to get project user role ARN for {project_name}: {e}")
         raise
+
+
+# Managed Tooling blueprint names that occupy a project's "tooling" slot. A
+# project on Lightning Tooling would otherwise resolve to nothing, so both the
+# GA and Lightning variants are accepted. This mirrors the SMUS UI's
+# CachedProjectEnvironmentsService, which filters to {Tooling.GA,
+# Tooling.Lightning} after listing managed "Tooling" blueprints.
+_TOOLING_BLUEPRINT_NAMES = {"Tooling.GA", "Tooling.Lightning"}
+
+
+def _provisioned_resource_value(env_detail: Dict, name: str) -> Optional[str]:
+    """Return the value of a named entry in an environment's provisionedResources.
+
+    Equivalent to the UI helper:
+        provisionedResources.find(d => d.name === name)?.value
+    """
+    for resource in env_detail.get("provisionedResources", []) or []:
+        if resource.get("name") == name:
+            return resource.get("value")
+    return None
+
+
+def get_default_tooling_environment(
+    project_name: str, domain_id: str, region: str
+) -> Optional[Dict]:
+    """
+    Resolve a project's default Tooling environment (with provisionedResources).
+
+    This follows the same resolution the SageMaker Unified Studio UI uses
+    (MaxDome CachedProjectEnvironmentsService):
+
+      1. List managed environment blueprints named "Tooling" and keep only the
+         Tooling.GA / Tooling.Lightning blueprints.
+      2. For each, list the project's environments filtered by that blueprint id
+         and provider, and pick the default (first ACTIVE, else first) one.
+      3. Fallback: if no managed Tooling environment is found (a custom blueprint
+         occupies the tooling slot), resolve via the project's default IAM
+         connection, whose environmentIdentifier points to the tooling
+         environment.
+
+    The public DataZone list_environments summary does not include
+    provisionedResources, so this always resolves the environment id and then
+    calls get_environment to obtain the full record.
+
+    Args:
+        project_name: Project name
+        domain_id: DataZone domain ID
+        region: AWS region
+
+    Returns:
+        The get_environment response dict for the Tooling environment, or None if
+        it cannot be located.
+    """
+    from .logger import get_logger
+
+    logger = get_logger("datazone")
+
+    try:
+        project_id = get_project_id_by_name(project_name, domain_id, region)
+        if not project_id:
+            logger.warning(
+                f"Could not resolve project id for '{project_name}' when looking "
+                "up Tooling environment"
+            )
+            return None
+
+        datazone_client = _get_datazone_client(region)
+
+        env_id = _resolve_tooling_environment_id(
+            datazone_client, domain_id, project_id, logger
+        )
+        if not env_id:
+            env_id = _resolve_tooling_env_id_via_iam_connection(
+                datazone_client, domain_id, project_id, logger
+            )
+
+        if not env_id:
+            logger.warning(
+                f"Could not resolve a Tooling environment for project "
+                f"'{project_name}' in domain {domain_id}"
+            )
+            return None
+
+        return datazone_client.get_environment(
+            domainIdentifier=domain_id, identifier=env_id
+        )
+
+    except Exception as e:
+        logger.warning(
+            f"Failed to resolve Tooling environment for '{project_name}': {e}"
+        )
+        return None
+
+
+def _resolve_tooling_environment_id(
+    datazone_client, domain_id: str, project_id: str, logger
+) -> Optional[str]:
+    """Resolve the tooling environment id via managed Tooling blueprints."""
+    # Step 1: managed blueprints named "Tooling", filtered to GA/Lightning.
+    blueprints_response = datazone_client.list_environment_blueprints(
+        domainIdentifier=domain_id, managed=True, name="Tooling"
+    )
+    tooling_blueprints = [
+        bp
+        for bp in blueprints_response.get("items", [])
+        if bp.get("name") in _TOOLING_BLUEPRINT_NAMES
+    ]
+
+    if not tooling_blueprints:
+        logger.info(
+            "No managed Tooling.GA/Tooling.Lightning blueprint found; will try "
+            "the IAM connection fallback"
+        )
+        return None
+
+    # Step 2: for each blueprint, list the project's environments and pick the
+    # default one.
+    for blueprint in tooling_blueprints:
+        list_kwargs = {
+            "domainIdentifier": domain_id,
+            "projectIdentifier": project_id,
+            "environmentBlueprintIdentifier": blueprint.get("id"),
+        }
+        provider = blueprint.get("provider")
+        if provider:
+            list_kwargs["provider"] = provider
+
+        environments_response = datazone_client.list_environments(**list_kwargs)
+        environments = environments_response.get("items", [])
+        default_env = _find_default_tooling_environment(environments)
+        if default_env:
+            return default_env.get("id")
+
+    return None
+
+
+def _find_default_tooling_environment(environments: List[Dict]) -> Optional[Dict]:
+    """Pick the default tooling environment from a list.
+
+    Prefers the first ACTIVE environment, falling back to the first environment
+    in the list. Mirrors the UI's findDefaultToolingEnvironment behaviour.
+    """
+    if not environments:
+        return None
+    for env in environments:
+        if env.get("status") == "ACTIVE":
+            return env
+    return environments[0]
+
+
+def _resolve_tooling_env_id_via_iam_connection(
+    datazone_client, domain_id: str, project_id: str, logger
+) -> Optional[str]:
+    """Fallback: resolve the tooling environment id via the default IAM connection.
+
+    The IAM connection is guaranteed to exist in all projects and its
+    environmentIdentifier / iamProperties.environmentId points to the tooling
+    environment. Used when a custom blueprint occupies the tooling slot.
+    """
+    try:
+        connections_response = datazone_client.list_connections(
+            domainIdentifier=domain_id,
+            projectIdentifier=project_id,
+            type="IAM",
+        )
+        for conn in connections_response.get("items", []):
+            env_id = (conn.get("props", {}).get("iamProperties", {}) or {}).get(
+                "environmentId"
+            )
+            env_id = env_id or conn.get("environmentId")
+            if env_id:
+                return env_id
+    except Exception as e:
+        logger.warning(f"IAM connection fallback failed: {e}")
+    return None
+
+
+def _get_domain_scoped_vpc_connection(
+    domain_id: str, region: str, aws_account_id: str, aws_account_region: str
+) -> Optional[Dict]:
+    """Find the domain-scoped VPC connection matching the tooling env's account/region.
+
+    Mirrors the UI "global VPC" branch: list DOMAIN-scoped VPC connections and
+    match on the tooling environment's awsAccountId + awsAccountRegion. Returns
+    the connection's vpcProperties dict, or None if no matching VPC connection
+    exists (in which case the caller falls back to provisionedResources).
+    """
+    from .logger import get_logger
+
+    logger = get_logger("datazone")
+
+    try:
+        datazone_client = _get_datazone_client(region)
+        connections_response = datazone_client.list_connections(
+            domainIdentifier=domain_id, type="VPC", scope="DOMAIN"
+        )
+        for conn in connections_response.get("items", []):
+            for endpoint in conn.get("physicalEndpoints", []) or []:
+                loc = endpoint.get("awsLocation", {}) or {}
+                if (
+                    loc.get("awsAccountId") == aws_account_id
+                    and loc.get("awsRegion") == aws_account_region
+                ):
+                    return conn.get("props", {}).get("vpcProperties")
+        return None
+    except Exception as e:
+        logger.warning(f"Failed to look up domain-scoped VPC connection: {e}")
+        return None
+
+
+def get_tooling_network_and_encryption_config(
+    project_name: str, domain_id: str, region: str
+) -> Dict[str, Any]:
+    """
+    Resolve the VPC (subnets + security groups) and KMS encryption configuration
+    that a project's Tooling blueprint provisions.
+
+    This mirrors what the SageMaker Unified Studio UI does when it creates an
+    MWAA Serverless workflow: the workflow inherits the network and encryption
+    configuration from the project's Tooling blueprint. When the blueprint uses
+    default (service-managed) networking or encryption, the corresponding value
+    is returned as None / empty so the caller can omit it from the create call.
+
+    Resolution order for the VPC config follows the UI:
+      - If a domain-scoped VPC connection matches the tooling environment's
+        account/region ("global VPC" enabled), use its vpcProperties.
+      - Otherwise fall back to the tooling environment's provisionedResources
+        (vpcId / privateSubnets / securityGroup).
+
+    The KMS key always comes from the tooling environment's provisionedResources
+    (kmsKeyArn); when present the workflow uses customer-managed encryption.
+
+    Args:
+        project_name: Project name
+        domain_id: DataZone domain ID
+        region: AWS region
+
+    Returns:
+        Dict with keys:
+          - subnet_ids: List[str] (possibly empty)
+          - security_group_ids: List[str] (possibly empty)
+          - kms_key_id: Optional[str] (None when default encryption is used)
+    """
+    from .logger import get_logger
+
+    logger = get_logger("datazone")
+
+    result: Dict[str, Any] = {
+        "subnet_ids": [],
+        "security_group_ids": [],
+        "kms_key_id": None,
+    }
+
+    env_detail = get_default_tooling_environment(project_name, domain_id, region)
+    if not env_detail:
+        logger.info(
+            "No Tooling environment available; workflow will be created with "
+            "default network and encryption configuration."
+        )
+        return result
+
+    # KMS key: always from provisionedResources (kmsKeyArn). Present => CMK.
+    kms_key_arn = _provisioned_resource_value(env_detail, "kmsKeyArn")
+    if kms_key_arn and str(kms_key_arn).strip():
+        result["kms_key_id"] = str(kms_key_arn).strip()
+
+    # VPC config: prefer a matching domain-scoped VPC connection (global VPC),
+    # else fall back to the tooling environment's provisioned resources.
+    subnet_ids: List[str] = []
+    security_group_id: Optional[str] = None
+
+    vpc_props = _get_domain_scoped_vpc_connection(
+        domain_id,
+        region,
+        env_detail.get("awsAccountId"),
+        env_detail.get("awsAccountRegion"),
+    )
+    if vpc_props:
+        # VPC connection: subnetIds is a real list, securityGroupId a string.
+        subnet_ids = [s for s in (vpc_props.get("subnetIds") or []) if s]
+        security_group_id = vpc_props.get("securityGroupId")
+    else:
+        # provisionedResources: privateSubnets is a comma-separated string.
+        private_subnets = _provisioned_resource_value(env_detail, "privateSubnets")
+        if private_subnets:
+            subnet_ids = [s for s in str(private_subnets).split(",") if s]
+        security_group_id = _provisioned_resource_value(env_detail, "securityGroup")
+
+    result["subnet_ids"] = subnet_ids
+    # MWAA Serverless takes a list of security group ids; the Tooling blueprint
+    # surfaces a single security group (as the UI does: securityGroups: [sg]).
+    result["security_group_ids"] = [security_group_id] if security_group_id else []
+
+    logger.info(
+        "Resolved Tooling config for project '%s': subnets=%s, "
+        "security_groups=%s, kms_key=%s",
+        project_name,
+        result["subnet_ids"],
+        result["security_group_ids"],
+        result["kms_key_id"],
+    )
+    return result
+
+
+def is_idc_domain(domain_id: str, region: str) -> bool:
+    """Return True if the domain uses IAM Identity Center (IdC) auth.
+
+    DataZone get_domain returns a singleSignOn block: IdC-based domains have
+    type == "IAM_IDC" (and an idcInstanceArn), while IAM-based domains report
+    type == "DISABLED" with no IdC instance. Defaults to False (IAM-based) if
+    the domain cannot be inspected, so we never build an IdC-only log group path
+    for an IAM domain.
+    """
+    from .logger import get_logger
+
+    logger = get_logger("datazone")
+    try:
+        datazone_client = _get_datazone_client(region)
+        response = datazone_client.get_domain(identifier=domain_id)
+        sso = response.get("singleSignOn", {}) or {}
+        return sso.get("type") == "IAM_IDC" or bool(sso.get("idcInstanceArn"))
+    except Exception as e:
+        logger.warning(
+            f"Could not determine SSO type for domain {domain_id}; "
+            f"assuming IAM-based: {e}"
+        )
+        return False
 
 
 def get_domain_id_by_name(domain_name, region):

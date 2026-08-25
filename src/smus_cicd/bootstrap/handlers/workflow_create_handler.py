@@ -121,6 +121,52 @@ def handle_workflow_create(
 
     typer.echo(f"🔍 Using execution role for workflows: {role_arn}")
 
+    # Resolve the network (VPC subnets + security groups) and encryption (CMK)
+    # configuration from the target project's Tooling blueprint so that
+    # CI/CD-created workflows inherit the same settings as workflows created
+    # through the SMUS UI. Any value left unset means "use the default", so we
+    # simply omit it from the create call.
+    tooling_config = datazone.get_tooling_network_and_encryption_config(
+        project_name, domain_id, region
+    )
+    subnet_ids = tooling_config.get("subnet_ids") or None
+    security_group_ids = tooling_config.get("security_group_ids") or None
+    kms_key_id = tooling_config.get("kms_key_id")
+
+    if subnet_ids and security_group_ids:
+        typer.echo(
+            f"🔒 Workflows will use Tooling VPC config: subnets={subnet_ids}, "
+            f"security_groups={security_group_ids}"
+        )
+    else:
+        typer.echo(
+            "🔒 No custom VPC config on Tooling blueprint; using default worker VPC"
+        )
+    if kms_key_id:
+        # Encryption is applied only when a workflow is first created; it is
+        # immutable afterwards (UpdateWorkflow has no EncryptionConfiguration).
+        # Avoid implying that already-existing workflows will be re-encrypted.
+        typer.echo(
+            f"🔑 Newly created workflows will use Tooling CMK: {kms_key_id} "
+            f"(existing workflows keep the encryption set at creation)"
+        )
+    else:
+        typer.echo(
+            "🔑 No custom CMK on Tooling blueprint; using default encryption key"
+        )
+
+    # IdC-based domains namespace the workflow CloudWatch log group under
+    # "<domain-id>-<project-id>". IAM-based domains use the service default
+    # naming, so we only set an explicit log group for IdC domains.
+    is_idc = datazone.is_idc_domain(domain_id, region)
+    if is_idc:
+        typer.echo(
+            f"📝 IdC-based domain detected; log groups will be namespaced under "
+            f"{domain_id}-{project_id}"
+        )
+    else:
+        typer.echo("📝 IAM-based domain; using default log group naming")
+
     s3_client = create_client("s3", region=region)
     workflows_created = []
 
@@ -205,6 +251,13 @@ def handle_workflow_create(
             "AmazonDataZoneProject": project_id,
         }
 
+        # For IdC-based domains, build the domain/project-namespaced log group.
+        log_group_name = None
+        if is_idc:
+            log_group_name = (
+                f"/aws/mwaa-serverless/{domain_id}-{project_id}/{workflow_name}"
+            )
+
         # Create workflow using resolved YAML
         typer.echo(f"🔧 Creating workflow '{workflow_name}' with role: {role_arn}")
         result = airflow_serverless.create_workflow(
@@ -214,6 +267,10 @@ def handle_workflow_create(
             description=f"SMUS CI/CD workflow for {manifest.application_name}",
             tags=workflow_tags,
             region=region,
+            security_group_ids=security_group_ids,
+            subnet_ids=subnet_ids,
+            kms_key_id=kms_key_id,
+            log_group_name=log_group_name,
         )
 
         if result.get("success"):

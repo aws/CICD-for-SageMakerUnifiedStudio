@@ -51,6 +51,39 @@ def create_airflow_serverless_client(
     return create_client("mwaa-serverless", region=region, endpoint_url=endpoint_url)
 
 
+def _build_network_configuration(
+    security_group_ids: List[str], subnet_ids: List[str]
+) -> Dict[str, Any]:
+    """Build the MWAA Serverless NetworkConfiguration block.
+
+    Returns an empty dict (falsy) when either subnets or security groups are
+    missing, so the caller omits NetworkConfiguration and the workflow runs in
+    the service default worker VPC.
+    """
+    if security_group_ids and subnet_ids:
+        return {
+            "SecurityGroupIds": list(security_group_ids),
+            "SubnetIds": list(subnet_ids),
+        }
+    return {}
+
+
+def _build_encryption_configuration(kms_key_id: str) -> Dict[str, Any]:
+    """Build the MWAA Serverless EncryptionConfiguration block.
+
+    Returns an empty dict (falsy) when no CMK is provided, so the caller omits
+    EncryptionConfiguration and the workflow uses the default service-managed
+    key. When a key is provided, Type is set to CUSTOMER_MANAGED_KEY as required
+    by the CreateWorkflow API.
+    """
+    if kms_key_id and str(kms_key_id).strip():
+        return {
+            "KmsKeyId": str(kms_key_id).strip(),
+            "Type": "CUSTOMER_MANAGED_KEY",
+        }
+    return {}
+
+
 def create_workflow(
     workflow_name: str,
     dag_s3_location: Dict[str, str],
@@ -61,8 +94,32 @@ def create_workflow(
     region: str = None,
     security_group_ids: List[str] = None,
     subnet_ids: List[str] = None,
+    kms_key_id: str = None,
+    log_group_name: str = None,
 ) -> Dict[str, Any]:
-    """Create a new serverless Airflow workflow."""
+    """Create a new serverless Airflow workflow (idempotent).
+
+    Network, encryption, and logging configuration mirror what the SageMaker
+    Unified Studio UI does: a newly created workflow inherits the project's
+    Tooling blueprint VPC and CMK, and (for IdC-based domains) a
+    domain/project-namespaced log group.
+
+      - ``security_group_ids``/``subnet_ids``: when both are provided, the
+        workflow is created in that VPC; otherwise it uses the MWAA Serverless
+        default worker VPC.
+      - ``kms_key_id``: when provided, the workflow is created with that CMK;
+        otherwise MWAA Serverless uses its default service-managed key.
+      - ``log_group_name``: when provided, sets an explicit CloudWatch log group
+        (``/aws/mwaa-serverless/<domain-id>-<project-id>/<workflow-name>`` for
+        IdC domains); otherwise the service default naming is used.
+
+    If the workflow already exists, this function updates it instead of
+    creating it. On update, network and logging configuration are re-applied
+    (both are mutable via UpdateWorkflow, so an existing workflow converges
+    toward the project's Tooling blueprint), but encryption is not: a workflow's
+    CMK is fixed at creation and UpdateWorkflow has no EncryptionConfiguration
+    field. To change encryption on an existing workflow, delete and recreate it.
+    """
     logger = get_logger("airflow_serverless")
 
     try:
@@ -85,15 +142,32 @@ def create_workflow(
             "RoleArn": role_arn,
         }
 
-        # Network configuration - commented out for now
-        if security_group_ids and subnet_ids:
-            params["NetworkConfiguration"] = {
-                "SecurityGroupIds": security_group_ids,
-                "SubnetIds": subnet_ids,
-            }
+        # Network configuration - inherited from the project's Tooling blueprint.
+        # Only set when both subnets and security groups are available; otherwise
+        # the service default worker VPC is used.
+        network_configuration = _build_network_configuration(
+            security_group_ids, subnet_ids
+        )
+        if network_configuration:
+            params["NetworkConfiguration"] = network_configuration
         logger.debug(
             f"Network configuration: SecurityGroups={security_group_ids}, Subnets={subnet_ids}"
         )
+
+        # Encryption configuration - inherited from the project's Tooling
+        # blueprint CMK. Omitted when the blueprint uses default encryption.
+        encryption_configuration = _build_encryption_configuration(kms_key_id)
+        if encryption_configuration:
+            params["EncryptionConfiguration"] = encryption_configuration
+        logger.debug(f"Encryption configuration: KmsKeyId={kms_key_id}")
+
+        # Logging configuration - IdC-based domains namespace the log group under
+        # <domain-id>-<project-id>. Omitted for IAM-based domains (service default).
+        if log_group_name and str(log_group_name).strip():
+            params["LoggingConfiguration"] = {
+                "LogGroupName": str(log_group_name).strip()
+            }
+        logger.debug(f"Logging configuration: LogGroupName={log_group_name}")
 
         if description:
             params["Description"] = description
@@ -167,6 +241,36 @@ def create_workflow(
                     },
                     "RoleArn": role_arn,
                 }
+
+                # Keep network + logging config in sync on update so an existing
+                # workflow converges toward the project's Tooling blueprint
+                # settings. Both are mutable via UpdateWorkflow and each update
+                # creates a new workflow version (history is preserved).
+                #
+                # Encryption (CMK) is the exception: UpdateWorkflow has no
+                # EncryptionConfiguration field - a workflow's key is fixed at
+                # creation and cannot be changed by an update. We therefore never
+                # send EncryptionConfiguration here (doing so would make the API
+                # reject the whole update with a ValidationException). To change
+                # encryption on an existing workflow, it must be recreated.
+                network_configuration = _build_network_configuration(
+                    security_group_ids, subnet_ids
+                )
+                if network_configuration:
+                    update_params["NetworkConfiguration"] = network_configuration
+
+                if log_group_name and str(log_group_name).strip():
+                    update_params["LoggingConfiguration"] = {
+                        "LogGroupName": str(log_group_name).strip()
+                    }
+
+                if kms_key_id:
+                    logger.info(
+                        "Workflow %s already exists; encryption is fixed at "
+                        "creation and left unchanged on update. (Recreate the "
+                        "workflow if a different CMK is required.)",
+                        workflow_name,
+                    )
 
                 if description:
                     update_params["Description"] = description
