@@ -313,3 +313,66 @@ class TestFindingMetadata:
         assert findings[0].details is not None
         assert findings[0].details["type"] == "unknown.action"
         assert findings[0].details["parameters"] == {"foo": "bar"}
+
+
+# ---------------------------------------------------------------------------
+# workflow.create custom tag validation
+# ---------------------------------------------------------------------------
+
+
+class TestWorkflowCreateTagValidation:
+    def test_reserved_tag_collision_produces_error(self, checker):
+        action = _FakeAction(
+            type="workflow.create",
+            parameters={"tags": {"CostCenter": "1234", "STAGE": "override"}},
+        )
+        ctx = _make_context(
+            target=_FakeTarget(bootstrap=_FakeBootstrap(actions=[action]))
+        )
+        findings = checker.check(ctx)
+
+        errors = [f for f in findings if f.severity == Severity.ERROR]
+        assert len(errors) == 1
+        assert "reserved" in errors[0].message
+        assert "STAGE" in errors[0].message
+
+    def test_non_dict_tags_produces_error(self, checker):
+        action = _FakeAction(
+            type="workflow.create",
+            parameters={"tags": ["not", "a", "dict"]},
+        )
+        ctx = _make_context(
+            target=_FakeTarget(bootstrap=_FakeBootstrap(actions=[action]))
+        )
+        findings = checker.check(ctx)
+
+        errors = [f for f in findings if f.severity == Severity.ERROR]
+        assert len(errors) == 1
+        assert "must be a mapping" in errors[0].message
+
+    def test_valid_custom_tags_produce_no_error(self, checker):
+        action = _FakeAction(
+            type="workflow.create",
+            parameters={"tags": {"CostCenter": "1234", "Team": "analytics"}},
+        )
+        ctx = _make_context(
+            target=_FakeTarget(bootstrap=_FakeBootstrap(actions=[action]))
+        )
+        findings = checker.check(ctx)
+
+        # Only the normal OK "action would run" finding, no ERROR findings.
+        assert not [f for f in findings if f.severity == Severity.ERROR]
+        assert any(f.severity == Severity.OK for f in findings)
+
+    def test_tag_validation_only_applies_to_workflow_create(self, checker):
+        # A reserved-looking key on a different action type is not our concern.
+        action = _FakeAction(
+            type="workflow.run",
+            parameters={"tags": {"STAGE": "whatever"}},
+        )
+        ctx = _make_context(
+            target=_FakeTarget(bootstrap=_FakeBootstrap(actions=[action]))
+        )
+        findings = checker.check(ctx)
+
+        assert not [f for f in findings if f.severity == Severity.ERROR]
