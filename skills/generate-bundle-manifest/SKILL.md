@@ -43,11 +43,38 @@ This skill is READ-ONLY: it discovers project resources and presents generated c
 
 ### Step 1: Discover Project Resources (read-only)
 
-Skip if the user already specified exactly what to include. Use your agent's AWS access (e.g. the AWS CLI or an equivalent capability) to discover, scoping every call to the project's domain and project. Obtain the `domainId`/`projectId` from the user, or resolve them by listing (`aws datazone list-domains`, `aws datazone list-projects`).
+Skip if the user already specified exactly what to include. Use your agent's AWS access (the AWS CLI or an equivalent capability) for all discovery. Run the steps in order — step 2 needs the S3 URI resolved in step 1. Do not invent resource or connection names; use only what these calls return.
 
-1. **Connections** — `aws datazone list-connections --domain-identifier <id> --project-identifier <id>`. Reveals S3, Glue, Athena, MWAA, MLflow, Redshift, EMR. See the connections doc linked in References.
-2. **Storage structure** — `aws s3 ls` (or `list-objects-v2` with delimiter `/`) on the shared S3 connection to find prefixes/file types: `src/` (`.py`), `workflows/` (`.yaml`), `data/`, `models/`, `notebooks/` (`.ipynb`).
-3. **MWAA Serverless workflows** — list workflows and post-filter by project tag `AmazonDataZoneProject`.
+First, resolve the domain and project IDs. Ask the user, or list them:
+
+```bash
+aws datazone list-domains
+aws datazone list-projects --domain-identifier <domainId>
+```
+
+**1. Connections (do this first — it yields the S3 location for step 2).**
+
+```bash
+aws datazone list-connections --domain-identifier <domainId> --project-identifier <projectId>
+```
+
+The response lists the project's connections and their types (S3, Glue/SPARK, ATHENA, WORKFLOWS_MWAA, WORKFLOWS_SERVERLESS, MLFLOW, REDSHIFT, EMR). Record each connection NAME (e.g. `default.s3_shared`, `default.workflow_serverless`) — these are the values that go into the manifest's `connectionName` fields. For the shared S3 connection, read its S3 URI from `props.s3Properties.s3Uri` (the bucket is that URI with `s3://` stripped and everything after the first `/` removed). You need this URI for step 2.
+
+**2. Storage structure (uses the S3 URI from step 1).** List the shared S3 location to find top-level prefixes and the file types in each:
+
+```bash
+aws s3 ls <s3Uri-from-step-1>/ --recursive
+```
+
+Classify what you find: `.py` under `src/`, `src/glue-jobs/`, or `jobs/` → Glue/code; `.yaml` under `workflows/` → workflow DAGs; `.ipynb` under `notebooks/` → notebooks; `data/`, `models/` → data/model artifacts.
+
+**3. MWAA Serverless workflows** (only if the project has a `WORKFLOWS_SERVERLESS` connection):
+
+```bash
+aws mwaa-serverless list-workflows
+```
+
+`list-workflows` has no tag filter, so post-filter the results by the project tag `AmazonDataZoneProject` client-side.
 
 Not discoverable this way (manifest-only): git repos, environment variables, IAM role policies, EventBridge events, workflow schedules (a DAG YAML field), QuickSight dashboards.
 
