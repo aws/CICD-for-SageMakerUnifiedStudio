@@ -79,7 +79,7 @@ graphql-core==3.2.8
 graphql-relay==3.2.0
 greenlet==3.2.4
 griffe==1.15.0
-grpcio==1.76.0
+grpcio==1.83.0
 grpcio-status==1.76.0
 gunicorn==25.3.0
 h11==0.16.0
