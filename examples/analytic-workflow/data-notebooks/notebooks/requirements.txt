@@ -193,7 +193,7 @@ polars==1.40.0
 polars-runtime-32==1.35.2
 pox==0.3.6
 ppft==1.7.8
-prance==25.4.8.0
+prance==26.7.19.0
 prompt-toolkit==3.0.52
 propcache==0.4.1
 proto-plus==1.26.1
