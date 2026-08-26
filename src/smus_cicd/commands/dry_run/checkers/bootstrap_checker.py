@@ -20,6 +20,9 @@ import logging
 from typing import List
 
 from smus_cicd.bootstrap.action_registry import registry
+from smus_cicd.bootstrap.handlers.workflow_create_handler import (
+    RESERVED_WORKFLOW_TAG_KEYS,
+)
 from smus_cicd.commands.dry_run.models import DryRunContext, Finding, Severity
 
 logger = logging.getLogger(__name__)
@@ -47,6 +50,10 @@ class BootstrapChecker:
         for action in actions:
             action_type = getattr(action, "type", str(action))
             parameters = getattr(action, "parameters", {}) or {}
+
+            # Validate custom workflow tags up front so a bad manifest fails the
+            # dry-run (and pre-deployment validation) rather than at deploy time.
+            findings.extend(self._check_workflow_create_tags(action_type, parameters))
 
             # Check whether the action type has a registered handler
             has_handler = self._has_handler(action_type)
@@ -92,6 +99,59 @@ class BootstrapChecker:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _check_workflow_create_tags(
+        action_type: str, parameters: dict
+    ) -> List[Finding]:
+        """Validate custom tags on a workflow.create action.
+
+        Mirrors the deploy-time enforcement in handle_workflow_create: custom
+        tag keys must not collide with the reserved SMUS-managed tags, and the
+        tags value must be a mapping. Returns ERROR findings for violations, or
+        an empty list when the action is not workflow.create or its tags are OK.
+        """
+        if action_type != "workflow.create":
+            return []
+
+        tags = parameters.get("tags")
+        if not tags:
+            return []
+
+        if not isinstance(tags, dict):
+            return [
+                Finding(
+                    severity=Severity.ERROR,
+                    message=(
+                        "workflow.create 'tags' must be a mapping of string keys "
+                        "to string values"
+                    ),
+                    resource=action_type,
+                    service="bootstrap",
+                    details={"type": action_type, "tags": tags},
+                )
+            ]
+
+        reserved_collisions = sorted(set(tags) & RESERVED_WORKFLOW_TAG_KEYS)
+        if reserved_collisions:
+            return [
+                Finding(
+                    severity=Severity.ERROR,
+                    message=(
+                        f"Custom workflow tag key(s) {reserved_collisions} are "
+                        "reserved by SMUS CI/CD and cannot be overridden. Rename "
+                        "or remove them in the workflow.create action's 'tags'."
+                    ),
+                    resource=action_type,
+                    service="bootstrap",
+                    details={
+                        "type": action_type,
+                        "reserved_collisions": reserved_collisions,
+                    },
+                )
+            ]
+
+        return []
 
     @staticmethod
     def _has_handler(action_type: str) -> bool:

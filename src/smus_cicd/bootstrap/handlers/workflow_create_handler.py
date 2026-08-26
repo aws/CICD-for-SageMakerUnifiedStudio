@@ -11,6 +11,21 @@ from ...helpers.boto3_client import create_client
 from ...helpers.bundle_storage import ensure_bundle_local
 from ..models import BootstrapAction
 
+# Tags that SMUS CI/CD manages on every workflow it creates. Custom tags
+# supplied via the workflow.create action must not collide with these - the
+# DataZone tags in particular carry functional meaning (project/domain
+# association), so a collision is treated as a manifest error.
+RESERVED_WORKFLOW_TAG_KEYS = frozenset(
+    {
+        "Pipeline",
+        "Target",
+        "STAGE",
+        "CreatedBy",
+        "AmazonDataZoneDomain",
+        "AmazonDataZoneProject",
+    }
+)
+
 
 def handle_workflow_create(
     action: BootstrapAction,
@@ -21,6 +36,10 @@ def handle_workflow_create(
 
     Properties:
     - workflowName (optional): Specific workflow to create, omit to create all
+    - tags (optional): Custom {key: value} tags applied to every workflow this
+      action creates, in addition to the SMUS-managed tags. Keys must not
+      collide with the reserved SMUS tag keys (see RESERVED_WORKFLOW_TAG_KEYS);
+      a collision fails the deploy with a clear error.
 
     Args:
         action: Bootstrap action configuration (BootstrapAction object)
@@ -36,6 +55,26 @@ def handle_workflow_create(
     metadata = context.get("metadata", {})
 
     workflow_name_filter = action.parameters.get("workflowName")
+
+    # Custom tags for the workflows this action creates. Reject up front (before
+    # creating anything) if any key collides with a reserved SMUS-managed tag.
+    custom_tags = action.parameters.get("tags") or {}
+    if custom_tags:
+        if not isinstance(custom_tags, dict):
+            typer.echo(
+                "❌ workflow.create 'tags' must be a mapping of string keys to "
+                "string values"
+            )
+            return False
+        reserved_collisions = sorted(set(custom_tags) & RESERVED_WORKFLOW_TAG_KEYS)
+        if reserved_collisions:
+            typer.echo(
+                "❌ Custom workflow tag key(s) "
+                f"{reserved_collisions} are reserved by SMUS CI/CD and cannot be "
+                "overridden. Please rename or remove them in the workflow.create "
+                "action's 'tags'."
+            )
+            return False
 
     # Get workflows from manifest
     if not hasattr(manifest.content, "workflows") or not manifest.content.workflows:
@@ -121,6 +160,52 @@ def handle_workflow_create(
 
     typer.echo(f"🔍 Using execution role for workflows: {role_arn}")
 
+    # Resolve the network (VPC subnets + security groups) and encryption (CMK)
+    # configuration from the target project's Tooling blueprint so that
+    # CI/CD-created workflows inherit the same settings as workflows created
+    # through the SMUS UI. Any value left unset means "use the default", so we
+    # simply omit it from the create call.
+    tooling_config = datazone.get_tooling_network_and_encryption_config(
+        project_name, domain_id, region
+    )
+    subnet_ids = tooling_config.get("subnet_ids") or None
+    security_group_ids = tooling_config.get("security_group_ids") or None
+    kms_key_id = tooling_config.get("kms_key_id")
+
+    if subnet_ids and security_group_ids:
+        typer.echo(
+            f"🔒 Workflows will use Tooling VPC config: subnets={subnet_ids}, "
+            f"security_groups={security_group_ids}"
+        )
+    else:
+        typer.echo(
+            "🔒 No custom VPC config on Tooling blueprint; using default worker VPC"
+        )
+    if kms_key_id:
+        # Encryption is applied only when a workflow is first created; it is
+        # immutable afterwards (UpdateWorkflow has no EncryptionConfiguration).
+        # Avoid implying that already-existing workflows will be re-encrypted.
+        typer.echo(
+            f"🔑 Newly created workflows will use Tooling CMK: {kms_key_id} "
+            f"(existing workflows keep the encryption set at creation)"
+        )
+    else:
+        typer.echo(
+            "🔑 No custom CMK on Tooling blueprint; using default encryption key"
+        )
+
+    # IdC-based domains namespace the workflow CloudWatch log group under
+    # "<domain-id>-<project-id>". IAM-based domains use the service default
+    # naming, so we only set an explicit log group for IdC domains.
+    is_idc = datazone.is_idc_domain(domain_id, region)
+    if is_idc:
+        typer.echo(
+            f"📝 IdC-based domain detected; log groups will be namespaced under "
+            f"{domain_id}-{project_id}"
+        )
+    else:
+        typer.echo("📝 IAM-based domain; using default log group naming")
+
     s3_client = create_client("s3", region=region)
     workflows_created = []
 
@@ -195,15 +280,27 @@ def handle_workflow_create(
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
 
-        # Build the canonical tag set for this workflow - used for both creation and recovery
-        workflow_tags = {
-            "Pipeline": manifest.application_name,
-            "Target": target_config.project.name,
-            "STAGE": stage_name.upper(),
-            "CreatedBy": "SMUS-CICD",
-            "AmazonDataZoneDomain": domain_id,
-            "AmazonDataZoneProject": project_id,
-        }
+        # Build the canonical tag set for this workflow - used for both creation
+        # and recovery. Custom tags go first; SMUS-managed tags are applied on
+        # top so they always win (collisions were already rejected above).
+        workflow_tags = dict(custom_tags)
+        workflow_tags.update(
+            {
+                "Pipeline": manifest.application_name,
+                "Target": target_config.project.name,
+                "STAGE": stage_name.upper(),
+                "CreatedBy": "SMUS-CICD",
+                "AmazonDataZoneDomain": domain_id,
+                "AmazonDataZoneProject": project_id,
+            }
+        )
+
+        # For IdC-based domains, build the domain/project-namespaced log group.
+        log_group_name = None
+        if is_idc:
+            log_group_name = (
+                f"/aws/mwaa-serverless/{domain_id}-{project_id}/{workflow_name}"
+            )
 
         # Create workflow using resolved YAML
         typer.echo(f"🔧 Creating workflow '{workflow_name}' with role: {role_arn}")
@@ -214,6 +311,10 @@ def handle_workflow_create(
             description=f"SMUS CI/CD workflow for {manifest.application_name}",
             tags=workflow_tags,
             region=region,
+            security_group_ids=security_group_ids,
+            subnet_ids=subnet_ids,
+            kms_key_id=kms_key_id,
+            log_group_name=log_group_name,
         )
 
         if result.get("success"):

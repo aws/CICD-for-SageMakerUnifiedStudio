@@ -200,7 +200,9 @@ bootstrap:
         try:
             is_valid, errors, data = validate_manifest_file(manifest_file)
             assert not is_valid
-            assert any("is not one of" in error or "InvalidEngine" in error for error in errors)
+            assert any(
+                "is not one of" in error or "InvalidEngine" in error for error in errors
+            )
         finally:
             os.unlink(manifest_file)
 
@@ -262,7 +264,10 @@ stages:
         try:
             is_valid, errors, data = validate_manifest_file(manifest_file)
             assert not is_valid
-            assert any("Additional properties are not allowed" in error and "'domain'" in error for error in errors)
+            assert any(
+                "Additional properties are not allowed" in error and "'domain'" in error
+                for error in errors
+            )
         finally:
             os.unlink(manifest_file)
 
@@ -342,9 +347,11 @@ stages: {}
             error_message = str(exc_info.value)
             assert "Manifest validation failed" in error_message
             # Check for either pattern error or other validation errors
-            assert ("does not match" in error_message or 
-                    "should be non-empty" in error_message or
-                    "Additional properties" in error_message)
+            assert (
+                "does not match" in error_message
+                or "should be non-empty" in error_message
+                or "Additional properties" in error_message
+            )
         finally:
             os.unlink(manifest_file)
 
@@ -373,3 +380,33 @@ stages:
         finally:
             os.unlink(manifest_file)
 
+    def test_workflow_create_action_accepts_tags(self):
+        """Schema accepts a 'tags' map on a workflow.create bootstrap action."""
+        manifest_with_tags = """
+applicationName: TestPipeline
+content:
+  workflows:
+  - workflowName: my_workflow
+    connectionName: default.workflow_serverless
+stages:
+  dev:
+    domain:
+      name: test-domain
+      region: us-east-1
+    stage: DEV
+    project:
+      name: dev-project
+    bootstrap:
+      actions:
+      - type: workflow.create
+        workflowName: my_workflow
+        tags:
+          CostCenter: "1234"
+          Team: analytics
+"""
+        manifest_file = self.create_temp_manifest(manifest_with_tags)
+        try:
+            manifest = ApplicationManifest.from_file(manifest_file)
+            assert manifest.application_name == "TestPipeline"
+        finally:
+            os.unlink(manifest_file)
