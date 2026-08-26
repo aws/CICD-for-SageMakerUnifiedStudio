@@ -227,7 +227,7 @@ pyspark==3.5.7
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
 python-lsp-jsonrpc==1.1.2
-python-lsp-server==1.14.0
+python-lsp-server==1.15.0
 python-multipart==0.0.31
 pytokens==0.4.1
 pytz==2025.2
