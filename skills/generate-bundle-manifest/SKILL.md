@@ -21,10 +21,10 @@ This skill is READ-ONLY: it discovers project resources and presents generated c
 
 - READ-ONLY: You MUST NOT write, upload, create, or modify any files anywhere. You only read (discovery) and present generated content in the chat; the user saves and edits it.
 - Auto-discover and generate defaults ONLY when the user gives no configuration. If the user specifies resources, stages, or domain/project details, use exactly what they provide and do not add auto-discovered extras.
-- You MUST use `{proj.connection.<name>.<property>}` substitution in generated workflow YAMLs. You MUST NOT hardcode S3 bucket names, IAM role ARNs, or regions. See docs/substitutions-and-variables.md.
+- You MUST use `{proj.connection.<name>.<property>}` substitution in generated workflow YAMLs. You MUST NOT hardcode S3 bucket names, IAM role ARNs, or regions. See the substitutions doc (link in References).
 - All projects referenced in the manifest MUST be pre-created by the user in each target environment before deploy. There is no `create` field; the CLI does not create projects.
 - You MUST include `workflow.create` in bootstrap actions for any deploy-target stage that has workflows.
-- You MUST follow the manifest schema in docs/manifest-schema.md (field names, types, required properties) as the source of truth.
+- You MUST follow the manifest schema (field names, types, required properties) as the source of truth — see the manifest schema doc linked in References.
 - You MUST validate that every `connectionName` in `content.storage`, `content.workflows`, and `deployment_configuration.storage` exists in the discovered connections.
 - You MUST add this exact exclude list to EVERY storage content item: `[".ipynb_checkpoints/", "__pycache__/", "*.pyc", ".libs.json"]`. When a storage item's `include` pattern would match the manifest itself (any `include` containing `*`, `*.yaml`, or the manifest's directory), you MUST also add `manifest.yaml` to that item's exclude list. Always append such extra excludes in addition to — never instead of — the four required patterns.
 - You MUST write `targetDirectory` values WITHOUT a trailing slash (`jobs`, not `jobs/`); the CLI appends the separator, so a trailing slash yields a malformed `//` path. Use `.` for the connection root.
@@ -45,7 +45,7 @@ This skill is READ-ONLY: it discovers project resources and presents generated c
 
 Skip if the user already specified exactly what to include. Use your agent's AWS access (e.g. the AWS CLI or an equivalent capability) to discover, scoping every call to the project's domain and project. Obtain the `domainId`/`projectId` from the user, or resolve them by listing (`aws datazone list-domains`, `aws datazone list-projects`).
 
-1. **Connections** — `aws datazone list-connections --domain-identifier <id> --project-identifier <id>`. Reveals S3, Glue, Athena, MWAA, MLflow, Redshift, EMR. See docs/connections.md.
+1. **Connections** — `aws datazone list-connections --domain-identifier <id> --project-identifier <id>`. Reveals S3, Glue, Athena, MWAA, MLflow, Redshift, EMR. See the connections doc linked in References.
 2. **Storage structure** — `aws s3 ls` (or `list-objects-v2` with delimiter `/`) on the shared S3 connection to find prefixes/file types: `src/` (`.py`), `workflows/` (`.yaml`), `data/`, `models/`, `notebooks/` (`.ipynb`).
 3. **MWAA Serverless workflows** — list workflows and post-filter by project tag `AmazonDataZoneProject`.
 
@@ -87,7 +87,7 @@ For each stage set: `domain` (dev: real ID/name; test/prod: `${STAGE_DOMAIN_NAME
 - Add ONE `workflow.create` (no `workflowName`) — it creates ALL workflows listed in `content.workflows[]`. Do not list names again or add one action per workflow.
 - Add `workflow.run` ONLY for a generated orchestration workflow (its Glue jobs are created by running it). Pre-existing replicated workflows get created but not run.
 
-See docs/bootstrap-actions.md for the full action catalog and ordering.
+See the bootstrap actions doc (linked in References) for the full action catalog and ordering.
 
 #### Workflow declaration (two entries, not duplication)
 
@@ -126,14 +126,14 @@ Generate an orchestration workflow when: (a) unreferenced Glue/VETL scripts exis
 Glue job replication: `GlueJobOperator` with `update_config: true` and `create_job_kwargs` creates-or-updates AND runs the job in one operation (`script_location` points to the deployed S3 path) — there is no separate create-job call, which is why generated Glue workflows MUST include `workflow.run`.
 
 When you generate a workflow, produce the actual DAG YAML in the response (do not just offer to). Default to MWAA Serverless YAML unless the user asks for provisioned (Python DAG). Use `{proj.connection.default.s3_shared.s3Uri}`, `{proj.iam_role_name}`, `{domain.region}` for substitution. For operator names, parameters, and DAG-authoring rules, consult:
-- docs/airflow-aws-operators.md — the AWS operators/sensors available in SMUS workflows
+- The AWS operators/sensors available in SMUS workflows — https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-aws-operators.md
 - MWAA Serverless user guide — https://docs.aws.amazon.com/mwaa/latest/mwaa-serverless-userguide/what-is-mwaa-serverless.html
 
 Orchestration-workflow correctness is best-effort; the essential deliverable is a clean, valid manifest.
 
 ### Step 6: Present Output (no writes)
 
-Present `manifest.yaml` in a fenced YAML block, and any orchestration workflow in a separate block. Validate structure against docs/manifest-schema.md. Tell the user to save `manifest.yaml` to their working directory and the workflow under `workflows/`, and to review the `${VAR}` placeholders and defaults (project names, regions, target directories, schedules). Then present the CLI commands:
+Present `manifest.yaml` in a fenced YAML block, and any orchestration workflow in a separate block. Validate structure against the manifest schema doc (linked in References). Tell the user to save `manifest.yaml` to their working directory and the workflow under `workflows/`, and to review the `${VAR}` placeholders and defaults (project names, regions, target directories, schedules). Then present the CLI commands:
 
 ```bash
 aws-smus-cicd-cli describe --manifest manifest.yaml --connect
@@ -150,13 +150,13 @@ Bundled with this skill:
 - references/example-manifests.md — complete working manifests (DataOps, MLOps, analytics, minimal)
 
 In the SMUS CI/CD repo docs (authoritative source of truth):
-- docs/manifest.md and docs/manifest-schema.md — manifest fields and schema
-- docs/substitutions-and-variables.md — `${VAR}` and `{proj.*}` substitution syntax
-- docs/bootstrap-actions.md — bootstrap action catalog and ordering
-- docs/connections.md — connection types
-- docs/cli-commands.md — CLI reference
-- docs/airflow-aws-operators.md — Airflow AWS operators for orchestration workflows
-- docs/github-actions-integration.md — GitHub Actions CI/CD integration
+- Manifest fields and schema — https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest.md and https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest-schema.md
+- `${VAR}` and `{proj.*}` substitution syntax — https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/substitutions-and-variables.md
+- Bootstrap action catalog and ordering — https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/bootstrap-actions.md
+- Connection types — https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/connections.md
+- CLI reference — https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/cli-commands.md
+- Airflow AWS operators for orchestration workflows — https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-aws-operators.md
+- GitHub Actions CI/CD integration — https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-actions-integration.md
 - Full docs: https://github.com/aws/CICD-for-SageMakerUnifiedStudio
 
 ## Common Mistakes
