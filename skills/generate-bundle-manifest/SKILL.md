@@ -68,7 +68,7 @@ aws s3 ls <s3Uri-from-step-1>/ --recursive
 
 Classify what you find: `.py` under `src/`, `src/glue-jobs/`, or `jobs/` → Glue/code; `.yaml` under `workflows/` → workflow DAGs; `.ipynb` under `notebooks/` → notebooks; `data/`, `models/` → data/model artifacts.
 
-**3. MWAA Serverless workflows** (only if the project has a `WORKFLOWS_SERVERLESS` connection):
+**3. MWAA Serverless workflows*:
 
 ```bash
 aws mwaa-serverless list-workflows
@@ -103,8 +103,6 @@ Then report: what was discovered/included, stages configured, which `${VAR}` pla
 | Each discovered/generated workflow | one `content.workflows[]` entry |
 | Catalog (only if user opts in) | `content.catalog.enabled: true` |
 | QuickSight / Git (user-specified) | `content.quicksight[]` / `content.git[]` |
-
-`.ipynb` files co-located with a DAG in `workflows/` run via `SageMakerNotebookOperator` inside that DAG — keep them in the workflows storage item. Standalone `.ipynb` files (no DAG) are just replicated, no workflow needed. For SageMaker script-mode code (`sagemaker_submit_directory`), set `compression: tar.gz` on the deployment_configuration storage item.
 
 ### Step 4: Deployment Configuration per Stage
 
@@ -148,7 +146,7 @@ Before generating, check whether each Glue script is already referenced: read ea
 - If every Glue script is already referenced → do NOT generate a workflow; just include the scripts in a storage item.
 - Otherwise → generate exactly ONE orchestration workflow containing a `GlueJobOperator` task for each UNREFERENCED script (never one workflow per script), register it in `content.workflows[]`, and add a `workflow.run` action.
 
-Generate an orchestration workflow when: (a) unreferenced Glue/VETL scripts exist, (b) the user explicitly asks for a post-deployment workflow, or (c) multiple `.ipynb` files exist in S3 that the user has indicated must run in a defined order.
+Generate an orchestration workflow when: (a) unreferenced Glue/VETL scripts exist or (b) the user explicitly asks for a post-deployment workflow.
 
 Glue job replication: `GlueJobOperator` with `update_config: true` and `create_job_kwargs` creates-or-updates AND runs the job in one operation (`script_location` points to the deployed S3 path) — there is no separate create-job call, which is why generated Glue workflows MUST include `workflow.run`.
 
