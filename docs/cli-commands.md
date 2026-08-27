@@ -263,9 +263,14 @@ Deploys bundle files to target environments (auto-initializes if needed). The de
    - Waits for subscription approval (up to 5 minutes)
    - Verifies subscription grants are completed
    - Fails deployment if catalog access cannot be obtained
-3. **Workflow Validation**: Ensures deployed workflows are accessible by the target environment
-4. **Bootstrap Actions**: Executes post-deployment actions defined in the manifest (if configured) — see [Bootstrap Actions](bootstrap-actions.md)
-5. **Deployment Metrics**: Optionally emits deployment lifecycle events to EventBridge — see [Bundle Deployment Metrics](pipeline-deployment-metrics.md)
+3. **Notebook Sync**: Syncs notebooks from the bundle into the target project:
+   - Uploads .ipynb files to the target project's S3 shared bucket
+   - Calls StartNotebookSync to create or update notebooks
+   - Applies metadata, parameters, and environment configuration via UpdateNotebook
+   - Tracks source-to-target mapping for idempotent updates
+4. **Workflow Validation**: Ensures deployed workflows are accessible by the target environment
+5. **Bootstrap Actions**: Executes post-deployment actions defined in the manifest (if configured) — see [Bootstrap Actions](bootstrap-actions.md)
+6. **Deployment Metrics**: Optionally emits deployment lifecycle events to EventBridge — see [Bundle Deployment Metrics](pipeline-deployment-metrics.md)
 
 ```bash
 aws-smus-cicd-cli deploy [OPTIONS] [TARGET_POSITIONAL]
@@ -318,7 +323,7 @@ Use `--dry-run` to preview a deployment without creating, modifying, or deleting
 > **Note:** The dry run is a best-effort validation. A passing dry run significantly reduces the risk of deployment failure but does not guarantee success. Conditions such as transient AWS service errors, IAM policy changes between validation and deployment, concurrent resource modifications, eventual consistency delays, and service quota limits may cause a deployment to fail even after a clean dry-run report.
 
 1. **Manifest Validation** — Loads and validates the manifest YAML, resolves the target stage, builds domain configuration, checks environment variable references
-2. **Bundle Exploration** — Opens the bundle archive, enumerates files, validates catalog export data if present
+2. **Bundle Exploration** — Opens the bundle archive, enumerates files, validates catalog export data and notebook manifest if present
 3. **Permission Verification** — Uses `iam:SimulatePrincipalPolicy` to check that the current IAM identity has all required permissions (S3, DataZone, Glue, IAM, QuickSight, Airflow, etc.). Also checks DataZone policy grants on the project's domain unit when catalog resources are present.
 4. **Connectivity & Reachability** — Verifies that the DataZone domain and project are reachable, S3 buckets are accessible, and Airflow environments respond
 5. **Project Initialization** — Checks whether the target project exists or would need to be created

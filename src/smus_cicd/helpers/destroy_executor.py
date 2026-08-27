@@ -490,6 +490,88 @@ def _destroy_stage(
                 )
 
     # -----------------------------------------------------------------------
+    # Step f.5: Delete notebooks (CI/CD-managed only, identified by metadata)
+    # -----------------------------------------------------------------------
+    for resource in validation_result.resources:
+        if resource.resource_type != "notebook":
+            continue
+        notebook_id = resource.resource_id
+        domain_id_nb = resource.metadata.get("domain_id", "")
+        resource_name = resource.metadata.get("name", notebook_id)
+        source_id = resource.metadata.get("source_notebook_id", "")
+
+        if not domain_id_nb:
+            _log(
+                f"  [yellow]⚠️  Skipping notebook '{resource_name}' — missing domain ID[/yellow]"
+            )
+            results.append(
+                ResourceResult(
+                    resource_type="notebook",
+                    resource_id=notebook_id,
+                    status="skipped",
+                    message="Missing domain ID",
+                )
+            )
+            continue
+
+        try:
+            dz_client = create_client("datazone", region=effective_region)
+            dz_client.delete_notebook(
+                domainIdentifier=domain_id_nb,
+                identifier=notebook_id,
+            )
+            _log(
+                f"  ✅ Deleted notebook: {resource_name} ({notebook_id})"
+                + (f" [source: {source_id}]" if source_id else "")
+            )
+            results.append(
+                ResourceResult(
+                    resource_type="notebook",
+                    resource_id=notebook_id,
+                    status="deleted",
+                    message="Deleted successfully",
+                )
+            )
+        except ClientError as exc:
+            code = exc.response["Error"]["Code"]
+            if code in ("ResourceNotFoundException", "EntityNotFoundException"):
+                _log(
+                    f"  [yellow]⚠️  Notebook not found: {resource_name} ({notebook_id})[/yellow]"
+                )
+                results.append(
+                    ResourceResult(
+                        resource_type="notebook",
+                        resource_id=notebook_id,
+                        status="not_found",
+                        message="Notebook not found",
+                    )
+                )
+            else:
+                _log(
+                    f"  [red]❌ Error deleting notebook '{resource_name}' ({notebook_id}): {exc}[/red]"
+                )
+                results.append(
+                    ResourceResult(
+                        resource_type="notebook",
+                        resource_id=notebook_id,
+                        status="error",
+                        message=str(exc),
+                    )
+                )
+        except Exception as exc:
+            _log(
+                f"  [red]❌ Error deleting notebook '{resource_name}' ({notebook_id}): {exc}[/red]"
+            )
+            results.append(
+                ResourceResult(
+                    resource_type="notebook",
+                    resource_id=notebook_id,
+                    status="error",
+                    message=str(exc),
+                )
+            )
+
+    # -----------------------------------------------------------------------
     # Step g: Delete DataZone project (only if project.create=True)
     # -----------------------------------------------------------------------
     if stage_config.project.create is True:

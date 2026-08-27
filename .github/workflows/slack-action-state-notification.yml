@@ -10,6 +10,7 @@ on:
       - "Deploy ML Training"
       - "Translate Documentation"
       - "Deploy Catalog Import Export"
+      - "E2E Notebook Sync"
     types: [completed]
 
 permissions:

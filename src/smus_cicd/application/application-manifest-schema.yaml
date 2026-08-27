@@ -169,6 +169,22 @@ properties:
               description: "Workflow-specific parameters"
               additionalProperties: true
           additionalProperties: false
+      notebooks:
+        type: object
+        description: "Notebook export configuration. When enabled, notebooks are exported from the source project during bundle and synced to target projects during deploy."
+        properties:
+          enabled:
+            type: boolean
+            description: "Enable or disable notebook export. When true, notebooks are exported during bundle."
+            default: false
+          notebook_ids:
+            type: array
+            description: "Optional list of specific notebook IDs to export. When omitted, all active notebooks owned by the source project are exported. Each ID must match pattern [a-zA-Z0-9_-]{1,36}."
+            items:
+              type: string
+              pattern: "^[a-zA-Z0-9_-]{1,36}$"
+            minItems: 1
+        additionalProperties: false
     additionalProperties: false
   
   bootstrap:
@@ -582,6 +598,15 @@ definitions:
               disable:
                 type: boolean
                 description: "Disable catalog asset processing for this stage"
+          notebooks:
+            type: object
+            description: "Notebook sync configuration for this stage"
+            properties:
+              disable:
+                type: boolean
+                description: "Disable notebook sync for this stage"
+                default: false
+            additionalProperties: false
           quicksight:
             type: object
             description: "QuickSight deployment configuration for this stage"

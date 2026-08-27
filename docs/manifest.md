@@ -401,6 +401,43 @@ content:
 
 ---
 
+### Notebooks
+
+Export and sync SageMaker Unified Studio notebooks across environments (bundle-deploy mode only):
+
+```yaml
+content:
+  notebooks:
+    enabled: true
+    notebook_ids:        # Optional: specific notebook IDs to export
+    - abc123def456       # When omitted, all active notebooks are exported
+    - ghi789jkl012
+```
+
+**Properties:**
+- `enabled` (required): Enable notebook export during bundle
+- `notebook_ids` (optional): List of specific notebook IDs to export. When omitted, all active notebooks owned by the source project are exported. Each ID must match pattern `[a-zA-Z0-9_-]{1,36}`.
+
+**Stage-level configuration:**
+```yaml
+stages:
+  prod:
+    deployment_configuration:
+      notebooks:
+        disable: true    # Skip notebook sync for this stage
+```
+
+**Deployment Process:**
+1. Bundle: Export notebooks from source project (StartNotebookExport → download .ipynb)
+2. Deploy: Upload .ipynb files to target project's S3 shared bucket
+3. Deploy: StartNotebookSync to create or update notebooks in target
+4. Deploy: UpdateNotebook to apply name, description, metadata, parameters
+5. Tracking: Each synced notebook is tagged with `smus-cicd-source-notebook-id` metadata
+
+**Note:** Notebook sync requires the bundle-deploy workflow (`bundle` then `deploy`). Direct deploy without a bundle skips notebook sync silently.
+
+---
+
 ## Target Section
 
 Targets represent deployment environments (dev, test, prod). Each target defines domain, project, and environment-specific configurations.

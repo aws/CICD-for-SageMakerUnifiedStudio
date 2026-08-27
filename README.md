@@ -111,6 +111,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 
 **📓 Code & Workflows**
 - Jupyter notebooks
+- SageMaker Unified Studio notebooks
 - Python scripts
 - Airflow DAGs (MWAA and Amazon MWAA Serverless)
 - Lambda functions (future)
@@ -1175,6 +1176,7 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[Deployment Metrics](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pipeline-deployment-metrics.md)** - Monitoring with EventBridge
 - **[Catalog Import/Export Guide](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/catalog-import-export-guide.md)** - Promote DataZone catalog resources across environments
 - **[Catalog Import/Export Quick Reference](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/catalog-import-export-quick-reference.md)** - Quick reference for catalog deployment
+- **[Notebook Sync (E2E Example)](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/examples/e2e-notebook-sync/README.md)** - Export and sync notebooks across environments (bundle-deploy mode)
 - **[MCP Configuration](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/mcp-configuration.md)** - MCP server configuration guide
 - **[Q CLI Conversation Examples](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/q-cli-conversation-examples.md)** - Example conversations with Q CLI
 

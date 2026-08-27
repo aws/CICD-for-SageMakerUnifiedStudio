@@ -93,6 +93,24 @@ class CatalogConfig:
 
 
 @dataclass
+class NotebookConfig:
+    """Notebook export configuration for bundle (content.notebooks section).
+
+    Fields:
+    - enabled (bool): Enable/disable notebook export (default: false)
+    - notebook_ids (Optional[List[str]]): Optional list of specific source notebook IDs
+      to export. Each ID must match pattern [a-zA-Z0-9_-]{1,36}. When omitted, all
+      active notebooks owned by the source project are exported via ListNotebooks.
+      When present, the list must contain at least one entry.
+
+    NOTE: Notebook schedules are explicitly out of scope for this iteration.
+    """
+
+    enabled: bool = False
+    notebook_ids: Optional[List[str]] = None
+
+
+@dataclass
 class StorageConfig:
     """Storage configuration."""
 
@@ -145,6 +163,7 @@ class ContentConfig:
     storage: List[StorageConfig] = field(default_factory=list)
     git: List[GitContentConfig] = field(default_factory=list)
     catalog: Optional[CatalogConfig] = None
+    notebooks: Optional[NotebookConfig] = None
     quicksight: List[QuickSightDashboardConfig] = field(default_factory=list)
     workflows: List[Dict[str, Any]] = field(default_factory=list)
 
@@ -219,6 +238,7 @@ class DeploymentConfiguration:
     storage: List[StorageConfig] = field(default_factory=list)
     git: List[GitTargetConfig] = field(default_factory=list)
     catalog: Optional[Dict[str, Any]] = None
+    notebooks: Optional[Dict[str, Any]] = None
     quicksight: Optional[Dict[str, Any]] = None
 
 
@@ -349,6 +369,35 @@ class ApplicationManifest:
                 assets=assets_config,
             )
 
+        # Parse notebooks configuration
+        notebooks = None
+        notebooks_data = content_data.get("notebooks")
+        if notebooks_data is not None:
+            import re as _re
+
+            nb_enabled = notebooks_data.get("enabled", False)
+            nb_ids_raw = notebooks_data.get("notebook_ids")
+
+            if nb_ids_raw is not None:
+                if not isinstance(nb_ids_raw, list) or len(nb_ids_raw) == 0:
+                    raise ValueError(
+                        "content.notebooks.notebook_ids must be a non-empty list when present"
+                    )
+                _id_pattern = _re.compile(r"^[a-zA-Z0-9_-]{1,36}$")
+                invalid_ids = [
+                    nid for nid in nb_ids_raw if not _id_pattern.match(str(nid))
+                ]
+                if invalid_ids:
+                    raise ValueError(
+                        f"content.notebooks.notebook_ids contains invalid entries "
+                        f"(must match [a-zA-Z0-9_-]{{1,36}}): {invalid_ids}"
+                    )
+                nb_ids: Optional[List[str]] = [str(nid) for nid in nb_ids_raw]
+            else:
+                nb_ids = None
+
+            notebooks = NotebookConfig(enabled=nb_enabled, notebook_ids=nb_ids)
+
         # Parse storage configs
         storage_configs = []
         for storage_data in content_data.get("storage", []):
@@ -399,6 +448,7 @@ class ApplicationManifest:
             storage=storage_configs,
             git=git_configs,
             catalog=catalog,
+            notebooks=notebooks,
             quicksight=quicksight_dashboards,
             workflows=workflows,
         )
@@ -543,6 +593,7 @@ class ApplicationManifest:
                     storage=storage_configs,
                     git=git_configs,
                     catalog=btc_data.get("catalog"),
+                    notebooks=btc_data.get("notebooks"),
                     quicksight=btc_data.get("quicksight"),
                 )
 

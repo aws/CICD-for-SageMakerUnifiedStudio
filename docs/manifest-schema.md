@@ -72,6 +72,13 @@ content:
             identifier: db.table  # Required: Asset identifier
         permission: READ       # Required: Permission level
         requestReason: "Pipeline access"  # Required: Justification
+
+  # Notebooks (bundle-deploy mode only)
+  notebooks:
+    enabled: true              # Required: Enable notebook export
+    notebook_ids:              # Optional: Specific IDs (omit for all)
+    - notebook-id-1
+    - notebook-id-2
 ```
 
 ### Stage Configuration

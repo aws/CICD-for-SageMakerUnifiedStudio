@@ -30,6 +30,7 @@ class Phase(enum.Enum):
     CATALOG_IMPORT = "Catalog Import"
     DEPENDENCY_VALIDATION = "Dependency Validation"
     WORKFLOW_VALIDATION = "Workflow Validation"
+    NOTEBOOK_SYNC = "Notebook Sync"
     BOOTSTRAP_ACTIONS = "Bootstrap Actions"
 
 

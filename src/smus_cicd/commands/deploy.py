@@ -246,6 +246,7 @@ def deploy_command(
                 emitter,
                 metadata,
                 manifest_file,
+                project_info=config.get("project_info"),
             )
         else:
             typer.echo("No deployment_configuration - skipping bundle deployment")
@@ -415,6 +416,7 @@ def _deploy_bundle_to_target(
     emitter=None,
     metadata: Optional[Dict[str, Any]] = None,
     manifest_file: Optional[str] = None,
+    project_info: Optional[Dict[str, Any]] = None,
 ) -> bool:
     """
     Deploy bundle files to the target environment.
@@ -428,6 +430,9 @@ def _deploy_bundle_to_target(
         emitter: Optional EventEmitter for monitoring
         metadata: Optional metadata for events
         manifest_file: Optional path to manifest file for local content resolution
+        project_info: Optional pre-resolved project info (domain_id, project_id,
+            connections) from ``get_datazone_project_info``. Passed through to
+            notebook sync to avoid re-resolving domain/project/connections.
 
     Returns:
         True if deployment succeeded, False otherwise
@@ -615,10 +620,24 @@ def _deploy_bundle_to_target(
         manifest=manifest,
     )
 
+    # Sync notebooks from bundle if present
+    notebook_sync_success = _sync_notebooks_from_bundle(
+        effective_bundle_path,
+        target_config,
+        config,
+        project_info=project_info,
+    )
+
     # Return overall success - storage must succeed, git is optional
     storage_success = all(r[0] is not None for r in storage_results)
     git_success = all(r[0] is not None for r in git_results) if git_results else True
-    return storage_success and git_success and asset_success and catalog_import_success
+    return (
+        storage_success
+        and git_success
+        and asset_success
+        and catalog_import_success
+        and notebook_sync_success
+    )
 
 
 def _resolve_and_upload_workflows(
@@ -1355,6 +1374,177 @@ def _validate_deployed_workflows(
     except Exception as e:
         typer.echo("⚠️ Workflow validation failed: " + str(e))
         # Don't fail deployment for validation issues
+
+
+def _sync_notebooks_from_bundle(
+    bundle_path: Optional[str],
+    target_config,
+    config: Dict[str, Any],
+    project_info: Optional[Dict[str, Any]] = None,
+) -> bool:
+    """
+    Sync notebook resources from a bundle into the target DataZone project.
+
+    Mirrors ``_import_catalog_from_bundle`` in structure:
+    - Returns True immediately if notebook sync is disabled, no bundle path is
+      provided, or the bundle contains no ``notebooks/notebook_export_manifest.json``.
+    - Extracts the manifest + all referenced ``.ipynb`` files from the bundle.
+    - Resolves the target project's ``default.s3_shared`` connection S3 URI.
+    - Calls ``sync_notebooks()`` and reports the summary.
+    - Returns False (and exits non-zero) if any notebooks failed to sync.
+
+    Domain ID, project ID, and connections are taken from ``project_info`` when
+    available (already resolved once by ``deploy_command`` during project init),
+    falling back to ``config["project_info"]`` and finally a fresh
+    ``get_datazone_project_info`` lookup. This avoids re-issuing the DataZone
+    resolution/ListConnections calls that already ran earlier in the deploy.
+
+    Args:
+        bundle_path: Path to the bundle ZIP (local or S3 URI).
+        target_config: Stage configuration object.
+        config: Resolved configuration dict (includes region, domain_id, etc.).
+        project_info: Optional pre-resolved project info dict (as returned by
+            ``get_datazone_project_info``). When omitted, resolved from
+            ``config["project_info"]`` or looked up on demand.
+
+    Returns:
+        True if sync succeeded or was skipped, False if any notebooks failed.
+    """
+    from ..helpers.bundle_storage import ensure_bundle_local, is_s3_url
+
+    # Check if notebook sync is disabled in deployment_configuration
+    if (
+        target_config.deployment_configuration
+        and target_config.deployment_configuration.notebooks
+        and target_config.deployment_configuration.notebooks.get("disable", False)
+    ):
+        typer.echo("📓 Notebook sync disabled in deployment configuration — skipping")
+        return True
+
+    # Skip if no bundle
+    if not bundle_path:
+        return True
+
+    local_bundle_path = ensure_bundle_local(
+        bundle_path, config.get("region", "us-east-1")
+    )
+
+    try:
+        with zipfile.ZipFile(local_bundle_path, "r") as zip_ref:
+            namelist = zip_ref.namelist()
+
+            if "notebooks/notebook_export_manifest.json" not in namelist:
+                # No notebook manifest — skip silently (backward compatible)
+                return True
+
+            # ── Extract manifest ──────────────────────────────────────────
+            with zip_ref.open("notebooks/notebook_export_manifest.json") as mf:
+                import json as _json
+
+                manifest_data = _json.load(mf)
+
+            # ── Extract all .ipynb files referenced in the manifest ───────
+            notebook_files: Dict[str, bytes] = {}
+            for entry in manifest_data.get("notebooks", []):
+                file_path = entry.get("filePath", "")
+                if file_path and file_path in namelist:
+                    with zip_ref.open(file_path) as nb_file:
+                        notebook_files[file_path] = nb_file.read()
+                elif file_path:
+                    # Missing file — sync_notebooks will count it as failed
+                    typer.echo(
+                        f"  ⚠️  Notebook file missing from bundle: {file_path}",
+                        err=True,
+                    )
+
+        # ── Resolve target domain / project IDs + connections ────────────
+        # Prefer already-resolved project_info (from deploy_command's project
+        # init) to avoid re-issuing DataZone resolution/ListConnections calls.
+        region = target_config.domain.region
+
+        if project_info is None:
+            project_info = config.get("project_info")
+        if project_info is None:
+            from ..helpers.utils import get_datazone_project_info
+
+            project_info = get_datazone_project_info(target_config.project.name, config)
+
+        if project_info.get("error"):
+            typer.echo(
+                f"❌ Could not resolve project info for notebook sync: "
+                f"{project_info['error']}",
+                err=True,
+            )
+            return False
+
+        domain_id = project_info.get("domain_id")
+        project_id = project_info.get("projectId") or project_info.get("project_id")
+
+        if not project_id:
+            typer.echo(
+                f"❌ Could not find project ID for project "
+                f"'{target_config.project.name}' — skipping notebook sync",
+                err=True,
+            )
+            return False
+
+        # ── Resolve S3 URI from default.s3_shared connection ─────────────
+        from ..helpers.connections import get_connection_s3_uri
+
+        s3_uri = get_connection_s3_uri(project_info.get("connections", {}))
+
+        if not s3_uri:
+            typer.echo(
+                "❌ Target project 'default.s3_shared' connection has no s3Uri "
+                "— cannot upload notebooks for sync",
+                err=True,
+            )
+            return False
+
+        # ── Sync notebooks ────────────────────────────────────────────────
+        from ..helpers.notebook_import import sync_notebooks
+
+        typer.echo("📓 Syncing notebooks from bundle...")
+
+        try:
+            summary = sync_notebooks(
+                domain_id=domain_id,
+                project_id=project_id,
+                region=region,
+                manifest_data=manifest_data,
+                notebook_files=notebook_files,
+                s3_uri=s3_uri,
+            )
+        except ValueError as exc:
+            typer.echo(f"❌ Notebook sync validation error: {exc}", err=True)
+            return False
+
+        # ── Report summary ────────────────────────────────────────────────
+        typer.echo("✅ Notebook sync completed:")
+        typer.echo(f"   Created: {summary.created}")
+        typer.echo(f"   Updated: {summary.updated}")
+        typer.echo(f"   Failed:  {summary.failed}")
+
+        if summary.has_failures:
+            failed_str = ", ".join(summary.failed_ids)
+            typer.echo(
+                f"❌ Notebook sync failed for {summary.failed} notebook(s): {failed_str}",
+                err=True,
+            )
+            return False
+
+        return True
+
+    except json.JSONDecodeError as exc:
+        typer.echo(f"❌ Invalid notebook manifest JSON in bundle: {exc}", err=True)
+        return False
+    except Exception as exc:
+        typer.echo(f"❌ Error syncing notebooks from bundle: {exc}", err=True)
+        return False
+    finally:
+        if is_s3_url(bundle_path) and local_bundle_path != bundle_path:
+            if os.path.exists(local_bundle_path):
+                os.unlink(local_bundle_path)
 
 
 def _import_catalog_from_bundle(
