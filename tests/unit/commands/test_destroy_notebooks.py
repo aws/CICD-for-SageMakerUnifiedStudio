@@ -20,7 +20,10 @@ from smus_cicd.application.application_manifest import (
     StageConfig,
 )
 from smus_cicd.helpers.destroy_executor import _destroy_stage
-from smus_cicd.helpers.destroy_models import ResourceResult, ResourceToDelete, ValidationResult
+from smus_cicd.helpers.destroy_models import (
+    ResourceToDelete,
+    ValidationResult,
+)
 from smus_cicd.helpers.destroy_validator import _discover_notebooks
 
 SOURCE_KEY = "smus-cicd-source-notebook-id"
@@ -29,6 +32,7 @@ SOURCE_KEY = "smus-cicd-source-notebook-id"
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _client_error(code, message="error"):
     return ClientError({"Error": {"Code": code, "Message": message}}, "Op")
@@ -43,10 +47,10 @@ def _make_dz_client(notebook_map):
     ids = list(notebook_map.keys())
     client.list_notebooks.return_value = {"items": [{"id": nb_id} for nb_id in ids]}
 
-    def get_notebook(domainIdentifier, notebookIdentifier):
-        source_id = notebook_map.get(notebookIdentifier)
+    def get_notebook(domainIdentifier, identifier):
+        source_id = notebook_map.get(identifier)
         metadata = {SOURCE_KEY: source_id} if source_id else {}
-        return {"id": notebookIdentifier, "name": f"NB-{notebookIdentifier}", "metadata": metadata}
+        return {"id": identifier, "name": f"NB-{identifier}", "metadata": metadata}
 
     client.get_notebook.side_effect = get_notebook
     return client
@@ -63,6 +67,7 @@ def _make_vr(resources=None):
 
 def _simple_manifest():
     from smus_cicd.application.application_manifest import ApplicationManifest
+
     return ApplicationManifest(
         application_name="App",
         content=ContentConfig(),
@@ -83,37 +88,56 @@ def _make_stage_config():
 # _discover_notebooks
 # ---------------------------------------------------------------------------
 
+
 class TestDiscoverNotebooks(unittest.TestCase):
 
     def test_notebooks_with_tracking_metadata_included(self):
-        dz = _make_dz_client({
-            "tgt-1": "src-1",
-            "tgt-2": "src-2",
-        })
-        result = _discover_notebooks("dom-1", "proj-1", "us-east-1", notebook_ids_filter=None,
-                                     _dz_client_override=dz)
+        dz = _make_dz_client(
+            {
+                "tgt-1": "src-1",
+                "tgt-2": "src-2",
+            }
+        )
+        result = _discover_notebooks(
+            "dom-1",
+            "proj-1",
+            "us-east-1",
+            notebook_ids_filter=None,
+            _dz_client_override=dz,
+        )
         self.assertEqual(len(result), 2)
         source_ids = {r["source_notebook_id"] for r in result}
         self.assertEqual(source_ids, {"src-1", "src-2"})
 
     def test_notebooks_without_tracking_metadata_excluded(self):
-        dz = _make_dz_client({
-            "tgt-cicd": "src-1",
-            "tgt-manual": None,  # no tracking key
-        })
-        result = _discover_notebooks("dom-1", "proj-1", "us-east-1", notebook_ids_filter=None,
-                                     _dz_client_override=dz)
+        dz = _make_dz_client(
+            {
+                "tgt-cicd": "src-1",
+                "tgt-manual": None,  # no tracking key
+            }
+        )
+        result = _discover_notebooks(
+            "dom-1",
+            "proj-1",
+            "us-east-1",
+            notebook_ids_filter=None,
+            _dz_client_override=dz,
+        )
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["source_notebook_id"], "src-1")
 
     def test_notebook_ids_filter_restricts_to_matching_source_ids(self):
-        dz = _make_dz_client({
-            "tgt-1": "src-1",
-            "tgt-2": "src-2",
-            "tgt-3": "src-3",
-        })
+        dz = _make_dz_client(
+            {
+                "tgt-1": "src-1",
+                "tgt-2": "src-2",
+                "tgt-3": "src-3",
+            }
+        )
         result = _discover_notebooks(
-            "dom-1", "proj-1", "us-east-1",
+            "dom-1",
+            "proj-1",
+            "us-east-1",
             notebook_ids_filter=["src-1", "src-3"],
             _dz_client_override=dz,
         )
@@ -122,12 +146,16 @@ class TestDiscoverNotebooks(unittest.TestCase):
         self.assertEqual(source_ids, {"src-1", "src-3"})
 
     def test_notebook_ids_filter_none_includes_all_tracked(self):
-        dz = _make_dz_client({
-            "tgt-1": "src-1",
-            "tgt-2": "src-2",
-        })
+        dz = _make_dz_client(
+            {
+                "tgt-1": "src-1",
+                "tgt-2": "src-2",
+            }
+        )
         result = _discover_notebooks(
-            "dom-1", "proj-1", "us-east-1",
+            "dom-1",
+            "proj-1",
+            "us-east-1",
             notebook_ids_filter=None,
             _dz_client_override=dz,
         )
@@ -135,19 +163,31 @@ class TestDiscoverNotebooks(unittest.TestCase):
 
     def test_source_environment_no_tracking_returns_empty(self):
         """Notebooks in source environment have no tracking metadata → zero deletions."""
-        dz = _make_dz_client({
-            "nb-source-1": None,
-            "nb-source-2": None,
-        })
-        result = _discover_notebooks("dom-1", "proj-1", "us-east-1", notebook_ids_filter=None,
-                                     _dz_client_override=dz)
+        dz = _make_dz_client(
+            {
+                "nb-source-1": None,
+                "nb-source-2": None,
+            }
+        )
+        result = _discover_notebooks(
+            "dom-1",
+            "proj-1",
+            "us-east-1",
+            notebook_ids_filter=None,
+            _dz_client_override=dz,
+        )
         self.assertEqual(result, [])
 
     def test_empty_project_returns_empty(self):
         dz = MagicMock()
         dz.list_notebooks.return_value = {"items": []}
-        result = _discover_notebooks("dom-1", "proj-1", "us-east-1", notebook_ids_filter=None,
-                                     _dz_client_override=dz)
+        result = _discover_notebooks(
+            "dom-1",
+            "proj-1",
+            "us-east-1",
+            notebook_ids_filter=None,
+            _dz_client_override=dz,
+        )
         self.assertEqual(result, [])
 
     def test_pagination_followed(self):
@@ -160,15 +200,25 @@ class TestDiscoverNotebooks(unittest.TestCase):
             {"id": "tgt-1", "metadata": {SOURCE_KEY: "src-1"}},
             {"id": "tgt-2", "metadata": {SOURCE_KEY: "src-2"}},
         ]
-        result = _discover_notebooks("dom-1", "proj-1", "us-east-1", notebook_ids_filter=None,
-                                     _dz_client_override=dz)
+        result = _discover_notebooks(
+            "dom-1",
+            "proj-1",
+            "us-east-1",
+            notebook_ids_filter=None,
+            _dz_client_override=dz,
+        )
         self.assertEqual(len(result), 2)
         self.assertEqual(dz.list_notebooks.call_count, 2)
 
     def test_result_contains_target_and_source_ids_and_name(self):
         dz = _make_dz_client({"tgt-abc": "src-xyz"})
-        result = _discover_notebooks("dom-1", "proj-1", "us-east-1", notebook_ids_filter=None,
-                                     _dz_client_override=dz)
+        result = _discover_notebooks(
+            "dom-1",
+            "proj-1",
+            "us-east-1",
+            notebook_ids_filter=None,
+            _dz_client_override=dz,
+        )
         self.assertEqual(result[0]["target_notebook_id"], "tgt-abc")
         self.assertEqual(result[0]["source_notebook_id"], "src-xyz")
         self.assertIn("name", result[0])
@@ -200,13 +250,23 @@ class TestDestroyExecutorNotebooks(unittest.TestCase):
         dz = MagicMock()
         mock_boto3.side_effect = self._sts_dz(dz)
 
-        vr = _make_vr(resources=[
-            ResourceToDelete(
-                "notebook", "nb-tgt-1", "test",
-                {"name": "My NB", "source_notebook_id": "nb-src-1", "domain_id": "dom-1"},
-            )
-        ])
-        results = _destroy_stage("test", _make_stage_config(), _simple_manifest(), vr, "us-east-1", "TEXT")
+        vr = _make_vr(
+            resources=[
+                ResourceToDelete(
+                    "notebook",
+                    "nb-tgt-1",
+                    "test",
+                    {
+                        "name": "My NB",
+                        "source_notebook_id": "nb-src-1",
+                        "domain_id": "dom-1",
+                    },
+                )
+            ]
+        )
+        results = _destroy_stage(
+            "test", _make_stage_config(), _simple_manifest(), vr, "us-east-1", "TEXT"
+        )
         dz.delete_notebook.assert_called_once_with(
             domainIdentifier="dom-1", identifier="nb-tgt-1"
         )
@@ -220,13 +280,19 @@ class TestDestroyExecutorNotebooks(unittest.TestCase):
         dz.delete_notebook.side_effect = _client_error("ResourceNotFoundException")
         mock_boto3.side_effect = self._sts_dz(dz)
 
-        vr = _make_vr(resources=[
-            ResourceToDelete(
-                "notebook", "nb-tgt-1", "test",
-                {"name": "NB", "source_notebook_id": "src-1", "domain_id": "dom-1"},
-            )
-        ])
-        results = _destroy_stage("test", _make_stage_config(), _simple_manifest(), vr, "us-east-1", "TEXT")
+        vr = _make_vr(
+            resources=[
+                ResourceToDelete(
+                    "notebook",
+                    "nb-tgt-1",
+                    "test",
+                    {"name": "NB", "source_notebook_id": "src-1", "domain_id": "dom-1"},
+                )
+            ]
+        )
+        results = _destroy_stage(
+            "test", _make_stage_config(), _simple_manifest(), vr, "us-east-1", "TEXT"
+        )
         nb_result = next(r for r in results if r.resource_type == "notebook")
         self.assertEqual(nb_result.status, "not_found")
 
@@ -243,14 +309,36 @@ class TestDestroyExecutorNotebooks(unittest.TestCase):
         dz.delete_notebook.side_effect = delete_notebook
         mock_boto3.side_effect = self._sts_dz(dz)
 
-        vr = _make_vr(resources=[
-            ResourceToDelete("notebook", "nb-err", "test",
-                             {"name": "NB1", "source_notebook_id": "src-1", "domain_id": "dom-1"}),
-            ResourceToDelete("notebook", "nb-ok", "test",
-                             {"name": "NB2", "source_notebook_id": "src-2", "domain_id": "dom-1"}),
-        ])
-        results = _destroy_stage("test", _make_stage_config(), _simple_manifest(), vr, "us-east-1", "TEXT")
-        nb_results = {r.resource_id: r.status for r in results if r.resource_type == "notebook"}
+        vr = _make_vr(
+            resources=[
+                ResourceToDelete(
+                    "notebook",
+                    "nb-err",
+                    "test",
+                    {
+                        "name": "NB1",
+                        "source_notebook_id": "src-1",
+                        "domain_id": "dom-1",
+                    },
+                ),
+                ResourceToDelete(
+                    "notebook",
+                    "nb-ok",
+                    "test",
+                    {
+                        "name": "NB2",
+                        "source_notebook_id": "src-2",
+                        "domain_id": "dom-1",
+                    },
+                ),
+            ]
+        )
+        results = _destroy_stage(
+            "test", _make_stage_config(), _simple_manifest(), vr, "us-east-1", "TEXT"
+        )
+        nb_results = {
+            r.resource_id: r.status for r in results if r.resource_type == "notebook"
+        }
         self.assertEqual(nb_results["nb-err"], "error")
         self.assertEqual(nb_results["nb-ok"], "deleted")
         self.assertEqual(call_count[0], 2)  # both attempted
@@ -260,11 +348,19 @@ class TestDestroyExecutorNotebooks(unittest.TestCase):
         dz = MagicMock()
         mock_boto3.side_effect = self._sts_dz(dz)
 
-        vr = _make_vr(resources=[
-            ResourceToDelete("notebook", "nb-1", "test",
-                             {"name": "NB", "source_notebook_id": "src-1", "domain_id": ""}),
-        ])
-        results = _destroy_stage("test", _make_stage_config(), _simple_manifest(), vr, "us-east-1", "TEXT")
+        vr = _make_vr(
+            resources=[
+                ResourceToDelete(
+                    "notebook",
+                    "nb-1",
+                    "test",
+                    {"name": "NB", "source_notebook_id": "src-1", "domain_id": ""},
+                ),
+            ]
+        )
+        results = _destroy_stage(
+            "test", _make_stage_config(), _simple_manifest(), vr, "us-east-1", "TEXT"
+        )
         nb_result = next(r for r in results if r.resource_type == "notebook")
         self.assertEqual(nb_result.status, "skipped")
         dz.delete_notebook.assert_not_called()
@@ -274,12 +370,24 @@ class TestDestroyExecutorNotebooks(unittest.TestCase):
         dz = MagicMock()
         mock_boto3.side_effect = self._sts_dz(dz)
 
-        vr = _make_vr(resources=[
-            ResourceToDelete("notebook", f"nb-{i}", "test",
-                             {"name": f"NB{i}", "source_notebook_id": f"src-{i}", "domain_id": "dom-1"})
-            for i in range(5)
-        ])
-        results = _destroy_stage("test", _make_stage_config(), _simple_manifest(), vr, "us-east-1", "TEXT")
+        vr = _make_vr(
+            resources=[
+                ResourceToDelete(
+                    "notebook",
+                    f"nb-{i}",
+                    "test",
+                    {
+                        "name": f"NB{i}",
+                        "source_notebook_id": f"src-{i}",
+                        "domain_id": "dom-1",
+                    },
+                )
+                for i in range(5)
+            ]
+        )
+        results = _destroy_stage(
+            "test", _make_stage_config(), _simple_manifest(), vr, "us-east-1", "TEXT"
+        )
         nb_results = [r for r in results if r.resource_type == "notebook"]
         self.assertEqual(len(nb_results), 5)
         self.assertTrue(all(r.status == "deleted" for r in nb_results))
@@ -302,6 +410,7 @@ class TestValidateStageNotebooks(unittest.TestCase):
 
     def _make_manifest_with_notebooks(self, notebook_ids=None):
         from smus_cicd.application.application_manifest import ApplicationManifest
+
         return ApplicationManifest(
             application_name="App",
             content=ContentConfig(
@@ -331,10 +440,20 @@ class TestValidateStageNotebooks(unittest.TestCase):
         """Notebooks with tracking metadata are discovered and added to the plan."""
         from smus_cicd.helpers.destroy_validator import _validate_stage
 
-        with patch("smus_cicd.helpers.destroy_validator._discover_notebooks") as mock_discover:
+        with patch(
+            "smus_cicd.helpers.destroy_validator._discover_notebooks"
+        ) as mock_discover:
             mock_discover.return_value = [
-                {"target_notebook_id": "tgt-1", "source_notebook_id": "src-1", "name": "NB1"},
-                {"target_notebook_id": "tgt-2", "source_notebook_id": "src-2", "name": "NB2"},
+                {
+                    "target_notebook_id": "tgt-1",
+                    "source_notebook_id": "src-1",
+                    "name": "NB1",
+                },
+                {
+                    "target_notebook_id": "tgt-2",
+                    "source_notebook_id": "src-2",
+                    "name": "NB2",
+                },
             ]
             result = _validate_stage(
                 "test",
@@ -343,7 +462,9 @@ class TestValidateStageNotebooks(unittest.TestCase):
                 "us-east-1",
             )
 
-        notebook_resources = [r for r in result.resources if r.resource_type == "notebook"]
+        notebook_resources = [
+            r for r in result.resources if r.resource_type == "notebook"
+        ]
         self.assertEqual(len(notebook_resources), 2)
         target_ids = {r.resource_id for r in notebook_resources}
         self.assertEqual(target_ids, {"tgt-1", "tgt-2"})
@@ -358,7 +479,9 @@ class TestValidateStageNotebooks(unittest.TestCase):
         """When notebook_ids specified in manifest, filter is passed to _discover_notebooks."""
         from smus_cicd.helpers.destroy_validator import _validate_stage
 
-        with patch("smus_cicd.helpers.destroy_validator._discover_notebooks") as mock_discover:
+        with patch(
+            "smus_cicd.helpers.destroy_validator._discover_notebooks"
+        ) as mock_discover:
             mock_discover.return_value = []
             _validate_stage(
                 "test",
@@ -381,8 +504,10 @@ class TestValidateStageNotebooks(unittest.TestCase):
         """ListNotebooks API failure → recorded as error in validation result."""
         from smus_cicd.helpers.destroy_validator import _validate_stage
 
-        with patch("smus_cicd.helpers.destroy_validator._discover_notebooks",
-                   side_effect=Exception("ListNotebooksError")):
+        with patch(
+            "smus_cicd.helpers.destroy_validator._discover_notebooks",
+            side_effect=Exception("ListNotebooksError"),
+        ):
             result = _validate_stage(
                 "test",
                 self._make_notebook_stage(),
@@ -390,7 +515,9 @@ class TestValidateStageNotebooks(unittest.TestCase):
                 "us-east-1",
             )
 
-        self.assertTrue(any("ListNotebooks" in e or "notebook" in e.lower() for e in result.errors))
+        self.assertTrue(
+            any("ListNotebooks" in e or "notebook" in e.lower() for e in result.errors)
+        )
 
     @patch(PATCH_GET_WF_DEF, return_value="")
     @patch(PATCH_LIST_RUNS, return_value=[])
@@ -408,7 +535,9 @@ class TestValidateStageNotebooks(unittest.TestCase):
             content=ContentConfig(notebooks=NotebookConfig(enabled=False)),
             stages={},
         )
-        with patch("smus_cicd.helpers.destroy_validator._discover_notebooks") as mock_discover:
+        with patch(
+            "smus_cicd.helpers.destroy_validator._discover_notebooks"
+        ) as mock_discover:
             _validate_stage("test", self._make_notebook_stage(), manifest, "us-east-1")
             mock_discover.assert_not_called()
 

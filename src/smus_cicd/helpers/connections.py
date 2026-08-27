@@ -1,6 +1,46 @@
 """Connection extraction and handling module."""
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+
+DEFAULT_S3_SHARED_CONNECTION = "default.s3_shared"
+
+
+def bucket_from_s3_uri(s3_uri: Optional[str]) -> Optional[str]:
+    """Extract the bucket name from an ``s3://bucket/prefix`` URI.
+
+    Args:
+        s3_uri: An S3 URI (e.g. ``s3://my-bucket/some/prefix``) or None.
+
+    Returns:
+        The bucket name, or None if the URI is empty/falsy.
+    """
+    if not s3_uri:
+        return None
+    return s3_uri.replace("s3://", "").rstrip("/").split("/")[0]
+
+
+def get_connection_s3_uri(
+    connections: Dict[str, Dict[str, Any]],
+    connection_name: str = DEFAULT_S3_SHARED_CONNECTION,
+) -> str:
+    """Resolve the S3 URI for a named connection from a connections map.
+
+    Centralizes the ``connections.get(name, {}).get("s3Uri", "")`` pattern used
+    across deploy, dry-run, and notebook/catalog sync so callers don't repeat it.
+
+    Args:
+        connections: Mapping of connection name -> extracted connection info
+            (as returned by :func:`get_project_connections`).
+        connection_name: Connection to look up. Defaults to
+            ``default.s3_shared``.
+
+    Returns:
+        The connection's ``s3Uri`` (e.g. ``s3://bucket/prefix``), or an empty
+        string if the connection is absent or has no S3 URI.
+    """
+    if not connections:
+        return ""
+    return connections.get(connection_name, {}).get("s3Uri", "")
 
 
 def extract_connection_properties(connection_detail: Dict[str, Any]) -> Dict[str, Any]:
@@ -33,9 +73,7 @@ def extract_connection_properties(connection_detail: Dict[str, Any]) -> Dict[str
         conn_info["status"] = s3_props.get("status")
         # Extract bucket name from S3 URI
         if s3_uri:
-            conn_info["bucket_name"] = (
-                s3_uri.replace("s3://", "").rstrip("/").split("/")[0]
-            )
+            conn_info["bucket_name"] = bucket_from_s3_uri(s3_uri)
 
     elif connection_type == "ATHENA":
         athena_props = props.get("athenaProperties", {})

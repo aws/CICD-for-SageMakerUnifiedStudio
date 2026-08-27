@@ -10,7 +10,6 @@ Covers:
     missing S3 connection, missing file in bundle
 """
 
-import hashlib
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -18,8 +17,6 @@ from botocore.exceptions import ClientError
 
 from smus_cicd.helpers.notebook_import import (
     SOURCE_NOTEBOOK_METADATA_KEY,
-    NotebookSyncSummary,
-    SyncStatus,
     _build_update_kwargs,
     _discover_target_notebooks,
     _generate_client_token,
@@ -27,10 +24,10 @@ from smus_cicd.helpers.notebook_import import (
     sync_notebooks,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _client_error(code, message="error"):
     return ClientError({"Error": {"Code": code, "Message": message}}, "Op")
@@ -48,8 +45,14 @@ def _make_manifest(notebooks=None, source_project="proj-src", source_domain="dom
     }
 
 
-def _make_entry(nb_id="nb-1", name="NB", description="Desc",
-                parameters=None, metadata=None, env_config=None):
+def _make_entry(
+    nb_id="nb-1",
+    name="NB",
+    description="Desc",
+    parameters=None,
+    metadata=None,
+    env_config=None,
+):
     return {
         "sourceNotebookId": nb_id,
         "name": name,
@@ -66,6 +69,7 @@ def _make_entry(nb_id="nb-1", name="NB", description="Desc",
 # _validate_notebook_manifest
 # ---------------------------------------------------------------------------
 
+
 class TestValidateNotebookManifest(unittest.TestCase):
 
     def test_valid_manifest_passes(self):
@@ -79,10 +83,16 @@ class TestValidateNotebookManifest(unittest.TestCase):
 
     def test_missing_notebooks_key_raises(self):
         with self.assertRaises(ValueError) as ctx:
-            _validate_notebook_manifest({"metadata": {
-                "sourceProjectId": "p", "sourceDomainId": "d",
-                "exportTimestamp": "t", "notebookCount": 0,
-            }})
+            _validate_notebook_manifest(
+                {
+                    "metadata": {
+                        "sourceProjectId": "p",
+                        "sourceDomainId": "d",
+                        "exportTimestamp": "t",
+                        "notebookCount": 0,
+                    }
+                }
+            )
         self.assertIn("notebooks", str(ctx.exception))
 
     def test_missing_source_project_id_raises(self):
@@ -120,6 +130,7 @@ class TestValidateNotebookManifest(unittest.TestCase):
 # _generate_client_token
 # ---------------------------------------------------------------------------
 
+
 class TestGenerateClientToken(unittest.TestCase):
     """Property 5: deterministic, ≤ 64 chars, distinct inputs → distinct outputs."""
 
@@ -152,6 +163,7 @@ class TestGenerateClientToken(unittest.TestCase):
 # _build_update_kwargs  (Property 7)
 # ---------------------------------------------------------------------------
 
+
 class TestBuildUpdateKwargs(unittest.TestCase):
 
     def _kwargs(self, **entry_overrides):
@@ -164,7 +176,7 @@ class TestBuildUpdateKwargs(unittest.TestCase):
         if "metadata" in entry_overrides:
             entry["metadata"] = entry_overrides.pop("metadata")
         entry.update(entry_overrides)
-        return _build_update_kwargs("dom-1", "proj-1", "tgt-nb-1", entry)
+        return _build_update_kwargs("dom-1", "tgt-nb-1", entry)
 
     def test_always_includes_name_and_description(self):
         kwargs = self._kwargs(name="My NB", description="Some desc")
@@ -207,19 +219,35 @@ class TestBuildUpdateKwargs(unittest.TestCase):
         self.assertNotIn("environmentConfiguration", kwargs)
 
     def test_environment_configuration_included_when_set(self):
-        env = {"imageVersion": "v2", "packageConfig": {"packageManager": "pip", "packageSpecification": "pandas"}}
+        env = {
+            "imageVersion": "v2",
+            "packageConfig": {
+                "packageManager": "pip",
+                "packageSpecification": "pandas",
+            },
+        }
         kwargs = self._kwargs(env_config=env)
         self.assertEqual(kwargs["environmentConfiguration"], env)
 
     def test_required_api_fields_always_present(self):
         kwargs = self._kwargs()
-        for field in ("domainIdentifier", "identifier", "owningProjectIdentifier", "name", "description", "metadata"):
+        # UpdateNotebook takes domainIdentifier + identifier (both required)
+        # plus name/description/metadata. It does NOT accept
+        # owningProjectIdentifier — passing it would fail botocore validation.
+        for field in (
+            "domainIdentifier",
+            "identifier",
+            "name",
+            "description",
+            "metadata",
+        ):
             self.assertIn(field, kwargs)
 
 
 # ---------------------------------------------------------------------------
 # _discover_target_notebooks
 # ---------------------------------------------------------------------------
+
 
 class TestDiscoverTargetNotebooks(unittest.TestCase):
 
@@ -230,31 +258,33 @@ class TestDiscoverTargetNotebooks(unittest.TestCase):
         """
         client = MagicMock()
         ids = list(notebook_metadata_map.keys())
-        client.list_notebooks.return_value = {
-            "items": [{"id": nb_id} for nb_id in ids]
-        }
+        client.list_notebooks.return_value = {"items": [{"id": nb_id} for nb_id in ids]}
 
-        def get_notebook(domainIdentifier, notebookIdentifier):
-            meta = notebook_metadata_map.get(notebookIdentifier, {})
-            return {"id": notebookIdentifier, "name": notebookIdentifier, "metadata": meta}
+        def get_notebook(domainIdentifier, identifier):
+            meta = notebook_metadata_map.get(identifier, {})
+            return {"id": identifier, "name": identifier, "metadata": meta}
 
         client.get_notebook.side_effect = get_notebook
         return client
 
     def test_notebooks_with_tracking_key_are_mapped(self):
-        client = self._make_dz_client({
-            "tgt-1": {SOURCE_NOTEBOOK_METADATA_KEY: "src-1"},
-            "tgt-2": {SOURCE_NOTEBOOK_METADATA_KEY: "src-2"},
-        })
+        client = self._make_dz_client(
+            {
+                "tgt-1": {SOURCE_NOTEBOOK_METADATA_KEY: "src-1"},
+                "tgt-2": {SOURCE_NOTEBOOK_METADATA_KEY: "src-2"},
+            }
+        )
         result = _discover_target_notebooks(client, "dom-1", "proj-1")
         self.assertEqual(result["src-1"], "tgt-1")
         self.assertEqual(result["src-2"], "tgt-2")
 
     def test_notebooks_without_tracking_key_are_excluded(self):
-        client = self._make_dz_client({
-            "tgt-managed": {},  # no tracking key
-            "tgt-cicd": {SOURCE_NOTEBOOK_METADATA_KEY: "src-1"},
-        })
+        client = self._make_dz_client(
+            {
+                "tgt-managed": {},  # no tracking key
+                "tgt-cicd": {SOURCE_NOTEBOOK_METADATA_KEY: "src-1"},
+            }
+        )
         result = _discover_target_notebooks(client, "dom-1", "proj-1")
         self.assertIn("src-1", result)
         self.assertNotIn("tgt-managed", result.values())
@@ -273,10 +303,10 @@ class TestDiscoverTargetNotebooks(unittest.TestCase):
             {"items": [{"id": "tgt-2"}]},
         ]
 
-        def get_notebook(domainIdentifier, notebookIdentifier):
+        def get_notebook(domainIdentifier, identifier):
             return {
-                "id": notebookIdentifier,
-                "metadata": {SOURCE_NOTEBOOK_METADATA_KEY: f"src-{notebookIdentifier}"},
+                "id": identifier,
+                "metadata": {SOURCE_NOTEBOOK_METADATA_KEY: f"src-{identifier}"},
             }
 
         client.get_notebook.side_effect = get_notebook
@@ -286,12 +316,17 @@ class TestDiscoverTargetNotebooks(unittest.TestCase):
 
     def test_get_notebook_failure_skips_that_notebook(self):
         client = MagicMock()
-        client.list_notebooks.return_value = {"items": [{"id": "tgt-bad"}, {"id": "tgt-ok"}]}
+        client.list_notebooks.return_value = {
+            "items": [{"id": "tgt-bad"}, {"id": "tgt-ok"}]
+        }
 
-        def get_notebook(domainIdentifier, notebookIdentifier):
-            if notebookIdentifier == "tgt-bad":
+        def get_notebook(domainIdentifier, identifier):
+            if identifier == "tgt-bad":
                 raise Exception("GetNotebookError")
-            return {"id": notebookIdentifier, "metadata": {SOURCE_NOTEBOOK_METADATA_KEY: "src-ok"}}
+            return {
+                "id": identifier,
+                "metadata": {SOURCE_NOTEBOOK_METADATA_KEY: "src-ok"},
+            }
 
         client.get_notebook.side_effect = get_notebook
         result = _discover_target_notebooks(client, "dom-1", "proj-1")
@@ -328,7 +363,9 @@ class TestSyncNotebooks(unittest.TestCase):
     def test_invalid_manifest_raises_before_api_calls(self):
         with self.assertRaises(ValueError):
             sync_notebooks(
-                "dom-1", "proj-1", "us-east-1",
+                "dom-1",
+                "proj-1",
+                "us-east-1",
                 manifest_data={"metadata": {}},  # missing notebooks key
                 notebook_files={},
                 s3_uri=S3_URI,
@@ -337,7 +374,9 @@ class TestSyncNotebooks(unittest.TestCase):
     def test_missing_s3_uri_raises_value_error(self):
         with self.assertRaises(ValueError):
             sync_notebooks(
-                "dom-1", "proj-1", "us-east-1",
+                "dom-1",
+                "proj-1",
+                "us-east-1",
                 manifest_data=_make_manifest(),
                 notebook_files={},
                 s3_uri="",
@@ -354,7 +393,9 @@ class TestSyncNotebooks(unittest.TestCase):
 
         manifest = _make_manifest(notebooks=[_make_entry("nb-1")])
         summary = sync_notebooks(
-            "dom-1", "proj-1", "us-east-1",
+            "dom-1",
+            "proj-1",
+            "us-east-1",
             manifest_data=manifest,
             notebook_files=NOTEBOOK_FILES,
             s3_uri=S3_URI,
@@ -365,15 +406,21 @@ class TestSyncNotebooks(unittest.TestCase):
 
     @patch(PATCH_S3)
     @patch(PATCH_DZ)
-    def test_start_notebook_sync_called_without_notebook_id_for_new(self, mock_dz, mock_s3):
+    def test_start_notebook_sync_called_without_notebook_id_for_new(
+        self, mock_dz, mock_s3
+    ):
         dz = self._make_dz_no_existing()
         mock_dz.return_value = dz
         mock_s3.return_value = self._make_s3()
 
         manifest = _make_manifest(notebooks=[_make_entry("nb-1")])
         sync_notebooks(
-            "dom-1", "proj-1", "us-east-1",
-            manifest_data=manifest, notebook_files=NOTEBOOK_FILES, s3_uri=S3_URI,
+            "dom-1",
+            "proj-1",
+            "us-east-1",
+            manifest_data=manifest,
+            notebook_files=NOTEBOOK_FILES,
+            s3_uri=S3_URI,
         )
         call_kwargs = dz.start_notebook_sync.call_args[1]
         self.assertNotIn("notebookId", call_kwargs)
@@ -397,8 +444,12 @@ class TestSyncNotebooks(unittest.TestCase):
 
         manifest = _make_manifest(notebooks=[_make_entry("nb-1")])
         summary = sync_notebooks(
-            "dom-1", "proj-1", "us-east-1",
-            manifest_data=manifest, notebook_files=NOTEBOOK_FILES, s3_uri=S3_URI,
+            "dom-1",
+            "proj-1",
+            "us-east-1",
+            manifest_data=manifest,
+            notebook_files=NOTEBOOK_FILES,
+            s3_uri=S3_URI,
         )
         self.assertEqual(summary.updated, 1)
         self.assertEqual(summary.created, 0)
@@ -423,7 +474,12 @@ class TestSyncNotebooks(unittest.TestCase):
             call_count[0] += 1
             if kwargs.get("notebookId") == "tgt-deleted":
                 raise ClientError(
-                    {"Error": {"Code": "ResourceNotFoundException", "Message": "Not found"}},
+                    {
+                        "Error": {
+                            "Code": "ResourceNotFoundException",
+                            "Message": "Not found",
+                        }
+                    },
                     "StartNotebookSync",
                 )
             return {"notebookId": "brand-new-id"}
@@ -435,8 +491,12 @@ class TestSyncNotebooks(unittest.TestCase):
 
         manifest = _make_manifest(notebooks=[_make_entry("nb-1")])
         summary = sync_notebooks(
-            "dom-1", "proj-1", "us-east-1",
-            manifest_data=manifest, notebook_files=NOTEBOOK_FILES, s3_uri=S3_URI,
+            "dom-1",
+            "proj-1",
+            "us-east-1",
+            manifest_data=manifest,
+            notebook_files=NOTEBOOK_FILES,
+            s3_uri=S3_URI,
         )
         # Should have retried without notebookId and created
         self.assertEqual(summary.failed, 0)
@@ -454,8 +514,12 @@ class TestSyncNotebooks(unittest.TestCase):
 
         manifest = _make_manifest(notebooks=[_make_entry("nb-1")])
         summary = sync_notebooks(
-            "dom-1", "proj-1", "us-east-1",
-            manifest_data=manifest, notebook_files=NOTEBOOK_FILES, s3_uri=S3_URI,
+            "dom-1",
+            "proj-1",
+            "us-east-1",
+            manifest_data=manifest,
+            notebook_files=NOTEBOOK_FILES,
+            s3_uri=S3_URI,
         )
         self.assertEqual(summary.failed, 1)
         self.assertIn("nb-1", summary.failed_ids)
@@ -471,8 +535,12 @@ class TestSyncNotebooks(unittest.TestCase):
         manifest = _make_manifest(notebooks=[_make_entry("nb-missing")])
         # notebook_files dict is empty — file is missing
         summary = sync_notebooks(
-            "dom-1", "proj-1", "us-east-1",
-            manifest_data=manifest, notebook_files={}, s3_uri=S3_URI,
+            "dom-1",
+            "proj-1",
+            "us-east-1",
+            manifest_data=manifest,
+            notebook_files={},
+            s3_uri=S3_URI,
         )
         self.assertEqual(summary.failed, 1)
         self.assertIn("nb-missing", summary.failed_ids)
@@ -489,8 +557,12 @@ class TestSyncNotebooks(unittest.TestCase):
 
         manifest = _make_manifest(notebooks=[_make_entry("nb-1")])
         summary = sync_notebooks(
-            "dom-1", "proj-1", "us-east-1",
-            manifest_data=manifest, notebook_files=NOTEBOOK_FILES, s3_uri=S3_URI,
+            "dom-1",
+            "proj-1",
+            "us-east-1",
+            manifest_data=manifest,
+            notebook_files=NOTEBOOK_FILES,
+            s3_uri=S3_URI,
         )
         self.assertEqual(summary.failed, 1)
         self.assertEqual(summary.created, 0)
@@ -510,8 +582,12 @@ class TestSyncNotebooks(unittest.TestCase):
         manifest = _make_manifest(notebooks=entries)
 
         summary = sync_notebooks(
-            "dom-1", "proj-1", "us-east-1",
-            manifest_data=manifest, notebook_files=notebook_files, s3_uri=S3_URI,
+            "dom-1",
+            "proj-1",
+            "us-east-1",
+            manifest_data=manifest,
+            notebook_files=notebook_files,
+            s3_uri=S3_URI,
         )
         self.assertEqual(summary.total, 5)
         self.assertEqual(summary.created + summary.updated + summary.failed, 5)
@@ -526,8 +602,12 @@ class TestSyncNotebooks(unittest.TestCase):
 
         manifest = _make_manifest(notebooks=[])
         summary = sync_notebooks(
-            "dom-1", "proj-1", "us-east-1",
-            manifest_data=manifest, notebook_files={}, s3_uri=S3_URI,
+            "dom-1",
+            "proj-1",
+            "us-east-1",
+            manifest_data=manifest,
+            notebook_files={},
+            s3_uri=S3_URI,
         )
         self.assertEqual(summary.created, 0)
         self.assertEqual(summary.updated, 0)
@@ -544,12 +624,18 @@ class TestSyncNotebooks(unittest.TestCase):
 
         manifest = _make_manifest(notebooks=[_make_entry("nb-1", metadata={})])
         sync_notebooks(
-            "dom-1", "proj-1", "us-east-1",
-            manifest_data=manifest, notebook_files=NOTEBOOK_FILES, s3_uri=S3_URI,
+            "dom-1",
+            "proj-1",
+            "us-east-1",
+            manifest_data=manifest,
+            notebook_files=NOTEBOOK_FILES,
+            s3_uri=S3_URI,
         )
         update_kwargs = dz.update_notebook.call_args[1]
         self.assertIn(SOURCE_NOTEBOOK_METADATA_KEY, update_kwargs["metadata"])
-        self.assertEqual(update_kwargs["metadata"][SOURCE_NOTEBOOK_METADATA_KEY], "nb-1")
+        self.assertEqual(
+            update_kwargs["metadata"][SOURCE_NOTEBOOK_METADATA_KEY], "nb-1"
+        )
 
 
 if __name__ == "__main__":

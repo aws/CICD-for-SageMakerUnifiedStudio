@@ -11,7 +11,7 @@ Covers:
 
 import json
 import unittest
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
@@ -25,16 +25,18 @@ from smus_cicd.helpers.notebook_export import (
     export_notebooks,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _client_error(code, message="error"):
     return ClientError({"Error": {"Code": code, "Message": message}}, "Op")
 
 
-def _make_get_notebook_response(nb_id, name="Test NB", params=None, meta=None, env=None):
+def _make_get_notebook_response(
+    nb_id, name="Test NB", params=None, meta=None, env=None
+):
     return {
         "id": nb_id,
         "name": name,
@@ -63,15 +65,18 @@ def _make_exported_notebook(nb_id, name="NB"):
 # _validate_notebook_ids
 # ---------------------------------------------------------------------------
 
+
 class TestValidateNotebookIds(unittest.TestCase):
 
     def _mock_client(self, valid_ids, invalid_ids):
         """Build a mock DZ client that succeeds for valid_ids, raises ResourceNotFoundException for invalid_ids."""
         client = MagicMock()
-        def get_notebook(domainIdentifier, notebookIdentifier):
-            if notebookIdentifier in invalid_ids:
+
+        def get_notebook(domainIdentifier, identifier):
+            if identifier in invalid_ids:
                 raise _client_error("ResourceNotFoundException")
-            return _make_get_notebook_response(notebookIdentifier)
+            return _make_get_notebook_response(identifier)
+
         client.get_notebook.side_effect = get_notebook
         return client
 
@@ -104,7 +109,10 @@ class TestValidateNotebookIds(unittest.TestCase):
             "nb-1",
             params={"key": "val"},
             meta={"owner": "team"},
-            env={"imageVersion": "v1", "packageConfig": {"packageManager": "pip", "packageSpecification": ""}},
+            env={
+                "imageVersion": "v1",
+                "packageConfig": {"packageManager": "pip", "packageSpecification": ""},
+            },
         )
         valid, _ = _validate_notebook_ids(client, "dom-1", ["nb-1"])
         self.assertEqual(valid[0]["parameters"], {"key": "val"})
@@ -131,13 +139,12 @@ class TestValidateNotebookIds(unittest.TestCase):
 # _list_all_notebooks
 # ---------------------------------------------------------------------------
 
+
 class TestListAllNotebooks(unittest.TestCase):
 
     def test_single_page_returns_all_items(self):
         client = MagicMock()
-        client.list_notebooks.return_value = {
-            "items": [{"id": "nb-1"}, {"id": "nb-2"}]
-        }
+        client.list_notebooks.return_value = {"items": [{"id": "nb-1"}, {"id": "nb-2"}]}
         result = _list_all_notebooks(client, "dom-1", "proj-1")
         self.assertEqual(len(result), 2)
 
@@ -180,6 +187,7 @@ class TestListAllNotebooks(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # _compute_backoff_delay
 # ---------------------------------------------------------------------------
+
 
 class TestComputeBackoffDelay(unittest.TestCase):
     """Property 8: delay for attempt i equals min(initial × 2^i, max_interval)."""
@@ -227,6 +235,7 @@ class TestComputeBackoffDelay(unittest.TestCase):
 # _poll_export_status
 # ---------------------------------------------------------------------------
 
+
 class TestPollExportStatus(unittest.TestCase):
 
     @patch("smus_cicd.helpers.notebook_export.time.sleep")
@@ -260,7 +269,9 @@ class TestPollExportStatus(unittest.TestCase):
         mock_mono.side_effect = [0.0, 400.0, 400.0]
         client = MagicMock()
         client.get_notebook_export.return_value = {"status": "IN_PROGRESS"}
-        result = _poll_export_status(client, "dom-1", "exp-1", "nb-1", polling_timeout=300)
+        result = _poll_export_status(
+            client, "dom-1", "exp-1", "nb-1", polling_timeout=300
+        )
         self.assertIsNone(result)
 
     @patch("smus_cicd.helpers.notebook_export.time.sleep")
@@ -284,6 +295,7 @@ class TestPollExportStatus(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # _build_export_manifest
 # ---------------------------------------------------------------------------
+
 
 class TestBuildExportManifest(unittest.TestCase):
 
@@ -320,13 +332,22 @@ class TestBuildExportManifest(unittest.TestCase):
             exported_at="2024-01-01T00:00:00Z",
             parameters={"k": "v"},
             metadata={"owner": "team"},
-            environment_configuration={"imageVersion": "v1", "packageConfig": {"packageManager": "pip", "packageSpecification": ""}},
+            environment_configuration={
+                "imageVersion": "v1",
+                "packageConfig": {"packageManager": "pip", "packageSpecification": ""},
+            },
         )
         manifest = _build_export_manifest([nb], "dom-1", "proj-1")
         entry = manifest["notebooks"][0]
         required = {
-            "sourceNotebookId", "name", "description", "filePath",
-            "exportedAt", "parameters", "metadata", "environmentConfiguration",
+            "sourceNotebookId",
+            "name",
+            "description",
+            "filePath",
+            "exportedAt",
+            "parameters",
+            "metadata",
+            "environmentConfiguration",
         }
         self.assertEqual(set(entry.keys()), required)
         self.assertEqual(entry["sourceNotebookId"], "nb-abc")
@@ -361,12 +382,12 @@ class TestExportNotebooks(unittest.TestCase):
         valid_ids = valid_ids or []
         notebook_details = notebook_details or {}
 
-        def get_notebook(domainIdentifier, notebookIdentifier):
-            if notebookIdentifier not in valid_ids:
+        def get_notebook(domainIdentifier, identifier):
+            if identifier not in valid_ids:
                 raise _client_error("ResourceNotFoundException")
             return notebook_details.get(
-                notebookIdentifier,
-                _make_get_notebook_response(notebookIdentifier),
+                identifier,
+                _make_get_notebook_response(identifier),
             )
 
         client = MagicMock()
@@ -375,7 +396,9 @@ class TestExportNotebooks(unittest.TestCase):
 
     def _make_s3_client_with_content(self, content=b'{"cells":[]}'):
         s3 = MagicMock()
-        s3.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=content))}
+        s3.get_object.return_value = {
+            "Body": MagicMock(read=MagicMock(return_value=content))
+        }
         return s3
 
     # ── notebook_ids specified path ──────────────────────────────────────
@@ -383,10 +406,14 @@ class TestExportNotebooks(unittest.TestCase):
     @patch(PATCH_S3)
     @patch(PATCH_DZ)
     def test_invalid_ids_raises_system_exit(self, mock_dz, mock_s3):
-        mock_dz.return_value = self._make_dz_client(valid_ids=["nb-1"], notebook_details={})
+        mock_dz.return_value = self._make_dz_client(
+            valid_ids=["nb-1"], notebook_details={}
+        )
         mock_s3.return_value = MagicMock()
         with self.assertRaises(SystemExit) as ctx:
-            export_notebooks("dom-1", "proj-1", "us-east-1", notebook_ids=["nb-1", "nb-bad"])
+            export_notebooks(
+                "dom-1", "proj-1", "us-east-1", notebook_ids=["nb-1", "nb-bad"]
+            )
         self.assertIn("nb-bad", str(ctx.exception))
 
     @patch(PATCH_S3)
@@ -397,7 +424,9 @@ class TestExportNotebooks(unittest.TestCase):
         mock_dz.return_value = dz
         mock_s3.return_value = MagicMock()
         with self.assertRaises(SystemExit) as ctx:
-            export_notebooks("dom-1", "proj-1", "us-east-1", notebook_ids=["nb-a", "nb-b"])
+            export_notebooks(
+                "dom-1", "proj-1", "us-east-1", notebook_ids=["nb-a", "nb-b"]
+            )
         error_msg = str(ctx.exception)
         self.assertIn("nb-a", error_msg)
         self.assertIn("nb-b", error_msg)
@@ -407,7 +436,7 @@ class TestExportNotebooks(unittest.TestCase):
     def test_valid_ids_exports_and_returns_manifest(self, mock_dz, mock_s3):
         dz = MagicMock()
         dz.get_notebook.return_value = _make_get_notebook_response("nb-1")
-        dz.start_notebook_export.return_value = {"exportIdentifier": "exp-1"}
+        dz.start_notebook_export.return_value = {"id": "exp-1"}
         dz.get_notebook_export.return_value = {
             "status": "SUCCEEDED",
             "outputLocation": "s3://bucket/nb-1.ipynb",
@@ -445,7 +474,7 @@ class TestExportNotebooks(unittest.TestCase):
         dz.list_notebooks.return_value = {"items": [{"id": "nb-2", "name": "NB2"}]}
         # GetNotebook (for full details) returns full response
         dz.get_notebook.return_value = _make_get_notebook_response("nb-2")
-        dz.start_notebook_export.return_value = {"exportIdentifier": "exp-2"}
+        dz.start_notebook_export.return_value = {"id": "exp-2"}
         dz.get_notebook_export.return_value = {
             "status": "SUCCEEDED",
             "outputLocation": "s3://bucket/nb-2.ipynb",
@@ -459,7 +488,9 @@ class TestExportNotebooks(unittest.TestCase):
 
     @patch(PATCH_S3)
     @patch(PATCH_DZ)
-    def test_discovery_mode_empty_project_returns_empty_manifest(self, mock_dz, mock_s3):
+    def test_discovery_mode_empty_project_returns_empty_manifest(
+        self, mock_dz, mock_s3
+    ):
         dz = MagicMock()
         dz.list_notebooks.return_value = {"items": []}
         mock_dz.return_value = dz
@@ -486,17 +517,15 @@ class TestExportNotebooks(unittest.TestCase):
     def test_partial_export_failure_raises_system_exit(self, mock_dz, mock_s3):
         """One notebook fails export, one succeeds → SystemExit with failed ID listed."""
         dz = MagicMock()
-        dz.list_notebooks.return_value = {
-            "items": [{"id": "nb-ok"}, {"id": "nb-fail"}]
-        }
+        dz.list_notebooks.return_value = {"items": [{"id": "nb-ok"}, {"id": "nb-fail"}]}
 
-        def get_notebook(domainIdentifier, notebookIdentifier):
-            return _make_get_notebook_response(notebookIdentifier)
+        def get_notebook(domainIdentifier, identifier):
+            return _make_get_notebook_response(identifier)
 
         def start_export(domainIdentifier, notebookIdentifier, **kwargs):
             if notebookIdentifier == "nb-fail":
                 raise Exception("ExportError")
-            return {"exportIdentifier": "exp-ok"}
+            return {"id": "exp-ok"}
 
         dz.get_notebook.side_effect = get_notebook
         dz.start_notebook_export.side_effect = start_export
@@ -517,17 +546,21 @@ class TestExportNotebooks(unittest.TestCase):
         ipynb_content = b'{"cells": [], "metadata": {}, "nbformat": 4}'
         dz = MagicMock()
         dz.get_notebook.return_value = _make_get_notebook_response("nb-1")
-        dz.start_notebook_export.return_value = {"exportIdentifier": "exp-1"}
+        dz.start_notebook_export.return_value = {"id": "exp-1"}
         dz.get_notebook_export.return_value = {
             "status": "SUCCEEDED",
             "outputLocation": "s3://bucket/nb-1.ipynb",
         }
         mock_dz.return_value = dz
         s3 = MagicMock()
-        s3.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=ipynb_content))}
+        s3.get_object.return_value = {
+            "Body": MagicMock(read=MagicMock(return_value=ipynb_content))
+        }
         mock_s3.return_value = s3
 
-        exported, _ = export_notebooks("dom-1", "proj-1", "us-east-1", notebook_ids=["nb-1"])
+        exported, _ = export_notebooks(
+            "dom-1", "proj-1", "us-east-1", notebook_ids=["nb-1"]
+        )
         self.assertEqual(exported[0].file_content, ipynb_content)
 
     @patch(PATCH_S3)
@@ -535,7 +568,7 @@ class TestExportNotebooks(unittest.TestCase):
     def test_file_path_uses_notebook_id(self, mock_dz, mock_s3):
         dz = MagicMock()
         dz.get_notebook.return_value = _make_get_notebook_response("nb-abc123")
-        dz.start_notebook_export.return_value = {"exportIdentifier": "exp-1"}
+        dz.start_notebook_export.return_value = {"id": "exp-1"}
         dz.get_notebook_export.return_value = {
             "status": "SUCCEEDED",
             "outputLocation": "s3://bucket/nb.ipynb",
@@ -543,7 +576,9 @@ class TestExportNotebooks(unittest.TestCase):
         mock_dz.return_value = dz
         mock_s3.return_value = self._make_s3_client_with_content()
 
-        exported, _ = export_notebooks("dom-1", "proj-1", "us-east-1", notebook_ids=["nb-abc123"])
+        exported, _ = export_notebooks(
+            "dom-1", "proj-1", "us-east-1", notebook_ids=["nb-abc123"]
+        )
         self.assertEqual(exported[0].file_path, "notebooks/nb-abc123.ipynb")
 
 

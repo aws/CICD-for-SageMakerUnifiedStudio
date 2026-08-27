@@ -20,9 +20,10 @@ Requirements: 8.1, 8.2, 8.3, 8.4, 8.5
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from smus_cicd.commands.dry_run.models import DryRunContext, Finding, Severity
+from smus_cicd.helpers.connections import bucket_from_s3_uri
 
 logger = logging.getLogger(__name__)
 
@@ -144,12 +145,12 @@ class NotebookChecker:
         """
         try:
             from smus_cicd.commands.dry_run.checkers import get_project_connections
+            from smus_cicd.helpers.connections import get_connection_s3_uri
 
             connections = get_project_connections(
                 context, context.target_region or "us-east-1"
             )
-            s3_conn = connections.get("default.s3_shared", {})
-            s3_uri = s3_conn.get("s3Uri", "")
+            s3_uri = get_connection_s3_uri(connections)
 
             if not s3_uri:
                 findings.append(
@@ -167,7 +168,7 @@ class NotebookChecker:
                 return None
 
             # HEAD the bucket to verify reachability
-            bucket = s3_uri.replace("s3://", "").split("/")[0]
+            bucket = bucket_from_s3_uri(s3_uri)
             try:
                 from smus_cicd.helpers.boto3_client import create_client
 
@@ -249,7 +250,7 @@ class NotebookChecker:
 
             s3_resource = "*"
             if s3_uri:
-                bucket = s3_uri.replace("s3://", "").split("/")[0]
+                bucket = bucket_from_s3_uri(s3_uri)
                 s3_resource = f"arn:aws:s3:::{bucket}/*"
 
             # Map each action to its resource ARN

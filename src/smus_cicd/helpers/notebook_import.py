@@ -299,7 +299,6 @@ def _generate_client_token(source_notebook_id: str, timestamp: str) -> str:
 
 def _build_update_kwargs(
     domain_id: str,
-    project_id: str,
     target_notebook_id: str,
     notebook_entry: Dict[str, Any],
 ) -> Dict[str, Any]:
@@ -346,7 +345,6 @@ def _build_update_kwargs(
 def _apply_notebook_metadata(
     dz_client,
     domain_id: str,
-    project_id: str,
     target_notebook_id: str,
     notebook_entry: Dict[str, Any],
 ) -> bool:
@@ -356,9 +354,7 @@ def _apply_notebook_metadata(
 
     Returns True on success, False on any error (notebook counts as FAILED).
     """
-    kwargs = _build_update_kwargs(
-        domain_id, project_id, target_notebook_id, notebook_entry
-    )
+    kwargs = _build_update_kwargs(domain_id, target_notebook_id, notebook_entry)
     try:
         _call_with_throttle_retry(lambda: dz_client.update_notebook(**kwargs))
         return True
@@ -521,7 +517,7 @@ def _sync_single_notebook(
 
     # Apply metadata via UpdateNotebook
     metadata_ok = _apply_notebook_metadata(
-        dz_client, domain_id, project_id, new_target_id, notebook_entry
+        dz_client, domain_id, new_target_id, notebook_entry
     )
     if not metadata_ok:
         return SyncResult(
