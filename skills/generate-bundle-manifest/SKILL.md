@@ -31,11 +31,7 @@ This skill is READ-ONLY: it discovers project resources and presents generated c
 - Include a notebooks storage item when `.ipynb` files are discovered in the `notebooks/` folder (same as how Glue scripts are included when `.py` files are found). These are user-created notebooks used with `SageMakerNotebookOperator` or JupyterLab. If no `.ipynb` files are found, omit the notebooks storage item.
 - Catalog is OPT-IN. You MUST NOT set `content.catalog.enabled: true` unless the user explicitly asks. Catalog import needs `datazone:AddPolicyGrant` and ABORTS the whole deploy if the role lacks it. When you omit it, tell the user it can be enabled if they have DataZone catalog admin permissions.
 - You SHOULD use `append: true` for workflow storage items and omit `append` for source code.
-- You MUST set `applicationName` to match `^[A-Za-z0-9][A-Za-z0-9_-]*$` (max 50 chars). Derive it deterministically:
-  1. Strip a leading environment prefix if present: `dev-`, `test-`, `prod-`, `dev_`, `test_`, `prod_`.
-  2. Split the remaining name on `-` and `_`, PascalCase each segment, and join them.
-  3. If the joined result does NOT already end with one of these suffixes — `Pipeline`, `Bundle`, `App`, `Application`, `Workflow` — append `Pipeline`.
-  Worked examples: `dev-marketing` → `MarketingPipeline`; `test_sales_app` → `SalesApp`; `analytics-bundle` → `AnalyticsBundle`; `prod-fraud-detection` → `FraudDetectionPipeline`.
+- You MUST set `applicationName` to match `^[A-Za-z0-9][A-Za-z0-9_-]*$` (max 50 chars). When the user provides no name, default to the project name.
 - You MUST use `${VAR_NAME:default}` for stage-specific infrastructure values (regions, project names) so the manifest works with CI/CD env vars. Pre-fill real values only for the dev stage from discovery.
 - Scope IAM roles referenced in the manifest to specific resource ARNs, never `*`. Recommend encryption at rest (SSE-KMS) and in transit for target buckets, and CloudTrail/S3 audit logging, when the manifest references IAM roles or target buckets.
 
@@ -66,7 +62,11 @@ The response lists the project's connections and their types (S3, Glue/SPARK, AT
 aws s3 ls <s3Uri-from-step-1>/ --recursive
 ```
 
-Classify what you find: `.py` under `src/`, `src/glue-jobs/`, or `jobs/` → Glue/code; `.yaml` under `workflows/` → workflow DAGs; `.ipynb` under `notebooks/` → notebooks; `data/`, `models/` → data/model artifacts.
+Classify what you find by file type, scanning recursively through ALL nested folders (do NOT assume a fixed layout — SMUS defaults Glue jobs to `shared/jobs/`, but users may organize code under any folder structure):
+- `.py` files anywhere → Glue job scripts (each becomes a `GlueJobOperator` task). Recurse into every subfolder.
+- `.yaml` files under a `workflows/` folder → workflow DAGs.
+- `.ipynb` files under a `notebooks/` folder → notebooks.
+- `data/`, `models/` → data / model artifacts.
 
 **3. MWAA Serverless workflows*:
 
@@ -82,7 +82,7 @@ Not discoverable this way (manifest-only): git repos, environment variables, IAM
 
 When the user gives no specifics, generate with these defaults:
 
-- `applicationName` — derived per the deterministic rule above.
+- `applicationName` — defaults to the project name.
 - Three stages (dev, test, prod). The **dev stage IS the current project**: fill in its real domain (ID or name), region, and project name from discovery — no `${VAR}` placeholders and NO bootstrap actions (dev is only the bundle source; deploy never runs on it). Test and prod use `${VAR}` placeholders and get bootstrap actions.
 - Include all discovered storage content and workflows (add a notebooks storage item only if `.ipynb` files were discovered). Do NOT enable catalog unless asked.
 - If Glue scripts exist without a referencing workflow, generate one orchestration workflow (Step 5).
@@ -95,7 +95,7 @@ Then report: what was discovered/included, stages configured, which `${VAR}` pla
 
 | Discovered | Maps to |
 |---|---|
-| `.py` scripts in `src/` (or `src/glue-jobs/`, `jobs/`) | `content.storage` `name: code` |
+| `.py` scripts anywhere (any folder, recursive) | `content.storage` `name: code` |
 | `.ipynb` files in `notebooks/` | `content.storage` `name: notebooks` (include `notebooks/`) |
 | `.yaml` DAGs in `workflows/` | `content.storage` `name: workflows`, `append: true` |
 | Data in `data/` | `content.storage` `name: data` |
@@ -144,7 +144,7 @@ stages:
 Before generating, check whether each Glue script is already referenced: read each discovered DAG and inspect every `GlueJobOperator.script_location`; a match (by file name or S3 path) means that script is covered.
 
 - If every Glue script is already referenced → do NOT generate a workflow; just include the scripts in a storage item.
-- Otherwise → generate exactly ONE orchestration workflow containing a `GlueJobOperator` task for each UNREFERENCED script (never one workflow per script), register it in `content.workflows[]`, and add a `workflow.run` action.
+- Otherwise → generate exactly ONE orchestration workflow containing a `GlueJobOperator` task for each UNREFERENCED script (never one workflow per script), register it in `content.workflows[]`, and add a `workflow.run` action. Each task's `script_location` MUST point to that script's actual deployed S3 path (preserve its real subfolder — do not assume `jobs/` or `src/`). Make sure the `code` storage item's `include`/`targetDirectory` covers wherever the scripts actually live so they deploy to the path the tasks reference.
 
 Generate an orchestration workflow when: (a) unreferenced Glue/VETL scripts exist or (b) the user explicitly asks for a post-deployment workflow.
 
@@ -161,8 +161,17 @@ Orchestration-workflow correctness is best-effort; the essential deliverable is 
 Present `manifest.yaml` in a fenced YAML block, and any orchestration workflow in a separate block. Validate structure against the manifest schema doc (linked in References). Tell the user to save `manifest.yaml` to their working directory and the workflow under `workflows/`, and to review the `${VAR}` placeholders and defaults (project names, regions, target directories, schedules). Then present the CLI commands:
 
 ```bash
+# 1. Validate the manifest and connectivity
 aws-smus-cicd-cli describe --manifest manifest.yaml --connect
+
+# 2. Create the bundle from dev
 aws-smus-cicd-cli bundle --manifest manifest.yaml --targets dev --output-dir ./bundles
+
+# 3. Dry-run against the target (runs deployment checks without making changes)
+aws-smus-cicd-cli deploy --manifest manifest.yaml --targets test --bundle-archive-path ./bundles/<archive>.zip --dry-run
+aws-smus-cicd-cli deploy --manifest manifest.yaml --targets prod --bundle-archive-path ./bundles/<archive>.zip --dry-run
+
+# 4. Deploy to test, then prod (target projects must already exist)
 aws-smus-cicd-cli deploy --manifest manifest.yaml --targets test --bundle-archive-path ./bundles/<archive>.zip
 aws-smus-cicd-cli deploy --manifest manifest.yaml --targets prod --bundle-archive-path ./bundles/<archive>.zip
 ```
