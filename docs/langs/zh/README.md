@@ -81,7 +81,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 
 ### 🔧 DevOps 团队
 **您专注于：** CI/CD 最佳实践、安全性、合规性和部署自动化  
-**您定义：** 强制执行测试、审批和升级策略的工作流模板  
+**您定义：** 强制执行测试、审批和晋升策略的工作流模板  
 **您无需了解：** 应用程序特定细节、使用的 AWS 服务、DataZone API、SMUS 项目结构或业务逻辑  
 
 → **[管理员指南](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/admin-quickstart.md)** - 15 分钟内配置基础设施和流水线  
@@ -91,37 +91,38 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 
 ---
 
-## 您可以部署什么?
+## 你可以部署什么？
 
 **📊 分析与 BI**
 - Glue ETL 作业和爬虫
 - Athena 查询
 - QuickSight 仪表板
-- EMR 作业(未来)
-- Redshift 查询(未来)
+- EMR 作业（未来支持）
+- Redshift 查询（未来支持）
 
 **🤖 机器学习**
 - SageMaker 训练作业
 - ML 模型和端点
 - MLflow 实验
-- Feature Store(未来)
-- 批量转换(未来)
+- Feature Store（未来支持）
+- 批量转换（未来支持）
 
 **🧠 生成式 AI**
 - Bedrock 代理
 - 知识库
-- 基础模型配置(未来)
+- 基础模型配置（未来支持）
 
 **📓 代码与工作流**
 - Jupyter notebooks
+- SageMaker Unified Studio notebooks
 - Python 脚本
-- Airflow DAG(MWAA 和 Amazon MWAA Serverless)
-- Lambda 函数(未来)
+- Airflow DAG（MWAA 和 Amazon MWAA Serverless）
+- Lambda 函数（未来支持）
 
 **💾 数据与存储**
 - S3 数据文件
 - Git 仓库
-- DataZone 目录资源(术语表、术语表术语、表单类型、资产类型、资产、数据产品、元数据表单)
+- DataZone 目录资源（Glossaries、GlossaryTerms、FormTypes、AssetTypes、Assets、Data Products、Metadata Forms）
 
 ---
 
@@ -199,7 +200,7 @@ S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
 
 **结果:** 
 - **DevOps 团队永远不直接调用 AWS APIs** - 他们只需调用 `aws-smus-cicd-cli deploy`
-- **CI/CD 工作流是通用的** - 同一个工作流适用于 Glue 应用、SageMaker 应用或 Bedrock 应用
+- **CI/CD 工作流是通用的** - 同一工作流适用于 Glue 应用、SageMaker 应用或 Bedrock 应用
 - 数据团队永远不接触 CI/CD 配置
 - 两个团队使用各自的专业知识独立工作
 
@@ -211,7 +212,7 @@ S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
 - **内容** - 来自 git 仓库的代码、来自存储的数据/模型、QuickSight 仪表板
 - **工作流** - 用于编排和自动化的 Airflow DAGs
 - **阶段** - 部署位置(开发、测试、生产环境)
-- **配置** - 特定环境的设置、连接和引导操作
+- **配置** - 特定于环境的设置、连接和引导操作
 
 **由数据团队创建和拥有。** 定义**部署什么**和**部署到哪里**。无需 CI/CD 知识。
 
@@ -229,8 +230,8 @@ S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
 - 域和区域配置
 - 项目名称和设置
 - 资源连接(S3、Airflow、Athena、Glue)
-- 特定环境的参数
-- 基于 git 部署的可选分支映射
+- 特定于环境的参数
+- 用于基于 git 部署的可选分支映射
 
 ### 阶段到项目的映射
 
@@ -251,7 +252,7 @@ S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
 - 设置监控和日志记录
 
 **2. 运行时:** 执行持续的数据和 ML 管道
-- 计划执行(每天、每小时等)
+- 计划执行(每日、每小时等)
 - 事件驱动触发器(S3 上传、API 调用)
 - 数据处理和转换
 - 模型训练和推理
@@ -1177,15 +1178,16 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[GitHub 工作流应用程序指南](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-workflow-application-guide.md)** - 直接分支部署的应用程序管理员指南
 - **[GitHub 工作流 DevOps 指南](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-workflow-devops-guide.md)** - 直接分支部署的 DevOps 指南
 - **[部署指标](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pipeline-deployment-metrics.md)** - 使用 EventBridge 进行监控
-- **[目录导入/导出指南](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/catalog-import-export-guide.md)** - 跨环境提升 DataZone 目录资源
+- **[目录导入/导出指南](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/catalog-import-export-guide.md)** - 跨环境推广 DataZone 目录资源
 - **[目录导入/导出快速参考](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/catalog-import-export-quick-reference.md)** - 目录部署快速参考
+- **[笔记本同步（端到端示例）](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/examples/e2e-notebook-sync/README.md)** - 跨环境导出和同步笔记本（bundle-deploy 模式）
 - **[MCP 配置](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/mcp-configuration.md)** - MCP 服务器配置指南
 - **[Q CLI 对话示例](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/q-cli-conversation-examples.md)** - 与 Q CLI 的对话示例
 
 ### 参考
 - **[清单架构](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest-schema.md)** - YAML 架构验证和结构
 - **[Airflow AWS 操作器](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-aws-operators.md)** - 自定义操作器参考
-- **[SMUS CI/CD 中的 Airflow 摘要](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-smus-cicd-summary.md)** - Airflow 在 SMUS CI/CD 中的角色概述
+- **[SMUS CI/CD 中的 Airflow 概述](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-smus-cicd-summary.md)** - Airflow 在 SMUS CI/CD 中的角色概述
 - **[架构](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/architecture.md)** - CLI 架构文档
 - **[管道架构图](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pipeline-architecture-diagram.md)** - CI/CD 管道架构概述
 
@@ -1201,7 +1203,7 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[开发者指南](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/developer-guide.md)** - 包含架构、测试和工作流的完整开发指南
 - **[开发指南](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/development.md)** - 开发工作流、测试和贡献指南
 - **[PyPI 发布](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pypi-publishing.md)** - PyPI 发布设置
-- **[AI 助手上下文](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/AmazonQ.md)** - AI 助手（Amazon Q、Kiro）的上下文
+- **[AI 助手上下文](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/AmazonQ.md)** - AI 助手的上下文（Amazon Q、Kiro）
 - **[测试概述](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/tests/README.md)** - 测试基础设施
 
 ### 支持
@@ -1229,7 +1231,7 @@ pip install -e .
 
 ## 许可证
 
-本项目采用 Apache 许可证 2.0 版本。详情请参阅 [LICENSE](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/LICENSE)。
+本项目采用 Apache License, Version 2.0 许可证。详情请参阅 [LICENSE](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/LICENSE)。
 
 ---
 

@@ -8,7 +8,7 @@
 
 ← [Back to Main README](../../../README.md)
 
-# CLI du Pipeline CI/CD SMUS
+# CLI de Pipeline CI/CD SMUS
 
 
 > **[Domaines IAM + IdC]** Ce CLI prend en charge les domaines SMUS basés sur IAM et sur IAM Identity Center (IdC). Pour les domaines IdC, une configuration supplémentaire (réseau VPC, permissions Lake Formation, politiques IAM en ligne) peut être nécessaire — consultez les scripts de configuration dans chaque répertoire d'exemple.
@@ -26,7 +26,7 @@ Déployez des DAG Airflow, des notebooks Jupyter et des workflows ML du dévelop
 ✅ **Couche d'abstraction AWS** - Le CLI encapsule toute la complexité d'AWS analytics, ML et SMUS - Les équipes DevOps n'appellent jamais directement les API AWS  
 ✅ **Séparation des préoccupations** - Les équipes data définissent QUOI déployer (manifest.yaml), les équipes DevOps définissent COMMENT et QUAND (workflows CI/CD)  
 ✅ **Workflows CI/CD génériques** - Le même workflow fonctionne pour Glue, SageMaker, Bedrock, QuickSight, ou toute combinaison de services AWS  
-✅ **Déployer en toute confiance** - Validation par simulation pré-déploiement et tests automatisés avant la production  
+✅ **Déployer en toute confiance** - Validation par simulation avant déploiement et tests automatisés avant la production  
 ✅ **Gestion multi-environnements** - Test → Prod avec configuration spécifique à chaque environnement  
 ✅ **Infrastructure as Code** - Manifestes d'application versionnés et déploiements reproductibles  
 ✅ **Workflows événementiels** - Déclencher automatiquement des workflows via EventBridge lors du déploiement  
@@ -114,6 +114,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 
 **📓 Code & Workflows**
 - Notebooks Jupyter
+- Notebooks SageMaker Unified Studio
 - Scripts Python
 - DAG Airflow (MWAA et Amazon MWAA Serverless)
 - Fonctions Lambda (futur)
@@ -121,7 +122,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 **💾 Données & Stockage**
 - Fichiers de données S3
 - Dépôts Git
-- Ressources de catalogue DataZone (Glossaires, GlossaryTerms, FormTypes, AssetTypes, Assets, Data Products, Metadata Forms)
+- Ressources de catalogue DataZone (Glossaries, GlossaryTerms, FormTypes, AssetTypes, Assets, Data Products, Metadata Forms)
 
 ---
 
@@ -175,7 +176,7 @@ ML/Analytics/GenAI nécessaire !
 ```
 
 **Les équipes DevOps se concentrent sur :**
-- Les bonnes pratiques CI/CD (tests, approbations, notifications)
+- Les meilleures pratiques CI/CD (tests, approbations, notifications)
 - Les contrôles de sécurité et de conformité
 - L'orchestration des déploiements
 - La surveillance et les alertes
@@ -232,12 +233,12 @@ Un environnement de déploiement (dev, test, prod) mappé à un projet SageMaker
 - Paramètres spécifiques à l'environnement
 - Mappage de branche optionnel pour les déploiements basés sur git
 
-### Mappage Stage vers Projet
+### Mappage Stage-vers-Projet
 
 Chaque stage d'application se déploie vers un projet SageMaker Unified Studio (SMUS) dédié. Un projet peut héberger une seule application ou plusieurs applications selon votre architecture et votre méthodologie CI/CD. Les projets de stage sont des entités indépendantes avec leur propre gouvernance :
 
-- **Propriété et accès :** Chaque projet de stage possède son propre ensemble de propriétaires et de contributeurs, qui peuvent différer du projet de développement. Les projets de production ont généralement un accès restreint par rapport aux environnements de développement.
-- **Multi-domaines et multi-régions :** Les projets de stage peuvent appartenir à différents domaines SMUS, comptes AWS et régions. Par exemple, votre stage dev peut se déployer vers un domaine de développement dans us-east-1, tandis que prod se déploie vers un domaine de production dans eu-west-1.
+- **Propriété et accès :** Chaque projet de stage a son propre ensemble de propriétaires et de contributeurs, qui peuvent différer du projet de développement. Les projets de production ont généralement un accès restreint par rapport aux environnements de développement.
+- **Multi-domaine et multi-région :** Les projets de stage peuvent appartenir à différents domaines SMUS, comptes AWS et régions. Par exemple, votre stage dev peut se déployer vers un domaine de développement dans us-east-1, tandis que prod se déploie vers un domaine de production dans eu-west-1.
 - **Architecture flexible :** Les organisations peuvent choisir entre des projets dédiés par application (isolation) ou des projets partagés hébergeant plusieurs applications (consolidation), en fonction des exigences de sécurité, de conformité et opérationnelles.
 
 Cette séparation permet une véritable isolation des environnements avec des contrôles d'accès indépendants, des limites de conformité et des exigences de résidence des données régionales.
@@ -1174,16 +1175,17 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[Substitutions et variables](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/substitutions-and-variables.md)** - Configuration dynamique
 - **[Guide des connexions](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/connections.md)** - Configurez les intégrations de services AWS
 - **[Intégration GitHub Actions](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-actions-integration.md)** - Configuration de l'automatisation CI/CD
-- **[Guide d'application du workflow GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-workflow-application-guide.md)** - Guide administrateur d'application pour le déploiement direct de branche
-- **[Guide DevOps du workflow GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-workflow-devops-guide.md)** - Guide DevOps pour le déploiement direct de branche
+- **[Guide d'application de workflow GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-workflow-application-guide.md)** - Guide administrateur d'application pour le déploiement direct de branche
+- **[Guide DevOps de workflow GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-workflow-devops-guide.md)** - Guide DevOps pour le déploiement direct de branche
 - **[Métriques de déploiement](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pipeline-deployment-metrics.md)** - Surveillance avec EventBridge
 - **[Guide d'import/export de catalogue](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/catalog-import-export-guide.md)** - Promouvez les ressources de catalogue DataZone entre environnements
 - **[Référence rapide d'import/export de catalogue](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/catalog-import-export-quick-reference.md)** - Référence rapide pour le déploiement de catalogue
+- **[Synchronisation de notebooks (exemple E2E)](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/examples/e2e-notebook-sync/README.md)** - Exportez et synchronisez les notebooks entre environnements (mode bundle-deploy)
 - **[Configuration MCP](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/mcp-configuration.md)** - Guide de configuration du serveur MCP
-- **[Exemples de conversation Q CLI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/q-cli-conversation-examples.md)** - Exemples de conversations avec Q CLI
+- **[Exemples de conversations Q CLI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/q-cli-conversation-examples.md)** - Exemples de conversations avec Q CLI
 
 ### Référence
-- **[Schéma du manifeste](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest-schema.md)** - Validation et structure du schéma YAML
+- **[Schéma de manifeste](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest-schema.md)** - Validation et structure du schéma YAML
 - **[Opérateurs AWS Airflow](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-aws-operators.md)** - Référence des opérateurs personnalisés
 - **[Résumé Airflow dans SMUS CI/CD](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-smus-cicd-summary.md)** - Vue d'ensemble du rôle d'Airflow dans SMUS CI/CD
 - **[Architecture](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/architecture.md)** - Documentation de l'architecture CLI
@@ -1229,7 +1231,7 @@ pip install -e .
 
 ## Licence
 
-Ce projet est sous licence Apache, version 2.0. Voir [LICENSE](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/LICENSE) pour plus de détails.
+Ce projet est sous licence Apache License, Version 2.0. Voir [LICENSE](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/LICENSE) pour plus de détails.
 
 ---
 
