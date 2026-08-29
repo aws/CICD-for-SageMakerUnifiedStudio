@@ -112,7 +112,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 - אפליקציות GenAI (Bedrock, Notebooks)
 
 ### 🔧 צוותי DevOps
-**אתם מתמקדים ב:** שיטות עבודה מומלצות של CI/CD, אבטחה, ציות ואוטומציית פריסה  
+**אתם מתמקדים ב:** שיטות עבודה מומלצות CI/CD, אבטחה, ציות ואוטומציית פריסה  
 **אתם מגדירים:** תבניות תהליכי עבודה שאוכפות מדיניות בדיקות, אישורים וקידום  
 **אתם לא צריכים לדעת:** פרטים ספציפיים לאפליקציה, שירותי AWS בשימוש, APIs של DataZone, מבני פרויקט SMUS, או לוגיקה עסקית  
 
@@ -137,9 +137,9 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 - שאילתות Redshift (עתידי)
 
 **🤖 Machine Learning**
-- עבודות אימון של SageMaker
+- עבודות אימון SageMaker
 - מודלים ונקודות קצה של ML
-- ניסויים של MLflow
+- ניסויים MLflow
 - Feature Store (עתידי)
 - Batch transforms (עתידי)
 
@@ -156,7 +156,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 - פונקציות Lambda (עתידי)
 
 **💾 נתונים ואחסון**
-- קבצי נתונים ב-S3
+- קבצי נתונים S3
 - מאגרי Git
 - משאבי קטלוג DataZone (מילונים, מונחי מילון, סוגי טפסים, סוגי נכסים, נכסים, מוצרי נתונים, טפסי מטא-דאטה)
 
@@ -215,7 +215,7 @@ S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
                                                               - Glue/Athena/SageMaker APIs
 מגדיר תשתית                                                    - פריסת MWAA
 - חשבון ואזור                                                  - ניהול S3
-- תפקידי IAM                                                   - הגדרת IAM
+- תפקידי IAM                                                   - תצורת IAM
 - משאבים                                                       - הקמת תשתית
 
 עובד עבור כל אפליקציה!
@@ -238,7 +238,7 @@ ML/Analytics/GenAI!
 - AWS Glue, Athena, SageMaker, MWAA APIs
 - ניהול אחסון ו-artifacts ב-S3
 - תפקידי והרשאות IAM
-- הגדרות חיבור
+- תצורות חיבור
 - מנויים על נכסי קטלוג
 - פריסת Workflow ל-Airflow
 - הקמת תשתית
@@ -247,13 +247,13 @@ ML/Analytics/GenAI!
 **צוותי נתונים מתמקדים ב:**
 - קוד אפליקציה ו-workflows
 - אילו שירותי AWS להשתמש (Glue, Athena, SageMaker וכו')
-- הגדרות סביבה
+- תצורות סביבה
 - לוגיקה עסקית
 
 **תוצאה:** 
-- **צוותי DevOps לעולם לא קוראים ישירות ל-AWS APIs** - הם פשוט קוראים ל-`aws-smus-cicd-cli deploy`
+- **צוותי DevOps אף פעם לא קוראים ישירות ל-AWS APIs** - הם רק קוראים ל-`aws-smus-cicd-cli deploy`
 - **workflows של CI/CD הם גנריים** - אותו workflow עובד עבור אפליקציות Glue, אפליקציות SageMaker או אפליקציות Bedrock
-- צוותי נתונים לעולם לא נוגעים בהגדרות CI/CD
+- צוותי נתונים אף פעם לא נוגעים בתצורות CI/CD
 - שני הצוותים עובדים באופן עצמאי תוך שימוש במומחיות שלהם
 
 ---
@@ -264,7 +264,7 @@ ML/Analytics/GenAI!
 - **תוכן** - קוד ממאגרי git, נתונים/מודלים מאחסון, לוחות מחוונים של QuickSight
 - **Workflows** - Airflow DAGs לתזמור ואוטומציה
 - **Stages** - לאן לפרוס (סביבות dev, test, prod)
-- **הגדרות** - הגדרות ספציפיות לסביבה, חיבורים ופעולות bootstrap
+- **תצורה** - הגדרות ספציפיות לסביבה, חיבורים ופעולות bootstrap
 
 **נוצר ובבעלות צוותי נתונים.** מגדיר **מה** לפרוס ו**לאן**. אין צורך בידע ב-CI/CD.
 
@@ -275,11 +275,11 @@ ML/Analytics/GenAI!
 - מודלים של ML וקוד אימון
 - צינורות ETL וטרנספורמציות
 - סוכני GenAI ושרתי MCP
-- הגדרות מודל יסוד
+- תצורות מודל יסוד
 
 ### Stage
 סביבת פריסה (dev, test, prod) הממופה לפרויקט SageMaker Unified Studio:
-- הגדרת דומיין ואזור
+- תצורת דומיין ואזור
 - שם פרויקט והגדרות
 - חיבורי משאבים (S3, Airflow, Athena, Glue)
 - פרמטרים ספציפיים לסביבה
@@ -290,7 +290,7 @@ ML/Analytics/GenAI!
 כל stage של אפליקציה מפרוס לפרויקט ייעודי של SageMaker Unified Studio (SMUS). פרויקט יכול לארח אפליקציה בודדת או מספר אפליקציות בהתאם לארכיטקטורה ולמתודולוגיית CI/CD שלך. פרויקטי stage הם ישויות עצמאיות עם ממשל משלהן:
 
 - **בעלות וגישה:** לכל פרויקט stage יש קבוצה משלו של בעלים ותורמים, שעשויים להיות שונים מפרויקט הפיתוח. לפרויקטי ייצור יש בדרך כלל גישה מוגבלת בהשוואה לסביבות פיתוח.
-- **Multi-Domain ו-Multi-Region:** פרויקטי stage יכולים להשתייך לדומיינים שונים של SMUS, חשבונות AWS ואזורים. לדוגמה, ה-dev stage שלך עשוי לפרוס לדומיין פיתוח ב-us-east-1, בעוד prod מפרוס לדומיין ייצור ב-eu-west-1.
+- **Multi-Domain ו-Multi-Region:** פרויקטי stage יכולים להשתייך לדומיינים שונים של SMUS, חשבונות AWS ואזורים. לדוגמה, stage ה-dev שלך עשוי לפרוס לדומיין פיתוח ב-us-east-1, בעוד prod מפרוס לדומיין ייצור ב-eu-west-1.
 - **ארכיטקטורה גמישה:** ארגונים יכולים לבחור בין פרויקטים ייעודיים לכל אפליקציה (בידוד) או פרויקטים משותפים המארחים מספר אפליקציות (איחוד), בהתבסס על דרישות אבטחה, תאימות ותפעול.
 
 הפרדה זו מאפשרת בידוד אמיתי של סביבות עם בקרות גישה עצמאיות, גבולות תאימות ודרישות שהייה אזורית של נתונים.
@@ -300,10 +300,10 @@ ML/Analytics/GenAI!
 
 **1. בזמן פריסה:** יצירת משאבי AWS נדרשים במהלך הפריסה
 - הקמת תשתית (S3 buckets, מסדי נתונים, תפקידי IAM)
-- הגדרת חיבורים והרשאות
-- הקמת ניטור ורישום
+- תצורת חיבורים והרשאות
+- הגדרת ניטור ורישום
 
-**2. זמן ריצה:** ביצוע צינורות נתונים ו-ML מתמשכים
+**2. זמן ריצה:** ביצוע צינורות נתונים ו-ML שוטפים
 - ביצוע מתוזמן (יומי, שעתי וכו')
 - טריגרים מונעי אירועים (העלאות S3, קריאות API)
 - עיבוד נתונים וטרנספורמציות
@@ -312,15 +312,15 @@ ML/Analytics/GenAI!
 Workflows מוגדרים כ-Airflow DAGs (Directed Acyclic Graphs) בפורמט YAML. תומך ב-[MWAA (Managed Workflows for Apache Airflow)](https://aws.amazon.com/managed-workflows-for-apache-airflow/) וב-[Amazon MWAA Serverless](https://aws.amazon.com/blogs/big-data/introducing-amazon-mwaa-serverless/) ([מדריך משתמש](https://docs.aws.amazon.com/mwaa/latest/mwaa-serverless-userguide/what-is-mwaa-serverless.html)).
 
 ### אוטומציית CI/CD
-workflows של GitHub Actions (או מערכות CI/CD אחרות) שמאוטמטים פריסה:
-- **נוצרים ובבעלות צוותי DevOps**
+workflows של GitHub Actions (או מערכות CI/CD אחרות) שמבצעים אוטומציה של הפריסה:
+- **נוצר ובבעלות צוותי DevOps**
 - מגדיר **איך** ו**מתי** לפרוס
 - מריץ בדיקות ושערי איכות
 - מנהל קידום בין targets
 - אוכף מדיניות אבטחה ותאימות
 - דוגמה: `.github/workflows/deploy.yml`
 
-**תובנה מרכזית:** צוותי DevOps יוצרים workflows גנריים וניתנים לשימוש חוזר שעובדים עבור כל אפליקציה. הם לא צריכים לדעת אם האפליקציה משתמשת ב-Glue, SageMaker או Bedrock - ה-CLI מטפל בכל האינטראקציות עם שירותי AWS. ה-workflow פשוט קורא ל-`aws-smus-cicd-cli deploy` וה-CLI עושה את השאר.
+**תובנת מפתח:** צוותי DevOps יוצרים workflows גנריים וניתנים לשימוש חוזר שעובדים עבור כל אפליקציה. הם לא צריכים לדעת אם האפליקציה משתמשת ב-Glue, SageMaker או Bedrock - ה-CLI מטפל בכל האינטראקציות עם שירותי AWS. ה-workflow פשוט קורא ל-`aws-smus-cicd-cli deploy` וה-CLI עושה את השאר.
 
 ### מצבי פריסה
 
@@ -1355,7 +1355,7 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[מניפסט אפליקציה](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest.md)** - מדריך מלא לתצורת YAML
 - **[פקודות CLI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/cli-commands.md)** - כל הפקודות והאפשרויות הזמינות
 - **[מדריך חזרה לאחור](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/rollback-guide.md)** - התאוששות מפריסות כושלות ואוטומציה של חזרה לאחור
-- **[פעולות Bootstrap](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/bootstrap-actions.md)** - פעולות פריסה אוטומטיות ותהליכי עבודה מונעי אירועים
+- **[פעולות Bootstrap](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/bootstrap-actions.md)** - פעולות פריסה אוטומטיות וזרימות עבודה מונעות אירועים
 - **[החלפות ומשתנים](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/substitutions-and-variables.md)** - תצורה דינמית
 - **[מדריך חיבורים](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/connections.md)** - הגדרת אינטגרציות לשירותי AWS
 - **[אינטגרציית GitHub Actions](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-actions-integration.md)** - הגדרת אוטומציית CI/CD
@@ -1384,8 +1384,8 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[אפליקציית GenAI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-generative-ai)** - סוכני Bedrock ובסיסי ידע
 
 ### פיתוח
-- **[מדריך למפתחים](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/developer-guide.md)** - מדריך פיתוח מלא עם ארכיטקטורה, בדיקות ותהליכי עבודה
-- **[מדריך פיתוח](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/development.md)** - תהליכי עבודה לפיתוח, בדיקות והנחיות תרומה
+- **[מדריך למפתחים](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/developer-guide.md)** - מדריך פיתוח מלא עם ארכיטקטורה, בדיקות וזרימות עבודה
+- **[מדריך פיתוח](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/development.md)** - זרימות עבודה לפיתוח, בדיקות והנחיות תרומה
 - **[פרסום PyPI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pypi-publishing.md)** - הגדרת פרסום PyPI
 - **[הקשר לעוזר AI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/AmazonQ.md)** - הקשר לעוזרי AI (Amazon Q, Kiro)
 - **[סקירת בדיקות](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/tests/README.md)** - תשתית בדיקות
@@ -1431,7 +1431,7 @@ pip install -e .
 
 ## רישיון
 
-פרויקט זה מורשה תחת Apache License, Version 2.0. ראה [LICENSE](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/LICENSE) לפרטים נוספים.
+פרויקט זה מורשה תחת רישיון Apache, גרסה 2.0. ראה [LICENSE](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/LICENSE) לפרטים נוספים.
 
 ---
 
