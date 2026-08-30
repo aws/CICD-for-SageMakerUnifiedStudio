@@ -8,16 +8,15 @@
 
 ← [Back to Main README](../../../README.md)
 
-# CLI de Pipeline CI/CD SMUS
+# CLI du Pipeline CI/CD SMUS
 
-
-> **[Domaines IAM + IdC]** Ce CLI prend en charge les domaines SMUS basés sur IAM et sur IAM Identity Center (IdC). Pour les domaines IdC, une configuration supplémentaire (réseau VPC, permissions Lake Formation, politiques IAM en ligne) peut être nécessaire — consultez les scripts de configuration dans chaque répertoire d'exemple.
+> **[Domaines IAM + IdC]** Cette CLI prend en charge les domaines SMUS basés sur IAM et sur IAM Identity Center (IdC). Pour les domaines IdC, une configuration supplémentaire (réseau VPC, permissions Lake Formation, politiques IAM en ligne) peut être nécessaire — consultez les scripts de configuration dans chaque répertoire d'exemple.
 
 **Automatisez le déploiement d'applications de données dans les environnements SageMaker Unified Studio**
 
 Déployez des DAG Airflow, des notebooks Jupyter et des workflows ML du développement à la production en toute confiance. Conçu pour les data scientists, les data engineers, les ML engineers et les développeurs d'applications GenAI travaillant avec les équipes DevOps.
 
-**Fonctionne avec votre stratégie de déploiement :** Que vous utilisiez des branches git (basé sur les branches), des artefacts versionnés (basé sur les bundles), des tags git (basé sur les tags) ou un déploiement direct - ce CLI prend en charge votre workflow. Définissez votre application une fois, déployez-la à votre manière.
+**Fonctionne avec votre stratégie de déploiement :** Que vous utilisiez des branches git (basé sur les branches), des artefacts versionnés (basé sur les bundles), des tags git (basé sur les tags) ou un déploiement direct - cette CLI prend en charge votre workflow. Définissez votre application une fois, déployez-la à votre manière.
 
 ---
 
@@ -105,7 +104,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 - Modèles ML et points de terminaison
 - Expériences MLflow
 - Feature Store (futur)
-- Transformations par lot (futur)
+- Transformations par lots (futur)
 
 **🧠 IA générative**
 - Agents Bedrock
@@ -150,7 +149,7 @@ S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
 
 ### Séparation des préoccupations : Le principe de conception clé
 
-**Le problème :** Les approches de déploiement traditionnelles obligent les équipes DevOps à apprendre les services d'analyse AWS (Glue, Athena, DataZone, SageMaker, MWAA, etc.) et à comprendre les structures de projet SMUS, ou obligent les équipes de données à devenir des experts CI/CD.
+**Le problème :** Les approches de déploiement traditionnelles obligent les équipes DevOps à apprendre les services d'analyse AWS (Glue, Athena, DataZone, SageMaker, MWAA, etc.) et à comprendre les structures de projet SMUS, ou obligent les équipes de données à devenir des experts en CI/CD.
 
 **La solution :** SMUS CI/CD CLI est la couche d'abstraction qui encapsule toute la complexité AWS et SMUS.
 
@@ -176,7 +175,7 @@ ML/Analytics/GenAI nécessaire !
 ```
 
 **Les équipes DevOps se concentrent sur :**
-- Les meilleures pratiques CI/CD (tests, approbations, notifications)
+- Les bonnes pratiques CI/CD (tests, approbations, notifications)
 - Les contrôles de sécurité et de conformité
 - L'orchestration des déploiements
 - La surveillance et les alertes
@@ -253,7 +252,7 @@ Logique d'orchestration qui exécute votre application. Les workflows servent de
 
 **2. À l'exécution :** Exécuter les pipelines de données et ML en continu
 - Exécution planifiée (quotidienne, horaire, etc.)
-- Déclencheurs basés sur des événements (uploads S3, appels API)
+- Déclencheurs événementiels (uploads S3, appels API)
 - Traitement et transformations de données
 - Entraînement et inférence de modèles
 
@@ -1237,5 +1236,5 @@ Ce projet est sous licence Apache License, Version 2.0. Voir [LICENSE](https://g
 
 <div align="center">
   <img src="docs/readme-qr-code.png" alt="Scanner pour voir le README" width="200"/>
-  <p><em>Scanner le code QR pour voir ce README sur GitHub</em></p>
+  <p><em>Scannez le code QR pour voir ce README sur GitHub</em></p>
 </div>

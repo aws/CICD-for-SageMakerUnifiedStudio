@@ -10,11 +10,12 @@
 
 # CLI de Pipeline CI/CD SMUS
 
+
 > **[Domínios IAM + IdC]** Esta CLI suporta domínios SMUS baseados em IAM e em IAM Identity Center (IdC). Para domínios IdC, configuração adicional (rede VPC, permissões Lake Formation, políticas IAM inline) pode ser necessária — consulte os scripts de configuração em cada diretório de exemplo.
 
 **Automatize a implantação de aplicações de dados em ambientes SageMaker Unified Studio**
 
-Implante DAGs Airflow, notebooks Jupyter e workflows ML de desenvolvimento para produção com confiança. Construído para cientistas de dados, engenheiros de dados, engenheiros ML e desenvolvedores de aplicações GenAI trabalhando com equipes DevOps.
+Implante DAGs Airflow, notebooks Jupyter e fluxos de trabalho ML de desenvolvimento para produção com confiança. Construído para cientistas de dados, engenheiros de dados, engenheiros ML e desenvolvedores de aplicações GenAI trabalhando com equipes DevOps.
 
 **Funciona com sua estratégia de implantação:** Seja usando branches git (baseado em branch), artefatos versionados (baseado em bundle), tags git (baseado em tag), ou implantação direta - esta CLI suporta seu fluxo de trabalho. Defina sua aplicação uma vez, implante do seu jeito.
 
@@ -22,10 +23,10 @@ Implante DAGs Airflow, notebooks Jupyter e workflows ML de desenvolvimento para 
 
 ## Por que SMUS CI/CD CLI?
 
-✅ **Camada de Abstração AWS** - CLI encapsula toda a complexidade de analytics, ML e SMUS da AWS - Equipes de DevOps nunca chamam APIs da AWS diretamente  
+✅ **Camada de Abstração AWS** - A CLI encapsula toda a complexidade de analytics, ML e SMUS da AWS - Equipes de DevOps nunca chamam APIs da AWS diretamente  
 ✅ **Separação de Responsabilidades** - Equipes de dados definem O QUE implantar (manifest.yaml), equipes de DevOps definem COMO e QUANDO (workflows de CI/CD)  
 ✅ **Workflows de CI/CD Genéricos** - O mesmo workflow funciona para Glue, SageMaker, Bedrock, QuickSight ou qualquer combinação de serviços AWS  
-✅ **Implante com Confiança** - Validação dry-run pré-implantação e testes automatizados antes da produção  
+✅ **Implante com Confiança** - Validação de dry-run pré-implantação e testes automatizados antes da produção  
 ✅ **Gerenciamento Multi-Ambiente** - Teste → Produção com configuração específica por ambiente  
 ✅ **Infrastructure as Code** - Manifestos de aplicação versionados e implantações reproduzíveis  
 ✅ **Workflows Orientados a Eventos** - Acione workflows automaticamente via EventBridge na implantação  
@@ -47,7 +48,7 @@ aws-smus-cicd-cli describe --manifest manifest.yaml --connect
 # Criar pacote de implantação (opcional)
 aws-smus-cicd-cli bundle --manifest manifest.yaml
 
-# Visualizar implantação (execução simulada)
+# Visualizar implantação (execução de teste)
 aws-smus-cicd-cli deploy --targets test --manifest manifest.yaml --dry-run
 
 # Implantar no ambiente de teste
@@ -80,20 +81,20 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 
 ### 🔧 Equipes DevOps
 **Você foca em:** Melhores práticas de CI/CD, segurança, conformidade e automação de implantação  
-**Você define:** Templates de workflow que impõem testes, aprovações e políticas de promoção  
-**Você não precisa saber:** Detalhes específicos da aplicação, serviços AWS utilizados, APIs do DataZone, estruturas de projeto SMUS ou lógica de negócio  
+**Você define:** Templates de workflow que aplicam políticas de testes, aprovações e promoção  
+**Você não precisa saber:** Detalhes específicos da aplicação, serviços AWS utilizados, APIs do DataZone, estruturas de projetos SMUS ou lógica de negócio  
 
 → **[Guia do Administrador](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/admin-quickstart.md)** - Configure infraestrutura e pipelines em 15 minutos  
 → **[Templates de Workflow do GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/git-templates/)** - Templates de workflow genéricos e reutilizáveis para implantação automatizada
 
-**O CLI é sua camada de abstração:** Você apenas chama `aws-smus-cicd-cli deploy` - o CLI gerencia todas as interações com serviços AWS (DataZone, Glue, Athena, SageMaker, MWAA, S3, IAM, etc.). Seus workflows permanecem simples e genéricos.
+**O CLI é sua camada de abstração:** Você apenas executa `aws-smus-cicd-cli deploy` - o CLI gerencia todas as interações com serviços AWS (DataZone, Glue, Athena, SageMaker, MWAA, S3, IAM, etc.). Seus workflows permanecem simples e genéricos.
 
 ---
 
 ## O Que Você Pode Implantar?
 
 **📊 Analytics & BI**
-- Jobs e crawlers do Glue
+- Jobs e crawlers do Glue ETL
 - Consultas do Athena
 - Dashboards do QuickSight
 - Jobs do EMR (futuro)
@@ -176,7 +177,7 @@ serviços ML/Analytics/GenAI!
 
 **Equipes DevOps focam em:**
 - Melhores práticas de CI/CD (testes, aprovações, notificações)
-- Portões de segurança e conformidade
+- Controles de segurança e conformidade
 - Orquestração de deployment
 - Monitoramento e alertas
 
@@ -200,7 +201,7 @@ serviços ML/Analytics/GenAI!
 **Resultado:** 
 - **Equipes DevOps nunca chamam APIs AWS diretamente** - apenas chamam `aws-smus-cicd-cli deploy`
 - **Workflows CI/CD são genéricos** - o mesmo workflow funciona para apps Glue, SageMaker ou Bedrock
-- Equipes de dados nunca tocam em configs de CI/CD
+- Equipes de dados nunca tocam em configurações CI/CD
 - Ambas as equipes trabalham independentemente usando sua expertise
 
 ---
@@ -211,9 +212,9 @@ Um arquivo YAML declarativo (`manifest.yaml`) que define sua aplicação de dado
 - **Conteúdo** - Código de repositórios git, dados/modelos de armazenamento, dashboards QuickSight
 - **Workflows** - DAGs Airflow para orquestração e automação
 - **Stages** - Onde implantar (ambientes dev, test, prod)
-- **Configuração** - Configurações específicas de ambiente, conexões e ações de bootstrap
+- **Configuração** - Configurações específicas por ambiente, conexões e ações de bootstrap
 
-**Criado e mantido por equipes de dados.** Define **o que** implantar e **onde**. Não requer conhecimento de CI/CD.
+**Criado e mantido pelas equipes de dados.** Define **o que** implantar e **onde**. Não requer conhecimento de CI/CD.
 
 ### Aplicação
 Sua carga de trabalho de dados/analytics sendo implantada:
@@ -229,14 +230,14 @@ Um ambiente de deployment (dev, test, prod) mapeado para um projeto SageMaker Un
 - Configuração de domínio e região
 - Nome e configurações do projeto
 - Conexões de recursos (S3, Airflow, Athena, Glue)
-- Parâmetros específicos de ambiente
+- Parâmetros específicos do ambiente
 - Mapeamento opcional de branch para deployments baseados em git
 
 ### Mapeamento Stage-para-Projeto
 
-Cada stage da aplicação é implantado em um projeto dedicado do SageMaker Unified Studio (SMUS). Um projeto pode hospedar uma única aplicação ou múltiplas aplicações dependendo da sua arquitetura e metodologia de CI/CD. Projetos de stage são entidades independentes com sua própria governança:
+Cada stage da aplicação é implantado em um projeto dedicado do SageMaker Unified Studio (SMUS). Um projeto pode hospedar uma única aplicação ou múltiplas aplicações dependendo da sua arquitetura e metodologia CI/CD. Projetos de stage são entidades independentes com sua própria governança:
 
-- **Propriedade e Acesso:** Cada projeto de stage tem seu próprio conjunto de proprietários e colaboradores, que podem diferir do projeto de desenvolvimento. Projetos de produção tipicamente têm acesso restrito comparado a ambientes de desenvolvimento.
+- **Propriedade e Acesso:** Cada projeto de stage tem seu próprio conjunto de proprietários e colaboradores, que podem diferir do projeto de desenvolvimento. Projetos de produção tipicamente têm acesso restrito comparado aos ambientes de desenvolvimento.
 - **Multi-Domínio e Multi-Região:** Projetos de stage podem pertencer a diferentes domínios SMUS, contas AWS e regiões. Por exemplo, seu stage dev pode implantar em um domínio de desenvolvimento em us-east-1, enquanto prod implanta em um domínio de produção em eu-west-1.
 - **Arquitetura Flexível:** Organizações podem escolher entre projetos dedicados por aplicação (isolamento) ou projetos compartilhados hospedando múltiplas aplicações (consolidação), baseado em requisitos de segurança, conformidade e operacionais.
 
@@ -260,9 +261,9 @@ Workflows são definidos como DAGs Airflow (Directed Acyclic Graphs) em formato 
 
 ### Automação CI/CD
 Workflows GitHub Actions (ou outros sistemas CI/CD) que automatizam o deployment:
-- **Criado e mantido por equipes DevOps**
+- **Criado e mantido pelas equipes DevOps**
 - Define **como** e **quando** implantar
-- Executa testes e portões de qualidade
+- Executa testes e controles de qualidade
 - Gerencia promoção entre targets
 - Aplica políticas de segurança e conformidade
 - Exemplo: `.github/workflows/deploy.yml`
@@ -1184,7 +1185,7 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[Exemplos de Conversação com Q CLI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/q-cli-conversation-examples.md)** - Exemplos de conversações com Q CLI
 
 ### Referência
-- **[Esquema do Manifesto](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest-schema.md)** - Validação e estrutura do esquema YAML
+- **[Schema do Manifesto](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest-schema.md)** - Validação e estrutura do schema YAML
 - **[Operadores AWS do Airflow](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-aws-operators.md)** - Referência de operadores personalizados
 - **[Resumo do Airflow no CI/CD do SMUS](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-smus-cicd-summary.md)** - Visão geral do papel do Airflow no CI/CD do SMUS
 - **[Arquitetura](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/architecture.md)** - Documentação da arquitetura do CLI
@@ -1230,7 +1231,7 @@ pip install -e .
 
 ## Licença
 
-Este projeto está licenciado sob a Apache License, Versão 2.0. Consulte [LICENSE](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/LICENSE) para mais detalhes.
+Este projeto está licenciado sob a Licença Apache, Versão 2.0. Consulte [LICENSE](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/LICENSE) para mais detalhes.
 
 ---
 

@@ -86,7 +86,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 → **[Guida per Amministratori](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/admin-quickstart.md)** - Configura infrastruttura e pipeline in 15 minuti  
 → **[Template di Workflow GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/git-templates/)** - Template di workflow generici e riutilizzabili per il deployment automatizzato
 
-**La CLI è il tuo livello di astrazione:** Devi solo chiamare `aws-smus-cicd-cli deploy` - la CLI gestisce tutte le interazioni con i servizi AWS (DataZone, Glue, Athena, SageMaker, MWAA, S3, IAM, ecc.). I tuoi workflow rimangono semplici e generici.
+**Il CLI è il tuo livello di astrazione:** Devi solo chiamare `aws-smus-cicd-cli deploy` - il CLI gestisce tutte le interazioni con i servizi AWS (DataZone, Glue, Athena, SageMaker, MWAA, S3, IAM, ecc.). I tuoi workflow rimangono semplici e generici.
 
 ---
 
@@ -108,7 +108,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 
 **🧠 Generative AI**
 - Agenti Bedrock
-- Knowledge base
+- Basi di conoscenza
 - Configurazioni di modelli fondazionali (futuro)
 
 **📓 Codice & Flussi di Lavoro**
@@ -192,7 +192,7 @@ ML/Analytics/GenAI!
 - Testing e validazione
 
 **I team dati si concentrano su:**
-- Codice applicativo e workflow
+- Codice dell'applicazione e workflow
 - Quali servizi AWS utilizzare (Glue, Athena, SageMaker, ecc.)
 - Configurazioni degli ambienti
 - Logica di business
@@ -251,7 +251,7 @@ Logica di orchestrazione che esegue la tua applicazione. I workflow servono a du
 - Configurare monitoraggio e logging
 
 **2. Runtime:** Eseguire pipeline dati e ML continue
-- Esecuzione schedulata (giornaliera, oraria, ecc.)
+- Esecuzione pianificata (giornaliera, oraria, ecc.)
 - Trigger event-driven (upload S3, chiamate API)
 - Elaborazione e trasformazioni dei dati
 - Training e inferenza dei modelli
@@ -1172,7 +1172,7 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[Guida al rollback](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/rollback-guide.md)** - Recupera da distribuzioni non riuscite e automatizza il rollback
 - **[Azioni di bootstrap](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/bootstrap-actions.md)** - Azioni di distribuzione automatizzate e flussi di lavoro basati su eventi
 - **[Sostituzioni e variabili](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/substitutions-and-variables.md)** - Configurazione dinamica
-- **[Guida alle connessioni](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/connections.md)** - Configura le integrazioni con i servizi AWS
+- **[Guida alle connessioni](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/connections.md)** - Configura le integrazioni dei servizi AWS
 - **[Integrazione con GitHub Actions](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-actions-integration.md)** - Configurazione dell'automazione CI/CD
 - **[Guida all'applicazione del workflow GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-workflow-application-guide.md)** - Guida per amministratori di applicazioni per la distribuzione diretta da branch
 - **[Guida DevOps per il workflow GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-workflow-devops-guide.md)** - Guida DevOps per la distribuzione diretta da branch
@@ -1186,17 +1186,17 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 ### Riferimenti
 - **[Schema del manifesto](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest-schema.md)** - Validazione e struttura dello schema YAML
 - **[Operatori AWS per Airflow](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-aws-operators.md)** - Riferimento agli operatori personalizzati
-- **[Riepilogo di Airflow nel CI/CD di SMUS](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-smus-cicd-summary.md)** - Panoramica del ruolo di Airflow nel CI/CD di SMUS
+- **[Riepilogo Airflow in SMUS CI/CD](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-smus-cicd-summary.md)** - Panoramica del ruolo di Airflow in SMUS CI/CD
 - **[Architettura](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/architecture.md)** - Documentazione dell'architettura CLI
 - **[Diagramma dell'architettura della pipeline](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pipeline-architecture-diagram.md)** - Panoramica dell'architettura della pipeline CI/CD
 
 ### Esempi
 - **[Guida agli esempi](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md)** - Procedura dettagliata delle applicazioni di esempio
 - **[Notebook per i dati](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-data-engineering---notebooks)** - Notebook Jupyter con Airflow
-- **[Addestramento ML](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-machine-learning---training)** - Addestramento con SageMaker e MLflow
+- **[Addestramento ML](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-machine-learning---training)** - Addestramento SageMaker con MLflow
 - **[Distribuzione ML](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-machine-learning---deployment)** - Distribuzione di endpoint SageMaker
 - **[Dashboard QuickSight](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-analytics---quicksight-dashboard)** - Dashboard BI con Glue
-- **[Applicazione GenAI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-generative-ai)** - Agenti e knowledge base di Bedrock
+- **[Applicazione GenAI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-generative-ai)** - Agenti e knowledge base Bedrock
 
 ### Sviluppo
 - **[Guida per sviluppatori](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/developer-guide.md)** - Guida completa allo sviluppo con architettura, test e flussi di lavoro
