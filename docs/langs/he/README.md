@@ -15,7 +15,7 @@
 # SMUS CI/CD Pipeline CLI
 
 
-> **[תחומי IAM + IdC]** CLI זה תומך בתחומי SMUS מבוססי IAM ומבוססי IAM Identity Center (IdC). עבור תחומי IdC, ייתכן שיידרש הגדרה נוספת (רשת VPC, הרשאות Lake Formation, מדיניות IAM מוטמעות) — ראה את סקריפטי ההגדרה בכל תיקיית דוגמה.
+> **[דומיינים של IAM + IdC]** CLI זה תומך בדומיינים מבוססי IAM ומבוססי IAM Identity Center (IdC) כאחד. עבור דומיינים של IdC, ייתכן שיידרש הגדרה נוספת (רשת VPC, הרשאות Lake Formation, מדיניות IAM מוטמעות) — ראה את סקריפטי ההגדרה בכל תיקיית דוגמה.
 
 **אוטומציה של פריסת אפליקציות נתונים על פני סביבות SageMaker Unified Studio**
 
@@ -112,7 +112,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 - אפליקציות GenAI (Bedrock, Notebooks)
 
 ### 🔧 צוותי DevOps
-**אתם מתמקדים ב:** שיטות עבודה מומלצות של CI/CD, אבטחה, ציות ואוטומציית פריסה  
+**אתם מתמקדים ב:** שיטות עבודה מומלצות CI/CD, אבטחה, ציות ואוטומציית פריסה  
 **אתם מגדירים:** תבניות תהליכי עבודה שאוכפות מדיניות בדיקות, אישורים וקידום  
 **אתם לא צריכים לדעת:** פרטים ספציפיים לאפליקציה, שירותי AWS בשימוש, APIs של DataZone, מבני פרויקט SMUS, או לוגיקה עסקית  
 
@@ -137,18 +137,18 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 - שאילתות Redshift (עתידי)
 
 **🤖 Machine Learning**
-- עבודות אימון של SageMaker
+- עבודות אימון SageMaker
 - מודלים ונקודות קצה של ML
-- ניסויים של MLflow
+- ניסויים MLflow
 - Feature Store (עתידי)
 - Batch transforms (עתידי)
 
 **🧠 Generative AI**
 - סוכנים של Bedrock
 - מאגרי ידע
-- תצורות מודלים בסיסיים (עתידי)
+- תצורות מודלי יסוד (עתידי)
 
-**📓 קוד וזרימות עבודה**
+**📓 קוד ותהליכי עבודה**
 - מחברות Jupyter
 - מחברות SageMaker Unified Studio
 - סקריפטים של Python
@@ -156,7 +156,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 - פונקציות Lambda (עתידי)
 
 **💾 נתונים ואחסון**
-- קבצי נתונים ב-S3
+- קבצי נתונים S3
 - מאגרי Git
 - משאבי קטלוג DataZone (מילונים, מונחי מילון, סוגי טפסים, סוגי נכסים, נכסים, מוצרי נתונים, טפסי מטא-דאטה)
 
@@ -192,11 +192,11 @@ S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
 
 ## מושגי ליבה
 
-### הפרדת אחריות: עקרון התכנון המרכזי
+### הפרדת אחריות: עקרון העיצוב המרכזי
 
 **הבעיה:** גישות פריסה מסורתיות מאלצות צוותי DevOps ללמוד שירותי אנליטיקה של AWS (Glue, Athena, DataZone, SageMaker, MWAA וכו') ולהבין מבני פרויקט SMUS, או מאלצות צוותי נתונים להפוך למומחי CI/CD.
 
-**הפתרון:** SMUS CI/CD CLI הוא שכבת ההפשטה שמכילה את כל המורכבות של AWS ו-SMUS.
+**הפתרון:** SMUS CI/CD CLI הוא שכבת ההפשטה שמכמסת את כל המורכבות של AWS ו-SMUS.
 
 **דוגמה לתהליך עבודה:**
 
@@ -239,14 +239,14 @@ ML/Analytics/GenAI!
 - ניהול אחסון ו-artifacts ב-S3
 - תפקידי והרשאות IAM
 - הגדרות חיבור
-- מנויים על נכסי קטלוג
-- פריסת Workflow ל-Airflow
+- מנויי נכסי קטלוג
+- פריסת workflow ל-Airflow
 - הקמת תשתית
 - בדיקות ואימות
 
 **צוותי נתונים מתמקדים ב:**
 - קוד אפליקציה ו-workflows
-- אילו שירותי AWS להשתמש (Glue, Athena, SageMaker וכו')
+- באילו שירותי AWS להשתמש (Glue, Athena, SageMaker וכו')
 - הגדרות סביבה
 - לוגיקה עסקית
 
@@ -287,10 +287,10 @@ ML/Analytics/GenAI!
 
 ### מיפוי Stage-to-Project
 
-כל stage של אפליקציה מפרוס לפרויקט ייעודי של SageMaker Unified Studio (SMUS). פרויקט יכול לארח אפליקציה בודדת או מספר אפליקציות בהתאם לארכיטקטורה ולמתודולוגיית CI/CD שלך. פרויקטי stage הם ישויות עצמאיות עם ממשל משלהן:
+כל stage של אפליקציה מפורס לפרויקט ייעודי של SageMaker Unified Studio (SMUS). פרויקט יכול לארח אפליקציה בודדת או מספר אפליקציות בהתאם לארכיטקטורה ולמתודולוגיית CI/CD שלך. פרויקטי stage הם ישויות עצמאיות עם ממשל משלהן:
 
 - **בעלות וגישה:** לכל פרויקט stage יש קבוצה משלו של בעלים ותורמים, שעשויים להיות שונים מפרויקט הפיתוח. לפרויקטי ייצור יש בדרך כלל גישה מוגבלת בהשוואה לסביבות פיתוח.
-- **Multi-Domain ו-Multi-Region:** פרויקטי stage יכולים להשתייך לדומיינים שונים של SMUS, חשבונות AWS ואזורים. לדוגמה, ה-dev stage שלך עשוי לפרוס לדומיין פיתוח ב-us-east-1, בעוד prod מפרוס לדומיין ייצור ב-eu-west-1.
+- **Multi-Domain ו-Multi-Region:** פרויקטי stage יכולים להשתייך לדומיינים שונים של SMUS, חשבונות AWS ואזורים. לדוגמה, ה-stage dev שלך עשוי לפרוס לדומיין פיתוח ב-us-east-1, בעוד prod מפרוס לדומיין ייצור ב-eu-west-1.
 - **ארכיטקטורה גמישה:** ארגונים יכולים לבחור בין פרויקטים ייעודיים לכל אפליקציה (בידוד) או פרויקטים משותפים המארחים מספר אפליקציות (איחוד), בהתבסס על דרישות אבטחה, תאימות ותפעול.
 
 הפרדה זו מאפשרת בידוד אמיתי של סביבות עם בקרות גישה עצמאיות, גבולות תאימות ודרישות שהייה אזורית של נתונים.
@@ -303,7 +303,7 @@ ML/Analytics/GenAI!
 - הגדרת חיבורים והרשאות
 - הקמת ניטור ורישום
 
-**2. זמן ריצה:** ביצוע צינורות נתונים ו-ML מתמשכים
+**2. זמן ריצה:** ביצוע צינורות נתונים ו-ML שוטפים
 - ביצוע מתוזמן (יומי, שעתי וכו')
 - טריגרים מונעי אירועים (העלאות S3, קריאות API)
 - עיבוד נתונים וטרנספורמציות
@@ -313,7 +313,7 @@ Workflows מוגדרים כ-Airflow DAGs (Directed Acyclic Graphs) בפורמט 
 
 ### אוטומציית CI/CD
 workflows של GitHub Actions (או מערכות CI/CD אחרות) שמאוטמטים פריסה:
-- **נוצרים ובבעלות צוותי DevOps**
+- **נוצר ובבעלות צוותי DevOps**
 - מגדיר **איך** ו**מתי** לפרוס
 - מריץ בדיקות ושערי איכות
 - מנהל קידום בין targets
@@ -1380,7 +1380,7 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[מחברות נתונים](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-data-engineering---notebooks)** - מחברות Jupyter עם Airflow
 - **[אימון ML](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-machine-learning---training)** - אימון SageMaker עם MLflow
 - **[פריסת ML](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-machine-learning---deployment)** - פריסת endpoint של SageMaker
-- **[לוח מחוונים QuickSight](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-analytics---quicksight-dashboard)** - לוחות מחוונים BI עם Glue
+- **[לוח בקרה QuickSight](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-analytics---quicksight-dashboard)** - לוחות בקרה BI עם Glue
 - **[אפליקציית GenAI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-generative-ai)** - סוכני Bedrock ובסיסי ידע
 
 ### פיתוח

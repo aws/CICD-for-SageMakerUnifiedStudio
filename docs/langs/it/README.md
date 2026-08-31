@@ -10,13 +10,13 @@
 
 # CLI della Pipeline CI/CD SMUS
 
-> **[Domini IAM + IdC]** Questa CLI supporta sia domini basati su IAM che domini basati su IAM Identity Center (IdC). Per i domini IdC, potrebbe essere necessaria una configurazione aggiuntiva (networking VPC, permessi Lake Formation, policy IAM inline) — consulta gli script di configurazione in ciascuna directory di esempio.
+> **[Domini IAM + IdC]** Questa CLI supporta sia domini basati su IAM che domini basati su IAM Identity Center (IdC). Per i domini IdC, potrebbe essere necessaria una configurazione aggiuntiva (rete VPC, permessi Lake Formation, policy IAM inline) — consulta gli script di configurazione in ciascuna directory di esempio.
 
 **Automatizza il deployment di applicazioni dati attraverso gli ambienti SageMaker Unified Studio**
 
 Distribuisci DAG Airflow, notebook Jupyter e workflow ML dallo sviluppo alla produzione con sicurezza. Progettato per data scientist, data engineer, ML engineer e sviluppatori di applicazioni GenAI che lavorano con team DevOps.
 
-**Funziona con la tua strategia di deployment:** Che tu utilizzi branch git (basato su branch), artefatti versionati (basato su bundle), tag git (basato su tag) o deployment diretto - questa CLI supporta il tuo flusso di lavoro. Definisci la tua applicazione una volta, distribuiscila a modo tuo.
+**Funziona con la tua strategia di deployment:** Che tu utilizzi branch git (basato su branch), artifact versionati (basato su bundle), tag git (basato su tag) o deployment diretto - questa CLI supporta il tuo flusso di lavoro. Definisci la tua applicazione una volta, distribuiscila a modo tuo.
 
 ---
 
@@ -27,7 +27,7 @@ Distribuisci DAG Airflow, notebook Jupyter e workflow ML dallo sviluppo alla pro
 ✅ **Workflow CI/CD Generici** - Lo stesso workflow funziona per Glue, SageMaker, Bedrock, QuickSight o qualsiasi combinazione di servizi AWS  
 ✅ **Distribuzione con Sicurezza** - Validazione dry-run pre-distribuzione e test automatizzati prima della produzione  
 ✅ **Gestione Multi-Ambiente** - Test → Prod con configurazione specifica per ambiente  
-✅ **Infrastructure as Code** - Manifest applicativi versionati e distribuzioni riproducibili  
+✅ **Infrastructure as Code** - Manifest delle applicazioni versionati e distribuzioni riproducibili  
 ✅ **Workflow Event-Driven** - Attivazione automatica dei workflow tramite EventBridge alla distribuzione  
 
 ---
@@ -86,7 +86,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 → **[Guida per Amministratori](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/admin-quickstart.md)** - Configura infrastruttura e pipeline in 15 minuti  
 → **[Template di Workflow GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/git-templates/)** - Template di workflow generici e riutilizzabili per il deployment automatizzato
 
-**La CLI è il tuo livello di astrazione:** Devi solo chiamare `aws-smus-cicd-cli deploy` - la CLI gestisce tutte le interazioni con i servizi AWS (DataZone, Glue, Athena, SageMaker, MWAA, S3, IAM, ecc.). I tuoi workflow rimangono semplici e generici.
+**Il CLI è il tuo livello di astrazione:** Devi solo chiamare `aws-smus-cicd-cli deploy` - il CLI gestisce tutte le interazioni con i servizi AWS (DataZone, Glue, Athena, SageMaker, MWAA, S3, IAM, ecc.). I tuoi workflow rimangono semplici e generici.
 
 ---
 
@@ -149,7 +149,7 @@ S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
 
 ### Separazione delle Responsabilità: Il Principio di Design Chiave
 
-**Il Problema:** Gli approcci di deployment tradizionali costringono i team DevOps a imparare i servizi di analytics AWS (Glue, Athena, DataZone, SageMaker, MWAA, ecc.) e a comprendere le strutture dei progetti SMUS, oppure costringono i team dati a diventare esperti di CI/CD.
+**Il Problema:** Gli approcci tradizionali al deployment costringono i team DevOps a imparare i servizi di analytics AWS (Glue, Athena, DataZone, SageMaker, MWAA, ecc.) e a comprendere le strutture dei progetti SMUS, oppure costringono i team dati a diventare esperti di CI/CD.
 
 **La Soluzione:** SMUS CI/CD CLI è il livello di astrazione che incapsula tutta la complessità di AWS e SMUS.
 
@@ -236,7 +236,7 @@ Un ambiente di deployment (dev, test, prod) mappato a un progetto SageMaker Unif
 
 Ogni stage dell'applicazione viene deployato su un progetto dedicato di SageMaker Unified Studio (SMUS). Un progetto può ospitare una singola applicazione o più applicazioni a seconda dell'architettura e della metodologia CI/CD. I progetti stage sono entità indipendenti con la propria governance:
 
-- **Proprietà e Accesso:** Ogni progetto stage ha il proprio set di proprietari e contributori, che possono differire dal progetto di sviluppo. I progetti di produzione hanno tipicamente accesso limitato rispetto agli ambienti di sviluppo.
+- **Proprietà e Accesso:** Ogni progetto stage ha il proprio insieme di proprietari e contributori, che possono differire dal progetto di sviluppo. I progetti di produzione hanno tipicamente accesso limitato rispetto agli ambienti di sviluppo.
 - **Multi-Dominio e Multi-Region:** I progetti stage possono appartenere a diversi domini SMUS, account AWS e region. Ad esempio, il tuo stage dev potrebbe deployare su un dominio di sviluppo in us-east-1, mentre prod deploya su un dominio di produzione in eu-west-1.
 - **Architettura Flessibile:** Le organizzazioni possono scegliere tra progetti dedicati per applicazione (isolamento) o progetti condivisi che ospitano più applicazioni (consolidamento), in base ai requisiti di sicurezza, conformità e operativi.
 
@@ -250,8 +250,8 @@ Logica di orchestrazione che esegue la tua applicazione. I workflow servono a du
 - Configurare connessioni e permessi
 - Configurare monitoraggio e logging
 
-**2. Runtime:** Eseguire pipeline dati e ML continue
-- Esecuzione schedulata (giornaliera, oraria, ecc.)
+**2. Runtime:** Eseguire pipeline dati e ML continuative
+- Esecuzione pianificata (giornaliera, oraria, ecc.)
 - Trigger event-driven (upload S3, chiamate API)
 - Elaborazione e trasformazioni dei dati
 - Training e inferenza dei modelli
@@ -262,12 +262,12 @@ I workflow sono definiti come DAG Airflow (Directed Acyclic Graphs) in formato Y
 Workflow GitHub Actions (o altri sistemi CI/CD) che automatizzano il deployment:
 - **Creati e gestiti dai team DevOps**
 - Definisce **come** e **quando** deployare
-- Esegue test e quality gate
+- Esegue test e gate di qualità
 - Gestisce la promozione tra i target
 - Applica policy di sicurezza e conformità
 - Esempio: `.github/workflows/deploy.yml`
 
-**Concetto chiave:** I team DevOps creano workflow generici e riutilizzabili che funzionano per QUALSIASI applicazione. Non hanno bisogno di sapere se l'app usa Glue, SageMaker o Bedrock - la CLI gestisce tutte le interazioni con i servizi AWS. Il workflow chiama semplicemente `aws-smus-cicd-cli deploy` e la CLI fa il resto.
+**Intuizione chiave:** I team DevOps creano workflow generici e riutilizzabili che funzionano per QUALSIASI applicazione. Non hanno bisogno di sapere se l'app usa Glue, SageMaker o Bedrock - la CLI gestisce tutte le interazioni con i servizi AWS. Il workflow chiama semplicemente `aws-smus-cicd-cli deploy` e la CLI fa il resto.
 
 ### Modalità di Deployment
 
@@ -279,7 +279,7 @@ Workflow GitHub Actions (o altri sistemi CI/CD) che automatizzano il deployment:
 - Adatto per: workflow più semplici, iterazione rapida, git come fonte di verità
 - Comando: `aws-smus-cicd-cli deploy --manifest manifest.yaml --targets test`
 
-Entrambe le modalità funzionano con qualsiasi combinazione di sorgenti di contenuto storage e git.
+Entrambe le modalità funzionano con qualsiasi combinazione di sorgenti di contenuto da storage e git.
 
 ---
 
@@ -1186,17 +1186,17 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 ### Riferimenti
 - **[Schema del manifesto](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest-schema.md)** - Validazione e struttura dello schema YAML
 - **[Operatori AWS per Airflow](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-aws-operators.md)** - Riferimento agli operatori personalizzati
-- **[Riepilogo di Airflow nel CI/CD di SMUS](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-smus-cicd-summary.md)** - Panoramica del ruolo di Airflow nel CI/CD di SMUS
+- **[Riepilogo Airflow in SMUS CI/CD](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-smus-cicd-summary.md)** - Panoramica del ruolo di Airflow in SMUS CI/CD
 - **[Architettura](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/architecture.md)** - Documentazione dell'architettura CLI
 - **[Diagramma dell'architettura della pipeline](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pipeline-architecture-diagram.md)** - Panoramica dell'architettura della pipeline CI/CD
 
 ### Esempi
 - **[Guida agli esempi](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md)** - Procedura dettagliata delle applicazioni di esempio
 - **[Notebook per i dati](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-data-engineering---notebooks)** - Notebook Jupyter con Airflow
-- **[Addestramento ML](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-machine-learning---training)** - Addestramento con SageMaker e MLflow
+- **[Addestramento ML](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-machine-learning---training)** - Addestramento SageMaker con MLflow
 - **[Distribuzione ML](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-machine-learning---deployment)** - Distribuzione di endpoint SageMaker
 - **[Dashboard QuickSight](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-analytics---quicksight-dashboard)** - Dashboard BI con Glue
-- **[Applicazione GenAI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-generative-ai)** - Agenti e knowledge base di Bedrock
+- **[Applicazione GenAI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-generative-ai)** - Agenti e knowledge base Bedrock
 
 ### Sviluppo
 - **[Guida per sviluppatori](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/developer-guide.md)** - Guida completa allo sviluppo con architettura, test e flussi di lavoro
@@ -1230,7 +1230,7 @@ pip install -e .
 
 ## Licenza
 
-Questo progetto è concesso in licenza secondo la Apache License, versione 2.0. Consulta [LICENSE](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/LICENSE) per i dettagli.
+Questo progetto è concesso in licenza secondo i termini della Apache License, versione 2.0. Consulta [LICENSE](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/LICENSE) per i dettagli.
 
 ---
 

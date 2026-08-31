@@ -10,6 +10,7 @@
 
 # CLI de Pipeline CI/CD SMUS
 
+
 > **[Domínios IAM + IdC]** Esta CLI suporta domínios SMUS baseados em IAM e em IAM Identity Center (IdC). Para domínios IdC, configuração adicional (rede VPC, permissões Lake Formation, políticas IAM inline) pode ser necessária — consulte os scripts de configuração em cada diretório de exemplo.
 
 **Automatize a implantação de aplicações de dados em ambientes SageMaker Unified Studio**
@@ -20,12 +21,12 @@ Implante DAGs Airflow, notebooks Jupyter e workflows ML de desenvolvimento para 
 
 ---
 
-## Por que SMUS CI/CD CLI?
+## Por que usar o SMUS CI/CD CLI?
 
-✅ **Camada de Abstração AWS** - CLI encapsula toda a complexidade de analytics, ML e SMUS da AWS - Equipes de DevOps nunca chamam APIs da AWS diretamente  
+✅ **Camada de Abstração AWS** - O CLI encapsula toda a complexidade de analytics, ML e SMUS da AWS - Equipes de DevOps nunca chamam APIs da AWS diretamente  
 ✅ **Separação de Responsabilidades** - Equipes de dados definem O QUE implantar (manifest.yaml), equipes de DevOps definem COMO e QUANDO (workflows de CI/CD)  
 ✅ **Workflows de CI/CD Genéricos** - O mesmo workflow funciona para Glue, SageMaker, Bedrock, QuickSight ou qualquer combinação de serviços AWS  
-✅ **Implante com Confiança** - Validação dry-run pré-implantação e testes automatizados antes da produção  
+✅ **Implante com Confiança** - Validação de dry-run pré-implantação e testes automatizados antes da produção  
 ✅ **Gerenciamento Multi-Ambiente** - Teste → Produção com configuração específica por ambiente  
 ✅ **Infrastructure as Code** - Manifestos de aplicação versionados e implantações reproduzíveis  
 ✅ **Workflows Orientados a Eventos** - Acione workflows automaticamente via EventBridge na implantação  
@@ -80,8 +81,8 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 
 ### 🔧 Equipes DevOps
 **Você foca em:** Melhores práticas de CI/CD, segurança, conformidade e automação de implantação  
-**Você define:** Templates de workflow que impõem testes, aprovações e políticas de promoção  
-**Você não precisa saber:** Detalhes específicos da aplicação, serviços AWS utilizados, APIs do DataZone, estruturas de projeto SMUS ou lógica de negócio  
+**Você define:** Templates de workflow que aplicam políticas de testes, aprovações e promoção  
+**Você não precisa saber:** Detalhes específicos da aplicação, serviços AWS utilizados, APIs do DataZone, estruturas de projetos SMUS ou lógica de negócio  
 
 → **[Guia do Administrador](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/admin-quickstart.md)** - Configure infraestrutura e pipelines em 15 minutos  
 → **[Templates de Workflow do GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/git-templates/)** - Templates de workflow genéricos e reutilizáveis para implantação automatizada
@@ -106,7 +107,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 - Feature Store (futuro)
 - Transformações em lote (futuro)
 
-**🧠 IA Generativa**
+**🧠 Generative AI**
 - Agentes do Bedrock
 - Bases de conhecimento
 - Configurações de modelos de fundação (futuro)
@@ -200,7 +201,7 @@ serviços ML/Analytics/GenAI!
 **Resultado:** 
 - **Equipes DevOps nunca chamam APIs AWS diretamente** - apenas chamam `aws-smus-cicd-cli deploy`
 - **Workflows CI/CD são genéricos** - o mesmo workflow funciona para apps Glue, SageMaker ou Bedrock
-- Equipes de dados nunca tocam em configs de CI/CD
+- Equipes de dados nunca tocam em configurações CI/CD
 - Ambas as equipes trabalham independentemente usando sua expertise
 
 ---
@@ -234,7 +235,7 @@ Um ambiente de deployment (dev, test, prod) mapeado para um projeto SageMaker Un
 
 ### Mapeamento Stage-para-Projeto
 
-Cada stage da aplicação é implantado em um projeto dedicado do SageMaker Unified Studio (SMUS). Um projeto pode hospedar uma única aplicação ou múltiplas aplicações dependendo da sua arquitetura e metodologia de CI/CD. Projetos de stage são entidades independentes com sua própria governança:
+Cada stage da aplicação é implantado em um projeto dedicado do SageMaker Unified Studio (SMUS). Um projeto pode hospedar uma única aplicação ou múltiplas aplicações dependendo da sua arquitetura e metodologia CI/CD. Projetos de stage são entidades independentes com sua própria governança:
 
 - **Propriedade e Acesso:** Cada projeto de stage tem seu próprio conjunto de proprietários e colaboradores, que podem diferir do projeto de desenvolvimento. Projetos de produção tipicamente têm acesso restrito comparado a ambientes de desenvolvimento.
 - **Multi-Domínio e Multi-Região:** Projetos de stage podem pertencer a diferentes domínios SMUS, contas AWS e regiões. Por exemplo, seu stage dev pode implantar em um domínio de desenvolvimento em us-east-1, enquanto prod implanta em um domínio de produção em eu-west-1.
@@ -250,13 +251,13 @@ Lógica de orquestração que executa sua aplicação. Workflows servem dois pro
 - Configurar conexões e permissões
 - Configurar monitoramento e logging
 
-**2. Runtime:** Executar pipelines contínuos de dados e ML
+**2. Runtime:** Executar pipelines de dados e ML contínuos
 - Execução agendada (diária, horária, etc.)
 - Triggers orientados a eventos (uploads S3, chamadas API)
 - Processamento e transformações de dados
 - Treinamento e inferência de modelos
 
-Workflows são definidos como DAGs Airflow (Directed Acyclic Graphs) em formato YAML. Suporta [MWAA (Managed Workflows for Apache Airflow)](https://aws.amazon.com/managed-workflows-for-apache-airflow/) e [Amazon MWAA Serverless](https://aws.amazon.com/blogs/big-data/introducing-amazon-mwaa-serverless/) ([Guia do Usuário](https://docs.aws.amazon.com/mwaa/latest/mwaa-serverless-userguide/what-is-mwaa-serverless.html)).
+Workflows são definidos como DAGs (Directed Acyclic Graphs) Airflow em formato YAML. Suporta [MWAA (Managed Workflows for Apache Airflow)](https://aws.amazon.com/managed-workflows-for-apache-airflow/) e [Amazon MWAA Serverless](https://aws.amazon.com/blogs/big-data/introducing-amazon-mwaa-serverless/) ([Guia do Usuário](https://docs.aws.amazon.com/mwaa/latest/mwaa-serverless-userguide/what-is-mwaa-serverless.html)).
 
 ### Automação CI/CD
 Workflows GitHub Actions (ou outros sistemas CI/CD) que automatizam o deployment:
