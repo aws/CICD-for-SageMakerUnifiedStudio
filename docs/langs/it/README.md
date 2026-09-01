@@ -10,7 +10,7 @@
 
 # CLI della Pipeline CI/CD SMUS
 
-> **[Domini IAM + IdC]** Questa CLI supporta sia domini basati su IAM che domini basati su IAM Identity Center (IdC). Per i domini IdC, potrebbe essere necessaria una configurazione aggiuntiva (networking VPC, permessi Lake Formation, policy IAM inline) — consulta gli script di configurazione in ciascuna directory di esempio.
+> **[Domini IAM + IdC]** Questa CLI supporta sia domini basati su IAM che domini basati su IAM Identity Center (IdC). Per i domini IdC, potrebbe essere necessaria una configurazione aggiuntiva (rete VPC, permessi Lake Formation, policy IAM inline) — consulta gli script di configurazione in ciascuna directory di esempio.
 
 **Automatizza il deployment di applicazioni dati attraverso gli ambienti SageMaker Unified Studio**
 
@@ -27,8 +27,8 @@ Distribuisci DAG Airflow, notebook Jupyter e workflow ML dallo sviluppo alla pro
 ✅ **Workflow CI/CD Generici** - Lo stesso workflow funziona per Glue, SageMaker, Bedrock, QuickSight o qualsiasi combinazione di servizi AWS  
 ✅ **Distribuzione con Sicurezza** - Validazione dry-run pre-distribuzione e test automatizzati prima della produzione  
 ✅ **Gestione Multi-Ambiente** - Test → Prod con configurazione specifica per ambiente  
-✅ **Infrastructure as Code** - Manifest applicativi versionati e distribuzioni riproducibili  
-✅ **Workflow Event-Driven** - Attivazione automatica dei workflow tramite EventBridge alla distribuzione  
+✅ **Infrastructure as Code** - Manifest delle applicazioni versionati e distribuzioni riproducibili  
+✅ **Workflow Basati su Eventi** - Attivazione automatica dei workflow tramite EventBridge alla distribuzione  
 
 ---
 
@@ -86,7 +86,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 → **[Guida per Amministratori](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/admin-quickstart.md)** - Configura infrastruttura e pipeline in 15 minuti  
 → **[Template di Workflow GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/git-templates/)** - Template di workflow generici e riutilizzabili per il deployment automatizzato
 
-**La CLI è il tuo livello di astrazione:** Devi solo chiamare `aws-smus-cicd-cli deploy` - la CLI gestisce tutte le interazioni con i servizi AWS (DataZone, Glue, Athena, SageMaker, MWAA, S3, IAM, ecc.). I tuoi workflow rimangono semplici e generici.
+**Il CLI è il tuo livello di astrazione:** Devi solo chiamare `aws-smus-cicd-cli deploy` - il CLI gestisce tutte le interazioni con i servizi AWS (DataZone, Glue, Athena, SageMaker, MWAA, S3, IAM, ecc.). I tuoi workflow rimangono semplici e generici.
 
 ---
 
@@ -121,7 +121,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 **💾 Dati & Storage**
 - File di dati S3
 - Repository Git
-- Risorse del catalogo DataZone (Glossari, Termini di Glossario, Tipi di Modulo, Tipi di Asset, Asset, Prodotti Dati, Moduli di Metadati)
+- Risorse del catalogo DataZone (Glossari, Termini di Glossario, Tipi di Form, Tipi di Asset, Asset, Prodotti Dati, Form di Metadati)
 
 ---
 
@@ -218,7 +218,7 @@ Un file YAML dichiarativo (`manifest.yaml`) che definisce la tua applicazione da
 ### Applicazione
 Il tuo carico di lavoro dati/analytics da deployare:
 - DAG Airflow e script Python
-- Notebook Jupyter e file di dati
+- Notebook Jupyter e file dati
 - Modelli ML e codice di training
 - Pipeline ETL e trasformazioni
 - Agenti GenAI e server MCP
@@ -250,7 +250,7 @@ Logica di orchestrazione che esegue la tua applicazione. I workflow servono a du
 - Configurare connessioni e permessi
 - Configurare monitoraggio e logging
 
-**2. Runtime:** Eseguire pipeline dati e ML continue
+**2. Runtime:** Eseguire pipeline dati e ML continuative
 - Esecuzione schedulata (giornaliera, oraria, ecc.)
 - Trigger event-driven (upload S3, chiamate API)
 - Elaborazione e trasformazioni dei dati
@@ -1169,7 +1169,7 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 ### Guide
 - **[Manifesto dell'applicazione](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest.md)** - Riferimento completo alla configurazione YAML
 - **[Comandi CLI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/cli-commands.md)** - Tutti i comandi e le opzioni disponibili
-- **[Guida al rollback](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/rollback-guide.md)** - Recupera da distribuzioni non riuscite e automatizza il rollback
+- **[Guida al rollback](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/rollback-guide.md)** - Recupera da distribuzioni errate e automatizza il rollback
 - **[Azioni di bootstrap](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/bootstrap-actions.md)** - Azioni di distribuzione automatizzate e flussi di lavoro basati su eventi
 - **[Sostituzioni e variabili](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/substitutions-and-variables.md)** - Configurazione dinamica
 - **[Guida alle connessioni](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/connections.md)** - Configura le integrazioni con i servizi AWS
@@ -1178,12 +1178,12 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[Guida DevOps per il workflow GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-workflow-devops-guide.md)** - Guida DevOps per la distribuzione diretta da branch
 - **[Metriche di distribuzione](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pipeline-deployment-metrics.md)** - Monitoraggio con EventBridge
 - **[Guida all'importazione/esportazione del catalogo](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/catalog-import-export-guide.md)** - Promuovi le risorse del catalogo DataZone tra ambienti
-- **[Riferimento rapido per importazione/esportazione del catalogo](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/catalog-import-export-quick-reference.md)** - Riferimento rapido per la distribuzione del catalogo
-- **[Sincronizzazione notebook (esempio E2E)](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/examples/e2e-notebook-sync/README.md)** - Esporta e sincronizza notebook tra ambienti (modalità bundle-deploy)
+- **[Riferimento rapido per l'importazione/esportazione del catalogo](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/catalog-import-export-quick-reference.md)** - Riferimento rapido per la distribuzione del catalogo
+- **[Sincronizzazione notebook (esempio E2E)](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/examples/e2e-notebook-sync/README.md)** - Esporta e sincronizza i notebook tra ambienti (modalità bundle-deploy)
 - **[Configurazione MCP](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/mcp-configuration.md)** - Guida alla configurazione del server MCP
 - **[Esempi di conversazione con Q CLI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/q-cli-conversation-examples.md)** - Esempi di conversazioni con Q CLI
 
-### Riferimenti
+### Riferimento
 - **[Schema del manifesto](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest-schema.md)** - Validazione e struttura dello schema YAML
 - **[Operatori AWS per Airflow](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-aws-operators.md)** - Riferimento agli operatori personalizzati
 - **[Riepilogo di Airflow nel CI/CD di SMUS](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-smus-cicd-summary.md)** - Panoramica del ruolo di Airflow nel CI/CD di SMUS
@@ -1192,7 +1192,7 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 
 ### Esempi
 - **[Guida agli esempi](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md)** - Procedura dettagliata delle applicazioni di esempio
-- **[Notebook per i dati](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-data-engineering---notebooks)** - Notebook Jupyter con Airflow
+- **[Notebook di dati](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-data-engineering---notebooks)** - Notebook Jupyter con Airflow
 - **[Addestramento ML](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-machine-learning---training)** - Addestramento con SageMaker e MLflow
 - **[Distribuzione ML](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-machine-learning---deployment)** - Distribuzione di endpoint SageMaker
 - **[Dashboard QuickSight](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-analytics---quicksight-dashboard)** - Dashboard BI con Glue
