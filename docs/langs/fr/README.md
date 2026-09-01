@@ -8,16 +8,15 @@
 
 ← [Back to Main README](../../../README.md)
 
-# CLI de Pipeline CI/CD SMUS
+# CLI du Pipeline CI/CD SMUS
 
-
-> **[Domaines IAM + IdC]** Ce CLI prend en charge les domaines SMUS basés sur IAM et sur IAM Identity Center (IdC). Pour les domaines IdC, une configuration supplémentaire (réseau VPC, permissions Lake Formation, politiques IAM en ligne) peut être nécessaire — consultez les scripts de configuration dans chaque répertoire d'exemple.
+> **[Domaines IAM + IdC]** Cette CLI prend en charge les domaines SMUS basés sur IAM et sur IAM Identity Center (IdC). Pour les domaines IdC, une configuration supplémentaire (réseau VPC, permissions Lake Formation, politiques IAM en ligne) peut être nécessaire — consultez les scripts de configuration dans chaque répertoire d'exemple.
 
 **Automatisez le déploiement d'applications de données dans les environnements SageMaker Unified Studio**
 
-Déployez des DAG Airflow, des notebooks Jupyter et des workflows ML du développement à la production en toute confiance. Conçu pour les data scientists, les data engineers, les ML engineers et les développeurs d'applications GenAI travaillant avec les équipes DevOps.
+Déployez des DAG Airflow, des notebooks Jupyter et des workflows ML du développement à la production en toute confiance. Conçu pour les data scientists, les ingénieurs de données, les ingénieurs ML et les développeurs d'applications GenAI travaillant avec des équipes DevOps.
 
-**Fonctionne avec votre stratégie de déploiement :** Que vous utilisiez des branches git (basé sur les branches), des artefacts versionnés (basé sur les bundles), des tags git (basé sur les tags) ou un déploiement direct - ce CLI prend en charge votre workflow. Définissez votre application une fois, déployez-la à votre manière.
+**Fonctionne avec votre stratégie de déploiement :** Que vous utilisiez des branches git (basé sur les branches), des artefacts versionnés (basé sur les bundles), des tags git (basé sur les tags) ou un déploiement direct - cette CLI prend en charge votre workflow. Définissez votre application une fois, déployez-la à votre manière.
 
 ---
 
@@ -26,7 +25,7 @@ Déployez des DAG Airflow, des notebooks Jupyter et des workflows ML du dévelop
 ✅ **Couche d'abstraction AWS** - Le CLI encapsule toute la complexité d'AWS analytics, ML et SMUS - Les équipes DevOps n'appellent jamais directement les API AWS  
 ✅ **Séparation des préoccupations** - Les équipes data définissent QUOI déployer (manifest.yaml), les équipes DevOps définissent COMMENT et QUAND (workflows CI/CD)  
 ✅ **Workflows CI/CD génériques** - Le même workflow fonctionne pour Glue, SageMaker, Bedrock, QuickSight, ou toute combinaison de services AWS  
-✅ **Déployer en toute confiance** - Validation par simulation avant déploiement et tests automatisés avant la production  
+✅ **Déployer en toute confiance** - Validation par simulation pré-déploiement et tests automatisés avant la production  
 ✅ **Gestion multi-environnements** - Test → Prod avec configuration spécifique à chaque environnement  
 ✅ **Infrastructure as Code** - Manifestes d'application versionnés et déploiements reproductibles  
 ✅ **Workflows événementiels** - Déclencher automatiquement des workflows via EventBridge lors du déploiement  
@@ -65,14 +64,14 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 
 ---
 
-## À Qui S'Adresse Ceci ?
+## À qui s'adresse cet outil ?
 
-### 👨‍💻 Équipes Data (Data Scientists, Data Engineers, Développeurs d'Applications GenAI)
+### 👨‍💻 Équipes Data (Data Scientists, Data Engineers, Développeurs d'applications GenAI)
 **Vous vous concentrez sur :** Votre application - quoi déployer, où déployer et comment elle s'exécute  
 **Vous définissez :** Le manifeste d'application (`manifest.yaml`) avec votre code, workflows et configurations  
 **Vous n'avez pas besoin de connaître :** Les pipelines CI/CD, GitHub Actions, l'automatisation du déploiement  
 
-→ **[Guide de Démarrage Rapide](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/quickstart.md)** - Déployez votre première application en 10 minutes  
+→ **[Guide de démarrage rapide](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/quickstart.md)** - Déployez votre première application en 10 minutes  
 
 **Inclut des exemples pour :**
 - Data Engineering (Glue, Notebooks, Athena)
@@ -84,8 +83,8 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 **Vous définissez :** Des modèles de workflow qui imposent des tests, des approbations et des politiques de promotion  
 **Vous n'avez pas besoin de connaître :** Les détails spécifiques aux applications, les services AWS utilisés, les API DataZone, les structures de projet SMUS ou la logique métier  
 
-→ **[Guide Administrateur](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/admin-quickstart.md)** - Configurez l'infrastructure et les pipelines en 15 minutes  
-→ **[Modèles de Workflow GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/git-templates/)** - Modèles de workflow génériques et réutilisables pour le déploiement automatisé
+→ **[Guide administrateur](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/admin-quickstart.md)** - Configurez l'infrastructure et les pipelines en 15 minutes  
+→ **[Modèles de workflow GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/git-templates/)** - Modèles de workflow génériques et réutilisables pour le déploiement automatisé
 
 **Le CLI est votre couche d'abstraction :** Vous appelez simplement `aws-smus-cicd-cli deploy` - le CLI gère toutes les interactions avec les services AWS (DataZone, Glue, Athena, SageMaker, MWAA, S3, IAM, etc.). Vos workflows restent simples et génériques.
 
@@ -150,7 +149,7 @@ S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
 
 ### Séparation des préoccupations : Le principe de conception clé
 
-**Le problème :** Les approches de déploiement traditionnelles obligent les équipes DevOps à apprendre les services d'analyse AWS (Glue, Athena, DataZone, SageMaker, MWAA, etc.) et à comprendre les structures de projet SMUS, ou obligent les équipes de données à devenir des experts CI/CD.
+**Le problème :** Les approches de déploiement traditionnelles obligent les équipes DevOps à apprendre les services d'analyse AWS (Glue, Athena, DataZone, SageMaker, MWAA, etc.) et à comprendre les structures de projet SMUS, ou obligent les équipes de données à devenir des experts en CI/CD.
 
 **La solution :** SMUS CI/CD CLI est la couche d'abstraction qui encapsule toute la complexité AWS et SMUS.
 
@@ -170,13 +169,13 @@ Définit l'INFRASTRUCTURE                                      - Déploiement MW
 - Rôles IAM                                                   - Configuration IAM
 - Ressources                                                  - Provisionnement d'infrastructure
 
-Fonctionne pour N'IMPORTE quelle app !
+Fonctionne pour TOUTE app !
 Aucune connaissance des services
 ML/Analytics/GenAI nécessaire !
 ```
 
 **Les équipes DevOps se concentrent sur :**
-- Les meilleures pratiques CI/CD (tests, approbations, notifications)
+- Les bonnes pratiques CI/CD (tests, approbations, notifications)
 - Les contrôles de sécurité et de conformité
 - L'orchestration des déploiements
 - La surveillance et les alertes
@@ -200,7 +199,7 @@ ML/Analytics/GenAI nécessaire !
 
 **Résultat :** 
 - **Les équipes DevOps n'appellent jamais directement les APIs AWS** - elles appellent simplement `aws-smus-cicd-cli deploy`
-- **Les workflows CI/CD sont génériques** - le même workflow fonctionne pour les applications Glue, SageMaker ou Bedrock
+- **Les workflows CI/CD sont génériques** - le même workflow fonctionne pour les apps Glue, SageMaker ou Bedrock
 - Les équipes de données ne touchent jamais aux configurations CI/CD
 - Les deux équipes travaillent de manière indépendante en utilisant leur expertise
 
@@ -268,7 +267,7 @@ Workflows GitHub Actions (ou autres systèmes CI/CD) qui automatisent le déploi
 - Applique les politiques de sécurité et de conformité
 - Exemple : `.github/workflows/deploy.yml`
 
-**Point clé :** Les équipes DevOps créent des workflows génériques et réutilisables qui fonctionnent pour N'IMPORTE quelle application. Elles n'ont pas besoin de savoir si l'application utilise Glue, SageMaker ou Bedrock - le CLI gère toutes les interactions avec les services AWS. Le workflow appelle simplement `aws-smus-cicd-cli deploy` et le CLI fait le reste.
+**Point clé :** Les équipes DevOps créent des workflows génériques et réutilisables qui fonctionnent pour TOUTE application. Elles n'ont pas besoin de savoir si l'application utilise Glue, SageMaker ou Bedrock - le CLI gère toutes les interactions avec les services AWS. Le workflow appelle simplement `aws-smus-cicd-cli deploy` et le CLI fait le reste.
 
 ### Modes de déploiement
 
@@ -1237,5 +1236,5 @@ Ce projet est sous licence Apache License, Version 2.0. Voir [LICENSE](https://g
 
 <div align="center">
   <img src="docs/readme-qr-code.png" alt="Scanner pour voir le README" width="200"/>
-  <p><em>Scanner le code QR pour voir ce README sur GitHub</em></p>
+  <p><em>Scannez le code QR pour voir ce README sur GitHub</em></p>
 </div>

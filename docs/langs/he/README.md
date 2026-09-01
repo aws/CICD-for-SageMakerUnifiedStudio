@@ -15,7 +15,7 @@
 # SMUS CI/CD Pipeline CLI
 
 
-> **[תחומי IAM + IdC]** CLI זה תומך בתחומי SMUS מבוססי IAM ומבוססי IAM Identity Center (IdC). עבור תחומי IdC, ייתכן שיידרש הגדרה נוספת (רשת VPC, הרשאות Lake Formation, מדיניות IAM מוטמעות) — ראה את סקריפטי ההגדרה בכל תיקיית דוגמה.
+> **[דומיינים של IAM + IdC]** CLI זה תומך בדומיינים מבוססי IAM ומבוססי IAM Identity Center (IdC) של SMUS. עבור דומיינים של IdC, ייתכן שתידרש הגדרה נוספת (רשת VPC, הרשאות Lake Formation, מדיניות IAM מוטמעות) — ראה את סקריפטי ההתקנה בכל תיקיית דוגמה.
 
 **אוטומציה של פריסת אפליקציות נתונים על פני סביבות SageMaker Unified Studio**
 
@@ -146,7 +146,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 **🧠 Generative AI**
 - סוכנים של Bedrock
 - מאגרי ידע
-- תצורות מודלים בסיסיים (עתידי)
+- תצורות מודלי יסוד (עתידי)
 
 **📓 קוד וזרימות עבודה**
 - מחברות Jupyter
@@ -192,11 +192,11 @@ S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
 
 ## מושגי ליבה
 
-### הפרדת אחריות: עקרון התכנון המרכזי
+### הפרדת אחריות: עקרון העיצוב המרכזי
 
 **הבעיה:** גישות פריסה מסורתיות מאלצות צוותי DevOps ללמוד שירותי אנליטיקה של AWS (Glue, Athena, DataZone, SageMaker, MWAA וכו') ולהבין מבני פרויקט SMUS, או מאלצות צוותי נתונים להפוך למומחי CI/CD.
 
-**הפתרון:** SMUS CI/CD CLI הוא שכבת ההפשטה שמכילה את כל המורכבות של AWS ו-SMUS.
+**הפתרון:** SMUS CI/CD CLI הוא שכבת ההפשטה שמכמסת את כל המורכבות של AWS ו-SMUS.
 
 **דוגמה לתהליך עבודה:**
 
@@ -237,7 +237,7 @@ ML/Analytics/GenAI!
 - ניהול דומיין ופרויקט DataZone
 - AWS Glue, Athena, SageMaker, MWAA APIs
 - ניהול אחסון ו-artifacts ב-S3
-- תפקידי והרשאות IAM
+- תפקידים והרשאות IAM
 - הגדרות חיבור
 - מנויים על נכסי קטלוג
 - פריסת Workflow ל-Airflow
@@ -246,14 +246,14 @@ ML/Analytics/GenAI!
 
 **צוותי נתונים מתמקדים ב:**
 - קוד אפליקציה ו-workflows
-- אילו שירותי AWS להשתמש (Glue, Athena, SageMaker וכו')
+- באילו שירותי AWS להשתמש (Glue, Athena, SageMaker וכו')
 - הגדרות סביבה
 - לוגיקה עסקית
 
-**תוצאה:** 
-- **צוותי DevOps לעולם לא קוראים ישירות ל-AWS APIs** - הם פשוט קוראים ל-`aws-smus-cicd-cli deploy`
+**התוצאה:** 
+- **צוותי DevOps אף פעם לא קוראים ישירות ל-AWS APIs** - הם פשוט קוראים ל-`aws-smus-cicd-cli deploy`
 - **workflows של CI/CD הם גנריים** - אותו workflow עובד עבור אפליקציות Glue, אפליקציות SageMaker או אפליקציות Bedrock
-- צוותי נתונים לעולם לא נוגעים בהגדרות CI/CD
+- צוותי נתונים אף פעם לא נוגעים בהגדרות CI/CD
 - שני הצוותים עובדים באופן עצמאי תוך שימוש במומחיות שלהם
 
 ---
@@ -287,10 +287,10 @@ ML/Analytics/GenAI!
 
 ### מיפוי Stage-to-Project
 
-כל stage של אפליקציה מפרוס לפרויקט ייעודי של SageMaker Unified Studio (SMUS). פרויקט יכול לארח אפליקציה בודדת או מספר אפליקציות בהתאם לארכיטקטורה ולמתודולוגיית CI/CD שלך. פרויקטי stage הם ישויות עצמאיות עם ממשל משלהן:
+כל stage של אפליקציה מפורס לפרויקט ייעודי של SageMaker Unified Studio (SMUS). פרויקט יכול לארח אפליקציה בודדת או מספר אפליקציות בהתאם לארכיטקטורה ולמתודולוגיית CI/CD שלך. פרויקטי stage הם ישויות עצמאיות עם ממשל משלהן:
 
-- **בעלות וגישה:** לכל פרויקט stage יש קבוצה משלו של בעלים ותורמים, שעשויים להיות שונים מפרויקט הפיתוח. לפרויקטי ייצור יש בדרך כלל גישה מוגבלת בהשוואה לסביבות פיתוח.
-- **Multi-Domain ו-Multi-Region:** פרויקטי stage יכולים להשתייך לדומיינים שונים של SMUS, חשבונות AWS ואזורים. לדוגמה, ה-dev stage שלך עשוי לפרוס לדומיין פיתוח ב-us-east-1, בעוד prod מפרוס לדומיין ייצור ב-eu-west-1.
+- **בעלות וגישה:** לכל פרויקט stage יש קבוצה משלו של בעלים ותורמים, שעשויים להיות שונים מפרויקט הפיתוח. לפרויקטי ייצור יש בדרך כלל גישה מוגבלת יותר בהשוואה לסביבות פיתוח.
+- **Multi-Domain ו-Multi-Region:** פרויקטי stage יכולים להשתייך לדומיינים שונים של SMUS, חשבונות AWS ואזורים. לדוגמה, ה-dev stage שלך עשוי להיפרס לדומיין פיתוח ב-us-east-1, בעוד ש-prod נפרס לדומיין ייצור ב-eu-west-1.
 - **ארכיטקטורה גמישה:** ארגונים יכולים לבחור בין פרויקטים ייעודיים לכל אפליקציה (בידוד) או פרויקטים משותפים המארחים מספר אפליקציות (איחוד), בהתבסס על דרישות אבטחה, תאימות ותפעול.
 
 הפרדה זו מאפשרת בידוד אמיתי של סביבות עם בקרות גישה עצמאיות, גבולות תאימות ודרישות שהייה אזורית של נתונים.
@@ -301,9 +301,9 @@ ML/Analytics/GenAI!
 **1. בזמן פריסה:** יצירת משאבי AWS נדרשים במהלך הפריסה
 - הקמת תשתית (S3 buckets, מסדי נתונים, תפקידי IAM)
 - הגדרת חיבורים והרשאות
-- הקמת ניטור ורישום
+- הגדרת ניטור ורישום
 
-**2. זמן ריצה:** ביצוע צינורות נתונים ו-ML מתמשכים
+**2. זמן ריצה:** ביצוע צינורות נתונים ו-ML שוטפים
 - ביצוע מתוזמן (יומי, שעתי וכו')
 - טריגרים מונעי אירועים (העלאות S3, קריאות API)
 - עיבוד נתונים וטרנספורמציות
@@ -312,15 +312,15 @@ ML/Analytics/GenAI!
 Workflows מוגדרים כ-Airflow DAGs (Directed Acyclic Graphs) בפורמט YAML. תומך ב-[MWAA (Managed Workflows for Apache Airflow)](https://aws.amazon.com/managed-workflows-for-apache-airflow/) וב-[Amazon MWAA Serverless](https://aws.amazon.com/blogs/big-data/introducing-amazon-mwaa-serverless/) ([מדריך משתמש](https://docs.aws.amazon.com/mwaa/latest/mwaa-serverless-userguide/what-is-mwaa-serverless.html)).
 
 ### אוטומציית CI/CD
-workflows של GitHub Actions (או מערכות CI/CD אחרות) שמאוטמטים פריסה:
-- **נוצרים ובבעלות צוותי DevOps**
+workflows של GitHub Actions (או מערכות CI/CD אחרות) שמבצעים אוטומציה של הפריסה:
+- **נוצר ובבעלות צוותי DevOps**
 - מגדיר **איך** ו**מתי** לפרוס
 - מריץ בדיקות ושערי איכות
 - מנהל קידום בין targets
 - אוכף מדיניות אבטחה ותאימות
 - דוגמה: `.github/workflows/deploy.yml`
 
-**תובנה מרכזית:** צוותי DevOps יוצרים workflows גנריים וניתנים לשימוש חוזר שעובדים עבור כל אפליקציה. הם לא צריכים לדעת אם האפליקציה משתמשת ב-Glue, SageMaker או Bedrock - ה-CLI מטפל בכל האינטראקציות עם שירותי AWS. ה-workflow פשוט קורא ל-`aws-smus-cicd-cli deploy` וה-CLI עושה את השאר.
+**תובנת מפתח:** צוותי DevOps יוצרים workflows גנריים וניתנים לשימוש חוזר שעובדים עבור כל אפליקציה. הם לא צריכים לדעת אם האפליקציה משתמשת ב-Glue, SageMaker או Bedrock - ה-CLI מטפל בכל האינטראקציות עם שירותי AWS. ה-workflow פשוט קורא ל-`aws-smus-cicd-cli deploy` וה-CLI עושה את השאר.
 
 ### מצבי פריסה
 
@@ -1355,7 +1355,7 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[מניפסט אפליקציה](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest.md)** - מדריך מלא לתצורת YAML
 - **[פקודות CLI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/cli-commands.md)** - כל הפקודות והאפשרויות הזמינות
 - **[מדריך חזרה לאחור](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/rollback-guide.md)** - התאוששות מפריסות כושלות ואוטומציה של חזרה לאחור
-- **[פעולות Bootstrap](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/bootstrap-actions.md)** - פעולות פריסה אוטומטיות ותהליכי עבודה מונעי אירועים
+- **[פעולות Bootstrap](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/bootstrap-actions.md)** - פעולות פריסה אוטומטיות וזרימות עבודה מונעות אירועים
 - **[החלפות ומשתנים](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/substitutions-and-variables.md)** - תצורה דינמית
 - **[מדריך חיבורים](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/connections.md)** - הגדרת אינטגרציות לשירותי AWS
 - **[אינטגרציית GitHub Actions](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-actions-integration.md)** - הגדרת אוטומציית CI/CD
@@ -1384,8 +1384,8 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[אפליקציית GenAI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-generative-ai)** - סוכני Bedrock ובסיסי ידע
 
 ### פיתוח
-- **[מדריך למפתחים](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/developer-guide.md)** - מדריך פיתוח מלא עם ארכיטקטורה, בדיקות ותהליכי עבודה
-- **[מדריך פיתוח](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/development.md)** - תהליכי עבודה לפיתוח, בדיקות והנחיות תרומה
+- **[מדריך למפתחים](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/developer-guide.md)** - מדריך פיתוח מלא עם ארכיטקטורה, בדיקות וזרימות עבודה
+- **[מדריך פיתוח](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/development.md)** - זרימות עבודה לפיתוח, בדיקות והנחיות תרומה
 - **[פרסום PyPI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pypi-publishing.md)** - הגדרת פרסום PyPI
 - **[הקשר לעוזר AI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/AmazonQ.md)** - הקשר לעוזרי AI (Amazon Q, Kiro)
 - **[סקירת בדיקות](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/tests/README.md)** - תשתית בדיקות

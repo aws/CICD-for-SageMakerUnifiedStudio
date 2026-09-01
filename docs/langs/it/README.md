@@ -10,9 +10,10 @@
 
 # CLI della Pipeline CI/CD SMUS
 
-> **[Domini IAM + IdC]** Questa CLI supporta sia domini basati su IAM che domini basati su IAM Identity Center (IdC). Per i domini IdC, potrebbe essere necessaria una configurazione aggiuntiva (networking VPC, permessi Lake Formation, policy IAM inline) — consulta gli script di configurazione in ciascuna directory di esempio.
 
-**Automatizza il deployment di applicazioni dati attraverso gli ambienti SageMaker Unified Studio**
+> **[Domini IAM + IdC]** Questa CLI supporta sia domini basati su IAM che domini basati su IAM Identity Center (IdC). Per i domini IdC, potrebbe essere necessaria una configurazione aggiuntiva (rete VPC, permessi Lake Formation, policy IAM inline) — consulta gli script di configurazione in ciascuna directory di esempio.
+
+**Automatizza il deployment di applicazioni dati negli ambienti SageMaker Unified Studio**
 
 Distribuisci DAG Airflow, notebook Jupyter e workflow ML dallo sviluppo alla produzione con sicurezza. Progettato per data scientist, data engineer, ML engineer e sviluppatori di applicazioni GenAI che lavorano con team DevOps.
 
@@ -27,8 +28,8 @@ Distribuisci DAG Airflow, notebook Jupyter e workflow ML dallo sviluppo alla pro
 ✅ **Workflow CI/CD Generici** - Lo stesso workflow funziona per Glue, SageMaker, Bedrock, QuickSight o qualsiasi combinazione di servizi AWS  
 ✅ **Distribuzione con Sicurezza** - Validazione dry-run pre-distribuzione e test automatizzati prima della produzione  
 ✅ **Gestione Multi-Ambiente** - Test → Prod con configurazione specifica per ambiente  
-✅ **Infrastructure as Code** - Manifest applicativi versionati e distribuzioni riproducibili  
-✅ **Workflow Event-Driven** - Attivazione automatica dei workflow tramite EventBridge alla distribuzione  
+✅ **Infrastructure as Code** - Manifest delle applicazioni versionati e distribuzioni riproducibili  
+✅ **Workflow Basati su Eventi** - Attivazione automatica dei workflow tramite EventBridge alla distribuzione  
 
 ---
 
@@ -86,7 +87,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 → **[Guida per Amministratori](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/admin-quickstart.md)** - Configura infrastruttura e pipeline in 15 minuti  
 → **[Template di Workflow GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/git-templates/)** - Template di workflow generici e riutilizzabili per il deployment automatizzato
 
-**La CLI è il tuo livello di astrazione:** Devi solo chiamare `aws-smus-cicd-cli deploy` - la CLI gestisce tutte le interazioni con i servizi AWS (DataZone, Glue, Athena, SageMaker, MWAA, S3, IAM, ecc.). I tuoi workflow rimangono semplici e generici.
+**Il CLI è il tuo livello di astrazione:** Devi solo chiamare `aws-smus-cicd-cli deploy` - il CLI gestisce tutte le interazioni con i servizi AWS (DataZone, Glue, Athena, SageMaker, MWAA, S3, IAM, ecc.). I tuoi workflow rimangono semplici e generici.
 
 ---
 
@@ -108,7 +109,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 
 **🧠 Generative AI**
 - Agenti Bedrock
-- Knowledge base
+- Basi di conoscenza
 - Configurazioni di modelli fondazionali (futuro)
 
 **📓 Codice & Flussi di Lavoro**
@@ -192,7 +193,7 @@ ML/Analytics/GenAI!
 - Testing e validazione
 
 **I team dati si concentrano su:**
-- Codice applicativo e workflow
+- Codice dell'applicazione e workflow
 - Quali servizi AWS utilizzare (Glue, Athena, SageMaker, ecc.)
 - Configurazioni degli ambienti
 - Logica di business
