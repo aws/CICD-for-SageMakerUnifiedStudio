@@ -26,6 +26,8 @@ You want to create deployable data applications with Spark code, Python scripts,
 - ML Training with Notebooks + SageMaker
 - GenAI with Bedrock + Notebooks
 
+> 💡 **Tip: Skip the hand-writing.** If you already have a project in SageMaker Unified Studio, use the [generate-bundle-manifest skill](../generate-manifest-skill.md) to have a coding agent (Kiro, Amazon Q CLI, Claude Code, etc.) scan your project and generate a `manifest.yaml` — and an orchestration workflow if your Glue jobs need one — for you. Add the skill to your agent, make sure it has AWS access, and ask *"Generate an SMUS CI/CD manifest for my project."*
+
 ---
 
 ## 🔧 For DevOps Teams
@@ -52,6 +54,9 @@ You're responsible for configuring CI/CD pipelines (GitHub Actions), managing Sa
 
 **Build and deploy data applications (bundles)**  
 → [Quick Start Guide](quickstart.md)
+
+**Generate a manifest automatically from my existing project**  
+→ [Generate a Manifest with AI (Skill)](../generate-manifest-skill.md)
 
 **Set up CI/CD pipelines and infrastructure**  
 → [Admin Quick Start](admin-quickstart.md)
