@@ -8,15 +8,15 @@
 
 ← [Back to Main README](../../../README.md)
 
-# CLI de Pipeline CI/CD SMUS
+# CLI du Pipeline CI/CD SMUS
 
-> **[Domaines IAM + IdC]** Ce CLI prend en charge les domaines SMUS basés sur IAM et sur IAM Identity Center (IdC). Pour les domaines IdC, une configuration supplémentaire (réseau VPC, permissions Lake Formation, politiques IAM en ligne) peut être nécessaire — consultez les scripts de configuration dans chaque répertoire d'exemple.
+> **[Domaines IAM + IdC]** Cette CLI prend en charge les domaines SMUS basés sur IAM et sur IAM Identity Center (IdC). Pour les domaines IdC, une configuration supplémentaire (réseau VPC, permissions Lake Formation, politiques IAM en ligne) peut être nécessaire — consultez les scripts de configuration dans chaque répertoire d'exemple.
 
 **Automatisez le déploiement d'applications de données dans les environnements SageMaker Unified Studio**
 
-Déployez des DAG Airflow, des notebooks Jupyter et des workflows ML du développement à la production en toute confiance. Conçu pour les data scientists, les data engineers, les ML engineers et les développeurs d'applications GenAI travaillant avec les équipes DevOps.
+Déployez des DAG Airflow, des notebooks Jupyter et des workflows ML du développement à la production en toute confiance. Conçu pour les data scientists, les ingénieurs de données, les ingénieurs ML et les développeurs d'applications GenAI travaillant avec des équipes DevOps.
 
-**Fonctionne avec votre stratégie de déploiement :** Que vous utilisiez des branches git (basé sur les branches), des artefacts versionnés (basé sur les bundles), des tags git (basé sur les tags) ou un déploiement direct - ce CLI prend en charge votre workflow. Définissez votre application une fois, déployez-la à votre manière.
+**Fonctionne avec votre stratégie de déploiement :** Que vous utilisiez des branches git (basé sur les branches), des artefacts versionnés (basé sur les bundles), des tags git (basé sur les tags) ou un déploiement direct - cette CLI prend en charge votre workflow. Définissez votre application une fois, déployez-la à votre manière.
 
 ---
 
@@ -25,7 +25,7 @@ Déployez des DAG Airflow, des notebooks Jupyter et des workflows ML du dévelop
 ✅ **Couche d'abstraction AWS** - Le CLI encapsule toute la complexité AWS analytics, ML et SMUS - Les équipes DevOps n'appellent jamais directement les API AWS  
 ✅ **Séparation des préoccupations** - Les équipes data définissent QUOI déployer (manifest.yaml), les équipes DevOps définissent COMMENT et QUAND (workflows CI/CD)  
 ✅ **Workflows CI/CD génériques** - Le même workflow fonctionne pour Glue, SageMaker, Bedrock, QuickSight ou toute combinaison de services AWS  
-✅ **Déployer en toute confiance** - Validation par simulation pré-déploiement et tests automatisés avant la production  
+✅ **Déployer en toute confiance** - Validation par simulation avant déploiement et tests automatisés avant la production  
 ✅ **Gestion multi-environnements** - Test → Prod avec configuration spécifique à chaque environnement  
 ✅ **Infrastructure as Code** - Manifestes d'application versionnés et déploiements reproductibles  
 ✅ **Workflows événementiels** - Déclencher automatiquement des workflows via EventBridge lors du déploiement  

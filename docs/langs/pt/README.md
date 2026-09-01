@@ -21,9 +21,9 @@ Implante DAGs Airflow, notebooks Jupyter e workflows ML de desenvolvimento para 
 
 ---
 
-## Por que SMUS CI/CD CLI?
+## Por que usar o SMUS CI/CD CLI?
 
-✅ **Camada de Abstração AWS** - A CLI encapsula toda a complexidade de analytics, ML e SMUS da AWS - Equipes de DevOps nunca chamam APIs da AWS diretamente  
+✅ **Camada de Abstração AWS** - O CLI encapsula toda a complexidade de analytics, ML e SMUS da AWS - Equipes de DevOps nunca chamam APIs da AWS diretamente  
 ✅ **Separação de Responsabilidades** - Equipes de dados definem O QUE implantar (manifest.yaml), equipes de DevOps definem COMO e QUANDO (workflows de CI/CD)  
 ✅ **Workflows de CI/CD Genéricos** - O mesmo workflow funciona para Glue, SageMaker, Bedrock, QuickSight ou qualquer combinação de serviços AWS  
 ✅ **Implante com Confiança** - Validação de dry-run pré-implantação e testes automatizados antes da produção  
@@ -107,7 +107,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 - Feature Store (futuro)
 - Transformações em lote (futuro)
 
-**🧠 IA Generativa**
+**🧠 Generative AI**
 - Agentes do Bedrock
 - Bases de conhecimento
 - Configurações de modelos de fundação (futuro)
@@ -251,13 +251,13 @@ Lógica de orquestração que executa sua aplicação. Workflows servem dois pro
 - Configurar conexões e permissões
 - Configurar monitoramento e logging
 
-**2. Runtime:** Executar pipelines contínuos de dados e ML
+**2. Runtime:** Executar pipelines de dados e ML contínuos
 - Execução agendada (diária, horária, etc.)
 - Triggers orientados a eventos (uploads S3, chamadas API)
 - Processamento e transformações de dados
 - Treinamento e inferência de modelos
 
-Workflows são definidos como DAGs Airflow (Directed Acyclic Graphs) em formato YAML. Suporta [MWAA (Managed Workflows for Apache Airflow)](https://aws.amazon.com/managed-workflows-for-apache-airflow/) e [Amazon MWAA Serverless](https://aws.amazon.com/blogs/big-data/introducing-amazon-mwaa-serverless/) ([Guia do Usuário](https://docs.aws.amazon.com/mwaa/latest/mwaa-serverless-userguide/what-is-mwaa-serverless.html)).
+Workflows são definidos como DAGs (Directed Acyclic Graphs) Airflow em formato YAML. Suporta [MWAA (Managed Workflows for Apache Airflow)](https://aws.amazon.com/managed-workflows-for-apache-airflow/) e [Amazon MWAA Serverless](https://aws.amazon.com/blogs/big-data/introducing-amazon-mwaa-serverless/) ([Guia do Usuário](https://docs.aws.amazon.com/mwaa/latest/mwaa-serverless-userguide/what-is-mwaa-serverless.html)).
 
 ### Automação CI/CD
 Workflows GitHub Actions (ou outros sistemas CI/CD) que automatizam o deployment:

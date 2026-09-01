@@ -23,9 +23,9 @@ Airflow DAG、Jupyter ノートブック、ML ワークフローを開発環境�
 
 ## なぜ SMUS CI/CD CLI なのか?
 
-✅ **AWS 抽象化レイヤー** - CLI が AWS のアナリティクス、ML、SMUS の複雑さをすべてカプセル化 - DevOps チームが AWS API を直接呼び出すことはありません  
+✅ **AWS 抽象化レイヤー** - CLI が AWS アナリティクス、ML、SMUS の複雑さをすべてカプセル化 - DevOps チームが AWS API を直接呼び出すことはありません  
 ✅ **関心の分離** - データチームは何をデプロイするかを定義し (manifest.yaml)、DevOps チームはどのように、いつデプロイするかを定義します (CI/CD ワークフロー)  
-✅ **汎用的な CI/CD ワークフロー** - 同じワークフローが Glue、SageMaker、Bedrock、QuickSight、または任意の AWS サービスの組み合わせで機能します  
+✅ **汎用 CI/CD ワークフロー** - 同じワークフローが Glue、SageMaker、Bedrock、QuickSight、または任意の AWS サービスの組み合わせで機能します  
 ✅ **自信を持ってデプロイ** - デプロイ前のドライラン検証と本番環境前の自動テスト  
 ✅ **マルチ環境管理** - テスト → 本番環境への環境固有の設定  
 ✅ **Infrastructure as Code** - バージョン管理されたアプリケーションマニフェストと再現可能なデプロイメント  
@@ -69,7 +69,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 
 ### 👨‍💻 データチーム (データサイエンティスト、データエンジニア、GenAI アプリ開発者)
 **あなたが注力すること:** アプリケーション - 何をデプロイするか、どこにデプロイするか、どのように実行するか  
-**あなたが定義するもの:** コード、ワークフロー、設定を含むアプリケーションマニフェスト (`manifest.yaml`)  
+**あなたが定義するもの:** アプリケーションマニフェスト (`manifest.yaml`) とコード、ワークフロー、設定  
 **知る必要がないこと:** CI/CD パイプライン、GitHub Actions、デプロイ自動化  
 
 → **[クイックスタートガイド](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/quickstart.md)** - 10分で最初のアプリケーションをデプロイ  
@@ -150,7 +150,7 @@ S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
 
 ### 関心の分離: 重要な設計原則
 
-**問題点:** 従来のデプロイメントアプローチでは、DevOps チームが AWS 分析サービス (Glue、Athena、DataZone、SageMaker、MWAA など) を学習し、SMUS プロジェクト構造を理解する必要があるか、データチームが CI/CD の専門家になる必要がありました。
+**問題点:** 従来のデプロイアプローチでは、DevOps チームが AWS 分析サービス (Glue、Athena、DataZone、SageMaker、MWAA など) を学習し、SMUS プロジェクト構造を理解する必要があるか、データチームが CI/CD の専門家になる必要がありました。
 
 **解決策:** SMUS CI/CD CLI は、すべての AWS と SMUS の複雑さをカプセル化する抽象化レイヤーです。
 
@@ -165,7 +165,7 @@ S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
 - セキュリティスキャン          - Athena クエリ                 CLI がすべての AWS の複雑さを処理:
 - 通知ルール                    - ファイル構造                  - DataZone API
                                                               - Glue/Athena/SageMaker API
-インフラストラクチャを定義                                      - MWAA デプロイメント
+インフラストラクチャを定義                                      - MWAA デプロイ
 - アカウントとリージョン                                        - S3 管理
 - IAM ロール                                                   - IAM 設定
 - リソース                                                     - インフラストラクチャのプロビジョニング
@@ -188,7 +188,7 @@ ML/Analytics/GenAI
 - IAM ロールと権限
 - 接続設定
 - カタログアセットのサブスクリプション
-- Airflow へのワークフローデプロイメント
+- Airflow へのワークフローデプロイ
 - インフラストラクチャのプロビジョニング
 - テストと検証
 
@@ -200,7 +200,7 @@ ML/Analytics/GenAI
 
 **結果:** 
 - **DevOps チームは AWS API を直接呼び出さない** - `aws-smus-cicd-cli deploy` を呼び出すだけ
-- **CI/CD ワークフローは汎用的** - 同じワークフローが Glue アプリ、SageMaker アプリ、Bedrock アプリで動作
+- **CI/CD ワークフローは汎用的** - 同じワークフローが Glue アプリ、SageMaker アプリ、Bedrock アプリで機能
 - データチームは CI/CD 設定に触れない
 - 両チームがそれぞれの専門知識を活かして独立して作業
 
@@ -226,30 +226,30 @@ ML/Analytics/GenAI
 - 基盤モデルの設定
 
 ### ステージ
-SageMaker Unified Studio プロジェクトにマッピングされたデプロイメント環境 (dev、test、prod):
+SageMaker Unified Studio プロジェクトにマッピングされたデプロイ環境 (dev、test、prod):
 - ドメインとリージョンの設定
 - プロジェクト名と設定
 - リソース接続 (S3、Airflow、Athena、Glue)
 - 環境固有のパラメータ
-- git ベースのデプロイメント用のオプションのブランチマッピング
+- git ベースのデプロイ用のオプションのブランチマッピング
 
 ### ステージからプロジェクトへのマッピング
 
 各アプリケーションステージは、専用の SageMaker Unified Studio (SMUS) プロジェクトにデプロイされます。プロジェクトは、アーキテクチャと CI/CD 手法に応じて、単一のアプリケーションまたは複数のアプリケーションをホストできます。ステージプロジェクトは、独自のガバナンスを持つ独立したエンティティです:
 
 - **所有権とアクセス:** 各ステージプロジェクトには独自の所有者と貢献者がおり、開発プロジェクトとは異なる場合があります。本番プロジェクトは通常、開発環境と比較してアクセスが制限されています。
-- **マルチドメインとマルチリージョン:** ステージプロジェクトは、異なる SMUS ドメイン、AWS アカウント、リージョンに属することができます。たとえば、dev ステージは us-east-1 の開発ドメインにデプロイし、prod は eu-west-1 の本番ドメインにデプロイする場合があります。
+- **マルチドメインとマルチリージョン:** ステージプロジェクトは、異なる SMUS ドメイン、AWS アカウント、リージョンに属することができます。例えば、dev ステージは us-east-1 の開発ドメインにデプロイし、prod は eu-west-1 の本番ドメインにデプロイする場合があります。
 - **柔軟なアーキテクチャ:** 組織は、セキュリティ、コンプライアンス、運用要件に基づいて、アプリケーションごとの専用プロジェクト (分離) または複数のアプリケーションをホストする共有プロジェクト (統合) を選択できます。
 
-この分離により、独立したアクセス制御、コンプライアンス境界、リージョナルデータレジデンシー要件を持つ真の環境分離が可能になります。
+この分離により、独立したアクセス制御、コンプライアンス境界、リージョンデータレジデンシー要件を持つ真の環境分離が可能になります。
 
 ### ワークフロー
 アプリケーションを実行するオーケストレーションロジック。ワークフローには 2 つの目的があります:
 
-**1. デプロイメント時:** デプロイメント中に必要な AWS リソースを作成
+**1. デプロイ時:** デプロイ中に必要な AWS リソースを作成
 - インフラストラクチャのプロビジョニング (S3 バケット、データベース、IAM ロール)
 - 接続と権限の設定
-- モニタリングとロギングのセットアップ
+- モニタリングとログの設定
 
 **2. ランタイム:** 継続的なデータと ML パイプラインを実行
 - スケジュール実行 (日次、時間単位など)
@@ -260,7 +260,7 @@ SageMaker Unified Studio プロジェクトにマッピングされたデプロ�
 ワークフローは YAML 形式の Airflow DAG (Directed Acyclic Graphs) として定義されます。[MWAA (Managed Workflows for Apache Airflow)](https://aws.amazon.com/managed-workflows-for-apache-airflow/) と [Amazon MWAA Serverless](https://aws.amazon.com/blogs/big-data/introducing-amazon-mwaa-serverless/) ([ユーザーガイド](https://docs.aws.amazon.com/mwaa/latest/mwaa-serverless-userguide/what-is-mwaa-serverless.html)) をサポートしています。
 
 ### CI/CD 自動化
-デプロイメントを自動化する GitHub Actions ワークフロー (または他の CI/CD システム):
+デプロイを自動化する GitHub Actions ワークフロー (または他の CI/CD システム):
 - **DevOps チームが作成し所有**
 - **どのように**、**いつ**デプロイするかを定義
 - テストと品質ゲートを実行
@@ -268,19 +268,19 @@ SageMaker Unified Studio プロジェクトにマッピングされたデプロ�
 - セキュリティとコンプライアンスポリシーを適用
 - 例: `.github/workflows/deploy.yml`
 
-**重要な洞察:** DevOps チームは、**あらゆる**アプリケーションで動作する汎用的で再利用可能なワークフローを作成します。アプリが Glue、SageMaker、Bedrock のどれを使用しているかを知る必要はありません - CLI がすべての AWS サービスとのやり取りを処理します。ワークフローは `aws-smus-cicd-cli deploy` を呼び出すだけで、CLI が残りを処理します。
+**重要な洞察:** DevOps チームは、**あらゆる**アプリケーションで機能する汎用的で再利用可能なワークフローを作成します。アプリが Glue、SageMaker、Bedrock のどれを使用しているかを知る必要はありません - CLI がすべての AWS サービスとのやり取りを処理します。ワークフローは `aws-smus-cicd-cli deploy` を呼び出すだけで、CLI が残りを処理します。
 
-### デプロイメントモード
+### デプロイモード
 
-**バンドルベース (アーティファクト):** バージョン管理されたアーカイブを作成 → アーカイブをステージにデプロイ
+**バンドルベース (アーティファクト):** バージョン管理されたアーカイブを作成 → ステージにアーカイブをデプロイ
 - 適している用途: 監査証跡、ロールバック機能、コンプライアンス
 - コマンド: `aws-smus-cicd-cli bundle` の後に `aws-smus-cicd-cli deploy --manifest app.tar.gz`
 
 **ダイレクト (Git ベース):** 中間アーティファクトなしでソースから直接デプロイ
-- 適している用途: よりシンプルなワークフロー、迅速な反復、信頼できる情報源としての git
+- 適している用途: シンプルなワークフロー、迅速な反復、信頼できる情報源としての git
 - コマンド: `aws-smus-cicd-cli deploy --manifest manifest.yaml --targets test`
 
-両方のモードは、ストレージと git コンテンツソースの任意の組み合わせで動作します。
+両方のモードは、ストレージと git コンテンツソースの任意の組み合わせで機能します。
 
 ---
 
@@ -1171,7 +1171,7 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[アプリケーションマニフェスト](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest.md)** - 完全な YAML 設定リファレンス
 - **[CLI コマンド](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/cli-commands.md)** - 利用可能なすべてのコマンドとオプション
 - **[ロールバックガイド](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/rollback-guide.md)** - 不良デプロイメントからの復旧とロールバックの自動化
-- **[ブートストラップアクション](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/bootstrap-actions.md)** - 自動デプロイメントアクションとイベント駆動ワークフロー
+- **[ブートストラップアクション](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/bootstrap-actions.md)** - 自動デプロイメントアクションとイベント駆動型ワークフロー
 - **[置換と変数](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/substitutions-and-variables.md)** - 動的な設定
 - **[接続ガイド](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/connections.md)** - AWS サービス統合の設定
 - **[GitHub Actions 統合](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-actions-integration.md)** - CI/CD 自動化のセットアップ
