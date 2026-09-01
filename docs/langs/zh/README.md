@@ -93,7 +93,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 
 ## 你可以部署什么？
 
-**📊 分析与 BI**
+**📊 分析与商业智能**
 - Glue ETL 作业和爬虫
 - Athena 查询
 - QuickSight 仪表板
@@ -184,7 +184,7 @@ S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
 **SMUS CI/CD CLI 处理所有 AWS 复杂性：**
 - DataZone 域和项目管理
 - AWS Glue、Athena、SageMaker、MWAA APIs
-- S3 存储和制品管理
+- S3 存储和构件管理
 - IAM 角色和权限
 - 连接配置
 - 目录资产订阅
@@ -1189,11 +1189,11 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[Airflow AWS 操作器](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-aws-operators.md)** - 自定义操作器参考
 - **[SMUS CI/CD 中的 Airflow 概述](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-smus-cicd-summary.md)** - Airflow 在 SMUS CI/CD 中的角色概述
 - **[架构](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/architecture.md)** - CLI 架构文档
-- **[管道架构图](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pipeline-architecture-diagram.md)** - CI/CD 管道架构概述
+- **[流水线架构图](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pipeline-architecture-diagram.md)** - CI/CD 流水线架构概述
 
 ### 示例
 - **[示例指南](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md)** - 示例应用程序演练
-- **[数据笔记本](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-data-engineering---notebooks)** - 使用 Airflow 的 Jupyter 笔记本
+- **[数据 Notebook](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-data-engineering---notebooks)** - 使用 Airflow 的 Jupyter notebook
 - **[ML 训练](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-machine-learning---training)** - 使用 MLflow 的 SageMaker 训练
 - **[ML 部署](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-machine-learning---deployment)** - SageMaker 端点部署
 - **[QuickSight 仪表板](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-analytics---quicksight-dashboard)** - 使用 Glue 的 BI 仪表板

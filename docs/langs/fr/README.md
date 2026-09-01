@@ -22,7 +22,7 @@ Déployez des DAG Airflow, des notebooks Jupyter et des workflows ML du dévelop
 
 ## Pourquoi SMUS CI/CD CLI ?
 
-✅ **Couche d'abstraction AWS** - Le CLI encapsule toute la complexité d'AWS analytics, ML et SMUS - Les équipes DevOps n'appellent jamais directement les API AWS  
+✅ **Couche d'abstraction AWS** - Le CLI encapsule toute la complexité AWS analytics, ML et SMUS - Les équipes DevOps n'appellent jamais directement les API AWS  
 ✅ **Séparation des préoccupations** - Les équipes data définissent QUOI déployer (manifest.yaml), les équipes DevOps définissent COMMENT et QUAND (workflows CI/CD)  
 ✅ **Workflows CI/CD génériques** - Le même workflow fonctionne pour Glue, SageMaker, Bedrock, QuickSight ou toute combinaison de services AWS  
 ✅ **Déployer en toute confiance** - Validation par simulation avant déploiement et tests automatisés avant la production  
@@ -64,14 +64,14 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 
 ---
 
-## À Qui S'Adresse Ceci ?
+## À qui s'adresse ceci ?
 
-### 👨‍💻 Équipes Data (Data Scientists, Data Engineers, Développeurs d'Applications GenAI)
+### 👨‍💻 Équipes Data (Data Scientists, Data Engineers, Développeurs d'applications GenAI)
 **Vous vous concentrez sur :** Votre application - quoi déployer, où déployer et comment elle s'exécute  
 **Vous définissez :** Le manifeste d'application (`manifest.yaml`) avec votre code, workflows et configurations  
 **Vous n'avez pas besoin de connaître :** Les pipelines CI/CD, GitHub Actions, l'automatisation du déploiement  
 
-→ **[Guide de Démarrage Rapide](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/quickstart.md)** - Déployez votre première application en 10 minutes  
+→ **[Guide de démarrage rapide](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/quickstart.md)** - Déployez votre première application en 10 minutes  
 
 **Inclut des exemples pour :**
 - Data Engineering (Glue, Notebooks, Athena)
@@ -83,8 +83,8 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 **Vous définissez :** Des modèles de workflow qui imposent des tests, des approbations et des politiques de promotion  
 **Vous n'avez pas besoin de connaître :** Les détails spécifiques aux applications, les services AWS utilisés, les API DataZone, les structures de projet SMUS ou la logique métier  
 
-→ **[Guide Administrateur](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/admin-quickstart.md)** - Configurez l'infrastructure et les pipelines en 15 minutes  
-→ **[Modèles de Workflow GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/git-templates/)** - Modèles de workflow génériques et réutilisables pour le déploiement automatisé
+→ **[Guide administrateur](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/admin-quickstart.md)** - Configurez l'infrastructure et les pipelines en 15 minutes  
+→ **[Modèles de workflow GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/git-templates/)** - Modèles de workflow génériques et réutilisables pour le déploiement automatisé
 
 **Le CLI est votre couche d'abstraction :** Vous appelez simplement `aws-smus-cicd-cli deploy` - le CLI gère toutes les interactions avec les services AWS (DataZone, Glue, Athena, SageMaker, MWAA, S3, IAM, etc.). Vos workflows restent simples et génériques.
 
@@ -104,7 +104,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 - Modèles ML et points de terminaison
 - Expériences MLflow
 - Feature Store (futur)
-- Transformations par lot (futur)
+- Transformations par lots (futur)
 
 **🧠 IA générative**
 - Agents Bedrock
@@ -252,7 +252,7 @@ Logique d'orchestration qui exécute votre application. Les workflows servent de
 
 **2. À l'exécution :** Exécuter les pipelines de données et ML en continu
 - Exécution planifiée (quotidienne, horaire, etc.)
-- Déclencheurs basés sur des événements (uploads S3, appels API)
+- Déclencheurs basés sur des événements (téléchargements S3, appels API)
 - Traitement et transformations de données
 - Entraînement et inférence de modèles
 
@@ -1236,5 +1236,5 @@ Ce projet est sous licence Apache License, Version 2.0. Voir [LICENSE](https://g
 
 <div align="center">
   <img src="docs/readme-qr-code.png" alt="Scanner pour voir le README" width="200"/>
-  <p><em>Scanner le code QR pour voir ce README sur GitHub</em></p>
+  <p><em>Scannez le code QR pour voir ce README sur GitHub</em></p>
 </div>

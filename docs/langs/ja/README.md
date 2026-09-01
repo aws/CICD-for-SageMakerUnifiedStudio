@@ -29,7 +29,7 @@ Airflow DAG、Jupyter ノートブック、ML ワークフローを開発環境�
 ✅ **自信を持ってデプロイ** - デプロイ前のドライラン検証と本番環境前の自動テスト  
 ✅ **マルチ環境管理** - テスト → 本番環境への環境固有の設定  
 ✅ **Infrastructure as Code** - バージョン管理されたアプリケーションマニフェストと再現可能なデプロイメント  
-✅ **イベント駆動ワークフロー** - デプロイ時に EventBridge 経由でワークフローを自動的にトリガー  
+✅ **イベント駆動型ワークフロー** - デプロイ時に EventBridge 経由でワークフローを自動的にトリガー  
 
 ---
 
@@ -80,14 +80,14 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 - GenAI アプリケーション (Bedrock、Notebooks)
 
 ### 🔧 DevOps チーム
-**あなたが注力すること:** CI/CD のベストプラクティス、セキュリティ、コンプライアンス、デプロイ自動化  
+**あなたが注力すること:** CI/CD ベストプラクティス、セキュリティ、コンプライアンス、デプロイ自動化  
 **あなたが定義するもの:** テスト、承認、プロモーションポリシーを強制するワークフローテンプレート  
 **知る必要がないこと:** アプリケーション固有の詳細、使用される AWS サービス、DataZone API、SMUS プロジェクト構造、ビジネスロジック  
 
 → **[管理者ガイド](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/admin-quickstart.md)** - 15分でインフラストラクチャとパイプラインを設定  
 → **[GitHub ワークフローテンプレート](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/git-templates/)** - 自動デプロイ用の汎用的で再利用可能なワークフローテンプレート
 
-**CLI が抽象化レイヤーです:** `aws-smus-cicd-cli deploy` を呼び出すだけで、CLI がすべての AWS サービスとのやり取り (DataZone、Glue、Athena、SageMaker、MWAA、S3、IAM など) を処理します。ワークフローはシンプルで汎用的なまま維持されます。
+**CLI はあなたの抽象化レイヤーです:** `aws-smus-cicd-cli deploy` を呼び出すだけで、CLI がすべての AWS サービスとのやり取り (DataZone、Glue、Athena、SageMaker、MWAA、S3、IAM など) を処理します。ワークフローはシンプルで汎用的なままです。
 
 ---
 
@@ -97,32 +97,32 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 - Glue ETL ジョブとクローラー
 - Athena クエリ
 - QuickSight ダッシュボード
-- EMR ジョブ (今後対応予定)
-- Redshift クエリ (今後対応予定)
+- EMR ジョブ（今後対応予定）
+- Redshift クエリ（今後対応予定）
 
 **🤖 機械学習**
 - SageMaker トレーニングジョブ
 - ML モデルとエンドポイント
 - MLflow 実験
-- Feature Store (今後対応予定)
-- バッチ変換 (今後対応予定)
+- Feature Store（今後対応予定）
+- バッチ変換（今後対応予定）
 
 **🧠 生成 AI**
 - Bedrock エージェント
 - ナレッジベース
-- 基盤モデル設定 (今後対応予定)
+- 基盤モデル設定（今後対応予定）
 
 **📓 コード & ワークフロー**
 - Jupyter ノートブック
 - SageMaker Unified Studio ノートブック
 - Python スクリプト
-- Airflow DAG (MWAA および Amazon MWAA Serverless)
-- Lambda 関数 (今後対応予定)
+- Airflow DAG（MWAA および Amazon MWAA Serverless）
+- Lambda 関数（今後対応予定）
 
 **💾 データ & ストレージ**
 - S3 データファイル
 - Git リポジトリ
-- DataZone カタログリソース (Glossaries、GlossaryTerms、FormTypes、AssetTypes、Assets、Data Products、Metadata Forms)
+- DataZone カタログリソース（Glossaries、GlossaryTerms、FormTypes、AssetTypes、Assets、Data Products、Metadata Forms）
 
 ---
 
@@ -1178,7 +1178,7 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[GitHub ワークフローアプリケーションガイド](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-workflow-application-guide.md)** - 直接ブランチデプロイメントのためのアプリケーション管理者ガイド
 - **[GitHub ワークフロー DevOps ガイド](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/github-workflow-devops-guide.md)** - 直接ブランチデプロイメントのための DevOps ガイド
 - **[デプロイメントメトリクス](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pipeline-deployment-metrics.md)** - EventBridge によるモニタリング
-- **[カタログインポート/エクスポートガイド](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/catalog-import-export-guide.md)** - 環境間で DataZone カタログリソースを昇格させる
+- **[カタログインポート/エクスポートガイド](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/catalog-import-export-guide.md)** - 環境間で DataZone カタログリソースをプロモートする
 - **[カタログインポート/エクスポートクイックリファレンス](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/catalog-import-export-quick-reference.md)** - カタログデプロイメントのクイックリファレンス
 - **[ノートブック同期 (E2E 例)](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/examples/e2e-notebook-sync/README.md)** - 環境間でノートブックをエクスポートして同期する (bundle-deploy モード)
 - **[MCP 設定](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/mcp-configuration.md)** - MCP サーバー設定ガイド
@@ -1202,7 +1202,7 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 ### 開発
 - **[開発者ガイド](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/developer-guide.md)** - アーキテクチャ、テスト、ワークフローを含む完全な開発ガイド
 - **[開発ガイド](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/development.md)** - 開発ワークフロー、テスト、コントリビューションガイドライン
-- **[PyPI 公開](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pypi-publishing.md)** - PyPI 公開のセットアップ
+- **[PyPI パブリッシング](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pypi-publishing.md)** - PyPI パブリッシングのセットアップ
 - **[AI アシスタントコンテキスト](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/AmazonQ.md)** - AI アシスタント (Amazon Q、Kiro) のためのコンテキスト
 - **[テスト概要](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/tests/README.md)** - テストインフラストラクチャ
 
