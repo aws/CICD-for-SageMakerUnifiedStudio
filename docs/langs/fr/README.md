@@ -14,7 +14,7 @@
 
 **Automatisez le déploiement d'applications de données dans les environnements SageMaker Unified Studio**
 
-Déployez des DAG Airflow, des notebooks Jupyter et des workflows ML du développement à la production en toute confiance. Conçu pour les data scientists, les ingénieurs de données, les ingénieurs ML et les développeurs d'applications GenAI travaillant avec des équipes DevOps.
+Déployez des DAG Airflow, des notebooks Jupyter et des workflows ML du développement à la production en toute confiance. Conçu pour les data scientists, les ingénieurs de données, les ingénieurs ML et les développeurs d'applications GenAI travaillant avec les équipes DevOps.
 
 **Fonctionne avec votre stratégie de déploiement :** Que vous utilisiez des branches git (basé sur les branches), des artefacts versionnés (basé sur les bundles), des tags git (basé sur les tags) ou un déploiement direct - cette CLI prend en charge votre workflow. Définissez votre application une fois, déployez-la à votre manière.
 
@@ -22,10 +22,10 @@ Déployez des DAG Airflow, des notebooks Jupyter et des workflows ML du dévelop
 
 ## Pourquoi SMUS CI/CD CLI ?
 
-✅ **Couche d'abstraction AWS** - Le CLI encapsule toute la complexité AWS analytics, ML et SMUS - Les équipes DevOps n'appellent jamais directement les API AWS  
+✅ **Couche d'abstraction AWS** - Le CLI encapsule toute la complexité d'AWS analytics, ML et SMUS - Les équipes DevOps n'appellent jamais directement les API AWS  
 ✅ **Séparation des préoccupations** - Les équipes data définissent QUOI déployer (manifest.yaml), les équipes DevOps définissent COMMENT et QUAND (workflows CI/CD)  
-✅ **Workflows CI/CD génériques** - Le même workflow fonctionne pour Glue, SageMaker, Bedrock, QuickSight ou toute combinaison de services AWS  
-✅ **Déployer en toute confiance** - Validation par simulation avant déploiement et tests automatisés avant la production  
+✅ **Workflows CI/CD génériques** - Le même workflow fonctionne pour Glue, SageMaker, Bedrock, QuickSight, ou toute combinaison de services AWS  
+✅ **Déployer en toute confiance** - Validation par simulation pré-déploiement et tests automatisés avant la production  
 ✅ **Gestion multi-environnements** - Test → Prod avec configuration spécifique à chaque environnement  
 ✅ **Infrastructure as Code** - Manifestes d'application versionnés et déploiements reproductibles  
 ✅ **Workflows événementiels** - Déclencher automatiquement des workflows via EventBridge lors du déploiement  
@@ -64,7 +64,15 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 
 ---
 
-## À qui s'adresse ceci ?
+## Générer un manifeste avec l'IA (Skill)
+
+Vous ne voulez pas écrire `manifest.yaml` à la main ? Ce dépôt inclut une [Agent Skill](https://agentskills.io/) qui analyse votre projet SageMaker Unified Studio et génère un manifeste de déploiement — ainsi qu'un workflow d'orchestration lorsque nécessaire. Ajoutez-la à un agent de codage (Kiro, Amazon Q CLI, Claude Code, ou tout agent compatible [AgentSkills](https://agentskills.io/)), puis demandez *« Génère un manifeste CI/CD SMUS pour mon projet. »*
+
+→ **[Générer un manifeste avec l'IA](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/generate-manifest-skill.md)** - Instructions de configuration et d'utilisation
+
+---
+
+## À qui s'adresse cet outil ?
 
 ### 👨‍💻 Équipes Data (Data Scientists, Data Engineers, Développeurs d'applications GenAI)
 **Vous vous concentrez sur :** Votre application - quoi déployer, où déployer et comment elle s'exécute  
@@ -1165,9 +1173,10 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 ### Premiers pas
 - **[Guide de démarrage rapide](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/quickstart.md)** - Déployez votre première application (10 min)
 - **[Guide administrateur](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/admin-quickstart.md)** - Configurez l'infrastructure (15 min)
+- **[Générer un manifeste avec l'IA](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/generate-manifest-skill.md)** - Compétence d'agent qui analyse votre projet et génère un manifeste
 
 ### Guides
-- **[Manifeste d'application](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest.md)** - Référence complète de la configuration YAML
+- **[Manifeste d'application](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest.md)** - Référence complète de configuration YAML
 - **[Commandes CLI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/cli-commands.md)** - Toutes les commandes et options disponibles
 - **[Guide de restauration](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/rollback-guide.md)** - Récupérez après des déploiements défaillants et automatisez la restauration
 - **[Actions de bootstrap](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/bootstrap-actions.md)** - Actions de déploiement automatisées et workflows pilotés par événements
@@ -1196,13 +1205,13 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 - **[Entraînement ML](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-machine-learning---training)** - Entraînement SageMaker avec MLflow
 - **[Déploiement ML](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-machine-learning---deployment)** - Déploiement de point de terminaison SageMaker
 - **[Tableau de bord QuickSight](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-analytics---quicksight-dashboard)** - Tableaux de bord BI avec Glue
-- **[Application GenAI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-generative-ai)** - Agents Bedrock et bases de connaissances
+- **[Application GenAI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/examples-guide.md#-generative-ai)** - Agents et bases de connaissances Bedrock
 
 ### Développement
 - **[Guide du développeur](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/developer-guide.md)** - Guide de développement complet avec architecture, tests et workflows
 - **[Guide de développement](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/development.md)** - Workflows de développement, tests et directives de contribution
-- **[Publication PyPI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pypi-publishing.md)** - Configuration de la publication PyPI
-- **[Contexte de l'assistant IA](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/AmazonQ.md)** - Contexte pour les assistants IA (Amazon Q, Kiro)
+- **[Publication PyPI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/pypi-publishing.md)** - Configuration de publication PyPI
+- **[Contexte d'assistant IA](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/developer/AmazonQ.md)** - Contexte pour les assistants IA (Amazon Q, Kiro)
 - **[Vue d'ensemble des tests](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/tests/README.md)** - Infrastructure de test
 
 ### Support
