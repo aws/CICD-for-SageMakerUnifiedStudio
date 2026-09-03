@@ -10,7 +10,6 @@
 
 # CLI de Pipeline CI/CD SMUS
 
-
 > **[Domínios IAM + IdC]** Esta CLI suporta domínios SMUS baseados em IAM e em IAM Identity Center (IdC). Para domínios IdC, configuração adicional (rede VPC, permissões Lake Formation, políticas IAM inline) pode ser necessária — consulte os scripts de configuração em cada diretório de exemplo.
 
 **Automatize a implantação de aplicações de dados em ambientes SageMaker Unified Studio**
@@ -21,9 +20,9 @@ Implante DAGs Airflow, notebooks Jupyter e workflows ML de desenvolvimento para 
 
 ---
 
-## Por que usar o SMUS CI/CD CLI?
+## Por que SMUS CI/CD CLI?
 
-✅ **Camada de Abstração AWS** - O CLI encapsula toda a complexidade de analytics, ML e SMUS da AWS - Equipes de DevOps nunca chamam APIs da AWS diretamente  
+✅ **Camada de Abstração AWS** - A CLI encapsula toda a complexidade de analytics, ML e SMUS da AWS - Equipes de DevOps nunca chamam APIs da AWS diretamente  
 ✅ **Separação de Responsabilidades** - Equipes de dados definem O QUE implantar (manifest.yaml), equipes de DevOps definem COMO e QUANDO (workflows de CI/CD)  
 ✅ **Workflows de CI/CD Genéricos** - O mesmo workflow funciona para Glue, SageMaker, Bedrock, QuickSight ou qualquer combinação de serviços AWS  
 ✅ **Implante com Confiança** - Validação de dry-run pré-implantação e testes automatizados antes da produção  
@@ -65,10 +64,18 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 
 ---
 
+## Gerar um Manifesto com IA (Skill)
+
+Não quer escrever `manifest.yaml` manualmente? Este repositório inclui uma [Agent Skill](https://agentskills.io/) que escaneia seu projeto do SageMaker Unified Studio e gera um manifesto de implantação — e um workflow de orquestração quando necessário. Adicione-a a um agente de codificação (Kiro, Amazon Q CLI, Claude Code, ou qualquer agente compatível com [AgentSkills](https://agentskills.io/)), e então pergunte *"Gere um manifesto CI/CD SMUS para meu projeto."*
+
+→ **[Gerar um Manifesto com IA](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/generate-manifest-skill.md)** - Instruções de configuração e uso
+
+---
+
 ## Para Quem É Isso?
 
 ### 👨‍💻 Equipes de Dados (Cientistas de Dados, Engenheiros de Dados, Desenvolvedores de Aplicações GenAI)
-**Você foca em:** Sua aplicação - o que implantar, onde implantar e como ela é executada  
+**Você foca em:** Sua aplicação - o que implantar, onde implantar e como ela executa  
 **Você define:** Manifesto da aplicação (`manifest.yaml`) com seu código, workflows e configurações  
 **Você não precisa saber:** Pipelines de CI/CD, GitHub Actions, automação de implantação  
 
@@ -87,7 +94,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 → **[Guia do Administrador](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/admin-quickstart.md)** - Configure infraestrutura e pipelines em 15 minutos  
 → **[Templates de Workflow do GitHub](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/tree/main/git-templates/)** - Templates de workflow genéricos e reutilizáveis para implantação automatizada
 
-**O CLI é sua camada de abstração:** Você apenas executa `aws-smus-cicd-cli deploy` - o CLI gerencia todas as interações com os serviços AWS (DataZone, Glue, Athena, SageMaker, MWAA, S3, IAM, etc.). Seus workflows permanecem simples e genéricos.
+**O CLI é sua camada de abstração:** Você apenas chama `aws-smus-cicd-cli deploy` - o CLI gerencia todas as interações com serviços AWS (DataZone, Glue, Athena, SageMaker, MWAA, S3, IAM, etc.). Seus workflows permanecem simples e genéricos.
 
 ---
 
@@ -107,7 +114,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 - Feature Store (futuro)
 - Transformações em lote (futuro)
 
-**🧠 Generative AI**
+**🧠 IA Generativa**
 - Agentes do Bedrock
 - Bases de conhecimento
 - Configurações de modelos de fundação (futuro)
@@ -142,7 +149,7 @@ Implante fluxos de trabalho usando estes serviços AWS através da sintaxe YAML 
 ### 📊 Serviços Adicionais
 S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
 
-**Veja a lista completa:** [Referência de Operadores AWS do Airflow](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-aws-operators.md)
+**Veja a lista completa:** [Airflow AWS Operators Reference](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/airflow-aws-operators.md)
 
 ---
 
@@ -177,7 +184,7 @@ serviços ML/Analytics/GenAI!
 
 **Equipes DevOps focam em:**
 - Melhores práticas de CI/CD (testes, aprovações, notificações)
-- Controles de segurança e conformidade
+- Portões de segurança e conformidade
 - Orquestração de deployment
 - Monitoramento e alertas
 
@@ -212,7 +219,7 @@ Um arquivo YAML declarativo (`manifest.yaml`) que define sua aplicação de dado
 - **Conteúdo** - Código de repositórios git, dados/modelos de armazenamento, dashboards QuickSight
 - **Workflows** - DAGs Airflow para orquestração e automação
 - **Stages** - Onde implantar (ambientes dev, test, prod)
-- **Configuração** - Configurações específicas por ambiente, conexões e ações de bootstrap
+- **Configuração** - Configurações específicas de ambiente, conexões e ações de bootstrap
 
 **Criado e mantido pelas equipes de dados.** Define **o que** implantar e **onde**. Não requer conhecimento de CI/CD.
 
@@ -230,7 +237,7 @@ Um ambiente de deployment (dev, test, prod) mapeado para um projeto SageMaker Un
 - Configuração de domínio e região
 - Nome e configurações do projeto
 - Conexões de recursos (S3, Airflow, Athena, Glue)
-- Parâmetros específicos do ambiente
+- Parâmetros específicos de ambiente
 - Mapeamento opcional de branch para deployments baseados em git
 
 ### Mapeamento Stage-para-Projeto
@@ -251,19 +258,19 @@ Lógica de orquestração que executa sua aplicação. Workflows servem dois pro
 - Configurar conexões e permissões
 - Configurar monitoramento e logging
 
-**2. Runtime:** Executar pipelines de dados e ML contínuos
+**2. Runtime:** Executar pipelines contínuos de dados e ML
 - Execução agendada (diária, horária, etc.)
 - Triggers orientados a eventos (uploads S3, chamadas API)
 - Processamento e transformações de dados
 - Treinamento e inferência de modelos
 
-Workflows são definidos como DAGs (Directed Acyclic Graphs) Airflow em formato YAML. Suporta [MWAA (Managed Workflows for Apache Airflow)](https://aws.amazon.com/managed-workflows-for-apache-airflow/) e [Amazon MWAA Serverless](https://aws.amazon.com/blogs/big-data/introducing-amazon-mwaa-serverless/) ([Guia do Usuário](https://docs.aws.amazon.com/mwaa/latest/mwaa-serverless-userguide/what-is-mwaa-serverless.html)).
+Workflows são definidos como DAGs Airflow (Directed Acyclic Graphs) em formato YAML. Suporta [MWAA (Managed Workflows for Apache Airflow)](https://aws.amazon.com/managed-workflows-for-apache-airflow/) e [Amazon MWAA Serverless](https://aws.amazon.com/blogs/big-data/introducing-amazon-mwaa-serverless/) ([Guia do Usuário](https://docs.aws.amazon.com/mwaa/latest/mwaa-serverless-userguide/what-is-mwaa-serverless.html)).
 
 ### Automação CI/CD
 Workflows GitHub Actions (ou outros sistemas CI/CD) que automatizam o deployment:
 - **Criado e mantido pelas equipes DevOps**
 - Define **como** e **quando** implantar
-- Executa testes e controles de qualidade
+- Executa testes e portões de qualidade
 - Gerencia promoção entre targets
 - Aplica políticas de segurança e conformidade
 - Exemplo: `.github/workflows/deploy.yml`
@@ -1166,10 +1173,11 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 ### Primeiros Passos
 - **[Guia de Início Rápido](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/quickstart.md)** - Implante sua primeira aplicação (10 min)
 - **[Guia do Administrador](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/admin-quickstart.md)** - Configure a infraestrutura (15 min)
+- **[Gerar um Manifesto com IA](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/generate-manifest-skill.md)** - Habilidade de agente que escaneia seu projeto e gera um manifesto
 
 ### Guias
 - **[Manifesto da Aplicação](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest.md)** - Referência completa de configuração YAML
-- **[Comandos do CLI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/cli-commands.md)** - Todos os comandos e opções disponíveis
+- **[Comandos CLI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/cli-commands.md)** - Todos os comandos e opções disponíveis
 - **[Guia de Rollback](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/rollback-guide.md)** - Recupere-se de implantações com falha e automatize rollback
 - **[Ações de Bootstrap](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/bootstrap-actions.md)** - Ações de implantação automatizadas e fluxos de trabalho orientados a eventos
 - **[Substituições e Variáveis](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/substitutions-and-variables.md)** - Configuração dinâmica
