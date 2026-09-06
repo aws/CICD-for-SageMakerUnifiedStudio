@@ -8,15 +8,15 @@
 
 ← [Back to Main README](../../../README.md)
 
-# CLI du Pipeline CI/CD SMUS
+# CLI de Pipeline CI/CD SMUS
 
-> **[Domaines IAM + IdC]** Cette CLI prend en charge les domaines SMUS basés sur IAM et sur IAM Identity Center (IdC). Pour les domaines IdC, une configuration supplémentaire (réseau VPC, permissions Lake Formation, politiques IAM en ligne) peut être nécessaire — consultez les scripts de configuration dans chaque répertoire d'exemple.
+> **[Domaines IAM + IdC]** Ce CLI prend en charge les domaines SMUS basés sur IAM et sur IAM Identity Center (IdC). Pour les domaines IdC, une configuration supplémentaire (réseau VPC, permissions Lake Formation, politiques IAM en ligne) peut être nécessaire — consultez les scripts de configuration dans chaque répertoire d'exemple.
 
 **Automatisez le déploiement d'applications de données dans les environnements SageMaker Unified Studio**
 
-Déployez des DAG Airflow, des notebooks Jupyter et des workflows ML du développement à la production en toute confiance. Conçu pour les data scientists, les ingénieurs de données, les ingénieurs ML et les développeurs d'applications GenAI travaillant avec des équipes DevOps.
+Déployez des DAG Airflow, des notebooks Jupyter et des workflows ML du développement à la production en toute confiance. Conçu pour les data scientists, les data engineers, les ML engineers et les développeurs d'applications GenAI travaillant avec les équipes DevOps.
 
-**Fonctionne avec votre stratégie de déploiement :** Que vous utilisiez des branches git (basé sur les branches), des artefacts versionnés (basé sur les bundles), des tags git (basé sur les tags) ou un déploiement direct - cette CLI prend en charge votre workflow. Définissez votre application une fois, déployez-la à votre manière.
+**Fonctionne avec votre stratégie de déploiement :** Que vous utilisiez des branches git (basé sur les branches), des artefacts versionnés (basé sur les bundles), des tags git (basé sur les tags) ou un déploiement direct - ce CLI prend en charge votre workflow. Définissez votre application une fois, déployez-la à votre manière.
 
 ---
 
@@ -25,7 +25,7 @@ Déployez des DAG Airflow, des notebooks Jupyter et des workflows ML du dévelop
 ✅ **Couche d'abstraction AWS** - Le CLI encapsule toute la complexité AWS analytics, ML et SMUS - Les équipes DevOps n'appellent jamais directement les API AWS  
 ✅ **Séparation des préoccupations** - Les équipes data définissent QUOI déployer (manifest.yaml), les équipes DevOps définissent COMMENT et QUAND (workflows CI/CD)  
 ✅ **Workflows CI/CD génériques** - Le même workflow fonctionne pour Glue, SageMaker, Bedrock, QuickSight ou toute combinaison de services AWS  
-✅ **Déployer en toute confiance** - Validation par simulation avant déploiement et tests automatisés avant la production  
+✅ **Déployer en toute confiance** - Validation par simulation pré-déploiement et tests automatisés avant la production  
 ✅ **Gestion multi-environnements** - Test → Prod avec configuration spécifique à chaque environnement  
 ✅ **Infrastructure as Code** - Manifestes d'application versionnés et déploiements reproductibles  
 ✅ **Workflows événementiels** - Déclencher automatiquement des workflows via EventBridge lors du déploiement  
@@ -64,7 +64,15 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 
 ---
 
-## À qui s'adresse ceci ?
+## Générer un manifeste avec l'IA (Skill)
+
+Vous ne voulez pas écrire `manifest.yaml` à la main ? Ce dépôt inclut une [Agent Skill](https://agentskills.io/) qui analyse votre projet SageMaker Unified Studio et génère un manifeste de déploiement — ainsi qu'un workflow d'orchestration lorsque nécessaire. Ajoutez-la à un agent de codage (Kiro, Amazon Q CLI, Claude Code, ou tout agent compatible [AgentSkills](https://agentskills.io/)), puis demandez *« Génère un manifeste CI/CD SMUS pour mon projet. »*
+
+→ **[Générer un manifeste avec l'IA](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/generate-manifest-skill.md)** - Instructions de configuration et d'utilisation
+
+---
+
+## À qui s'adresse cet outil ?
 
 ### 👨‍💻 Équipes Data (Data Scientists, Data Engineers, Développeurs d'applications GenAI)
 **Vous vous concentrez sur :** Votre application - quoi déployer, où déployer et comment elle s'exécute  
@@ -104,7 +112,7 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 - Modèles ML et points de terminaison
 - Expériences MLflow
 - Feature Store (futur)
-- Transformations par lots (futur)
+- Transformations par lot (futur)
 
 **🧠 IA générative**
 - Agents Bedrock
@@ -149,7 +157,7 @@ S3 • Lambda • Step Functions • DynamoDB • RDS • SNS/SQS • Batch
 
 ### Séparation des préoccupations : Le principe de conception clé
 
-**Le problème :** Les approches de déploiement traditionnelles obligent les équipes DevOps à apprendre les services d'analyse AWS (Glue, Athena, DataZone, SageMaker, MWAA, etc.) et à comprendre les structures de projet SMUS, ou obligent les équipes de données à devenir des experts CI/CD.
+**Le problème :** Les approches de déploiement traditionnelles obligent les équipes DevOps à apprendre les services d'analyse AWS (Glue, Athena, DataZone, SageMaker, MWAA, etc.) et à comprendre les structures de projet SMUS, ou obligent les équipes de données à devenir des experts en CI/CD.
 
 **La solution :** SMUS CI/CD CLI est la couche d'abstraction qui encapsule toute la complexité AWS et SMUS.
 
@@ -252,7 +260,7 @@ Logique d'orchestration qui exécute votre application. Les workflows servent de
 
 **2. À l'exécution :** Exécuter les pipelines de données et ML en continu
 - Exécution planifiée (quotidienne, horaire, etc.)
-- Déclencheurs basés sur des événements (téléchargements S3, appels API)
+- Déclencheurs basés sur des événements (uploads S3, appels API)
 - Traitement et transformations de données
 - Entraînement et inférence de modèles
 
@@ -1162,9 +1170,10 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 
 ## Documentation
 
-### Premiers pas
+### Pour commencer
 - **[Guide de démarrage rapide](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/quickstart.md)** - Déployez votre première application (10 min)
 - **[Guide administrateur](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/admin-quickstart.md)** - Configurez l'infrastructure (15 min)
+- **[Générer un manifeste avec l'IA](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/generate-manifest-skill.md)** - Compétence d'agent qui analyse votre projet et génère un manifeste
 
 ### Guides
 - **[Manifeste d'application](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest.md)** - Référence complète de la configuration YAML
@@ -1236,5 +1245,5 @@ Ce projet est sous licence Apache License, Version 2.0. Voir [LICENSE](https://g
 
 <div align="center">
   <img src="docs/readme-qr-code.png" alt="Scanner pour voir le README" width="200"/>
-  <p><em>Scannez le code QR pour voir ce README sur GitHub</em></p>
+  <p><em>Scanner le code QR pour voir ce README sur GitHub</em></p>
 </div>
