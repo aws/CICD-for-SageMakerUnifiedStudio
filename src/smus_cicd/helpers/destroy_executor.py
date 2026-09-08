@@ -3,6 +3,7 @@
 Executes resource deletion in the required dependency order for a single stage.
 """
 
+import time
 from typing import List
 
 from botocore.exceptions import ClientError
@@ -21,6 +22,15 @@ from .destroy_models import ResourceResult, ValidationResult
 
 console = Console()
 err_console = Console(stderr=True)
+
+# Notebook deletion can transiently fail with ConflictException ("Notebook is
+# currently being used by another user") when a session/space that the workflow
+# just used has not yet been released. The condition clears on its own, so we
+# retry DeleteNotebook a bounded number of times with exponential backoff before
+# giving up. A persistent conflict after all attempts is still surfaced as an
+# error — we never hide it.
+_NOTEBOOK_DELETE_MAX_ATTEMPTS = 5
+_NOTEBOOK_DELETE_BACKOFF_BASE_SECONDS = 5
 
 
 def _destroy_stage(
@@ -516,10 +526,49 @@ def _destroy_stage(
 
         try:
             dz_client = create_client("datazone", region=effective_region)
-            dz_client.delete_notebook(
-                domainIdentifier=domain_id_nb,
-                identifier=notebook_id,
-            )
+            # Retry on ConflictException: the notebook may still be attached to a
+            # session/space that the workflow just used. Deletion succeeds once
+            # that releases, so back off and retry a bounded number of times.
+            last_conflict = None
+            for attempt in range(1, _NOTEBOOK_DELETE_MAX_ATTEMPTS + 1):
+                try:
+                    dz_client.delete_notebook(
+                        domainIdentifier=domain_id_nb,
+                        identifier=notebook_id,
+                    )
+                    last_conflict = None
+                    break
+                except ClientError as exc:
+                    if exc.response["Error"]["Code"] != "ConflictException":
+                        raise
+                    last_conflict = exc
+                    if attempt < _NOTEBOOK_DELETE_MAX_ATTEMPTS:
+                        wait_seconds = _NOTEBOOK_DELETE_BACKOFF_BASE_SECONDS * (
+                            2 ** (attempt - 1)
+                        )
+                        _log(
+                            f"  [yellow]⏳ Notebook '{resource_name}' ({notebook_id}) "
+                            f"in use; retrying in {wait_seconds}s "
+                            f"(attempt {attempt}/{_NOTEBOOK_DELETE_MAX_ATTEMPTS})[/yellow]"
+                        )
+                        time.sleep(wait_seconds)
+
+            # Still conflicted after all attempts — surface the error, never hide it.
+            if last_conflict is not None:
+                _log(
+                    f"  [red]❌ Error deleting notebook '{resource_name}' ({notebook_id}) "
+                    f"after {_NOTEBOOK_DELETE_MAX_ATTEMPTS} attempts: {last_conflict}[/red]"
+                )
+                results.append(
+                    ResourceResult(
+                        resource_type="notebook",
+                        resource_id=notebook_id,
+                        status="error",
+                        message=str(last_conflict),
+                    )
+                )
+                continue
+
             _log(
                 f"  ✅ Deleted notebook: {resource_name} ({notebook_id})"
                 + (f" [source: {source_id}]" if source_id else "")
