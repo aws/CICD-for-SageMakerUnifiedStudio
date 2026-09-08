@@ -298,8 +298,8 @@ def handle_workflow_create(
         # For IdC-based domains, build the domain/project-namespaced log group.
         log_group_name = None
         if is_idc:
-            log_group_name = (
-                f"/aws/mwaa-serverless/{domain_id}-{project_id}/{workflow_name}"
+            log_group_name = airflow_serverless.build_idc_log_group_name(
+                domain_id, project_id, workflow_name
             )
 
         # Create workflow using resolved YAML

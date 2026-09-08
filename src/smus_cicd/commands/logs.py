@@ -140,9 +140,11 @@ def _monitor_airflow_serverless_logs(
                     typer.echo("   Fetching all logs...")
                 active_run = False
 
-    # Construct log group name from workflow name
-    # Log group format: /aws/mwaa-serverless/<workflow-name>/
-    log_group = f"/aws/mwaa-serverless/{workflow_name}/"
+    # Resolve the log group from the workflow's actual LoggingConfiguration so
+    # IdC-based (namespaced) log groups are handled correctly.
+    log_group = airflow_serverless.resolve_workflow_log_group(
+        workflow_arn, region=region
+    )
 
     if output.upper() != "JSON":
         typer.echo(f"📁 Log Group: {log_group}")
@@ -177,9 +179,11 @@ def _fetch_static_logs(
     """
     from ..helpers import airflow_serverless
 
-    # Extract workflow name and construct log group
-    workflow_name = workflow_arn.split("/")[-1]
-    log_group = f"/aws/mwaa-serverless/{workflow_name}/"
+    # Resolve the log group from the workflow's actual LoggingConfiguration so
+    # IdC-based (namespaced) log groups are handled correctly.
+    log_group = airflow_serverless.resolve_workflow_log_group(
+        workflow_arn, region=region
+    )
 
     log_events = airflow_serverless.get_cloudwatch_logs(
         log_group, region=region, limit=lines
@@ -222,9 +226,11 @@ def _live_log_monitoring(
         typer.echo("   Press Ctrl+C to stop monitoring")
         typer.echo()
 
-    # Extract workflow name and construct log group
-    workflow_name = workflow_arn.split("/")[-1]
-    log_group = f"/aws/mwaa-serverless/{workflow_name}/"
+    # Resolve the log group from the workflow's actual LoggingConfiguration so
+    # IdC-based (namespaced) log groups are handled correctly.
+    log_group = airflow_serverless.resolve_workflow_log_group(
+        workflow_arn, region=region
+    )
 
     last_timestamp = None
     check_count = 0
