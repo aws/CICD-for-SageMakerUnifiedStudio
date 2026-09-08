@@ -1,5 +1,0 @@
-slh_workflow_a:
-  dag_id: slh_workflow_a
-  tasks:
-    hello:
-      operator: airflow.operators.empty.EmptyOperator
