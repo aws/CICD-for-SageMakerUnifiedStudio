@@ -38,6 +38,11 @@ from smus_cicd.commands.dry_run.report import ReportFormatter
 severity_strategy = st.sampled_from(list(Severity))
 phase_strategy = st.sampled_from(list(Phase))
 
+# Number of deployment phases. Tests that generate one finding per phase size
+# their input lists to this value; deriving it from the Phase enum keeps the
+# tests correct when phases are added or removed.
+PHASE_COUNT = len(list(Phase))
+
 finding_tuple_strategy = st.tuples(
     phase_strategy,
     severity_strategy,
@@ -3339,17 +3344,15 @@ def test_property_28_dependency_check_caching(data, num_duplicates):
 @given(
     severities=st.lists(
         st.sampled_from(list(Severity)),
-        min_size=13,
-        max_size=13,
+        min_size=PHASE_COUNT,
+        max_size=PHASE_COUNT,
     ),
 )
 @settings(max_examples=100)
 def test_property_13_phase_ordering_invariant(severities):
     """For any dry-run execution, the phases in the report shall appear in the
-    order: MANIFEST_VALIDATION → BUNDLE_EXPLORATION → PREFLIGHT →
-    PERMISSION_VERIFICATION → CONNECTIVITY → PROJECT_INIT → QUICKSIGHT →
-    STORAGE_DEPLOYMENT → GIT_DEPLOYMENT → CATALOG_IMPORT →
-    DEPENDENCY_VALIDATION → WORKFLOW_VALIDATION → BOOTSTRAP_ACTIONS.
+    declaration order of the Phase enum (MANIFEST_VALIDATION first through
+    BOOTSTRAP_ACTIONS last), matching ``list(Phase)``.
     """
     expected_phase_order = list(Phase)
 
@@ -3453,13 +3456,13 @@ def test_property_1_no_mutation_invariant(num_checkers):
 @given(
     finding_severities=st.lists(
         st.sampled_from(list(Severity)),
-        min_size=13,
-        max_size=13,
+        min_size=PHASE_COUNT,
+        max_size=PHASE_COUNT,
     ),
     finding_messages=st.lists(
         st.text(min_size=1, max_size=40),
-        min_size=13,
-        max_size=13,
+        min_size=PHASE_COUNT,
+        max_size=PHASE_COUNT,
     ),
 )
 @settings(max_examples=100)
@@ -3796,13 +3799,13 @@ def test_property_31_pre_deployment_event_suppression(emit_events):
 @given(
     finding_severities=st.lists(
         st.sampled_from(list(Severity)),
-        min_size=13,
-        max_size=13,
+        min_size=PHASE_COUNT,
+        max_size=PHASE_COUNT,
     ),
     finding_messages=st.lists(
         st.text(min_size=1, max_size=40),
-        min_size=13,
-        max_size=13,
+        min_size=PHASE_COUNT,
+        max_size=PHASE_COUNT,
     ),
 )
 @settings(max_examples=100)

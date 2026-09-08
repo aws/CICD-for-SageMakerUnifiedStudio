@@ -813,8 +813,14 @@ def _deploy_local_storage_item(
 
     typer.echo(f"Deploying local storage item '{name}' to {target_dir}...")
 
-    # Collect files from include patterns
-    all_files = []
+    # Collect files from include patterns. Track each file together with the
+    # base directory it was matched under, so its staged path is computed
+    # relative to ITS OWN include folder — not always include[0]. Using
+    # include[0] as the base for every file produced "../PSD/..." paths for
+    # files from other folders, which land outside the temp dir and get
+    # silently dropped by the subsequent `aws s3 sync` (only the include[0]
+    # folder's files survived). See repro in examples/repro-multifolder-storage.
+    collected = []  # list of (file_path, base_dir_or_None)
     for pattern in content_item.include:
         # Resolve pattern relative to manifest directory
         full_pattern = os.path.join(manifest_dir, pattern)
@@ -822,20 +828,21 @@ def _deploy_local_storage_item(
 
         # Handle both file and directory patterns
         if os.path.isdir(full_pattern):
-            # Directory - add all files recursively
+            # Directory - add all files recursively, relative to this dir
             for root, dirs, files in os.walk(full_pattern):
                 for file in files:
                     file_path = os.path.join(root, file)
-                    all_files.append(file_path)
+                    collected.append((file_path, full_pattern))
         else:
-            # Glob pattern
+            # Glob pattern - flatten by basename (no meaningful base dir)
             matched_files = glob.glob(full_pattern, recursive=True)
-            all_files.extend([f for f in matched_files if os.path.isfile(f)])
+            collected.extend((f, None) for f in matched_files if os.path.isfile(f))
 
-    if not all_files:
+    if not collected:
         typer.echo("  ⚠️ No files found for pattern(s)")
         return [], None
 
+    all_files = [f for f, _ in collected]
     typer.echo(f"  Found {len(all_files)} files")
 
     # Get connection and deploy
@@ -844,18 +851,16 @@ def _deploy_local_storage_item(
 
     # Create temp directory with files
     with tempfile.TemporaryDirectory() as temp_dir:
-        # Copy files maintaining relative structure
-        for file_path in all_files:
-            # Get relative path from first include pattern base
-            base_pattern = content_item.include[0]
-            base_path = os.path.join(manifest_dir, base_pattern)
-            if os.path.isdir(base_path):
-                rel_path = os.path.relpath(file_path, base_path)
+        # Copy files, preserving each file's path relative to its OWN include
+        # folder (directory patterns) or flattened by basename (glob patterns).
+        for file_path, base_dir in collected:
+            if base_dir and os.path.isdir(base_dir):
+                rel_path = os.path.relpath(file_path, base_dir)
             else:
                 rel_path = os.path.basename(file_path)
 
             dest_path = os.path.join(temp_dir, rel_path)
-            os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+            os.makedirs(os.path.dirname(dest_path) or temp_dir, exist_ok=True)
 
             shutil.copy2(file_path, dest_path)
 

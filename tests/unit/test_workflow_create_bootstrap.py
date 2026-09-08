@@ -227,6 +227,12 @@ def test_handle_workflow_create_idc_log_group(mock_action, mock_context):
         mock_find.return_value = [("s3-key.yaml", "test_workflow")]
         mock_name.return_value = "my_workflow"
         mock_resolver.return_value.resolve.return_value = "resolved: yaml"
+        # The log-group naming scheme lives in airflow_serverless; delegate to
+        # the real implementation so we verify the handler passes the correct
+        # value without re-encoding the format here.
+        from smus_cicd.helpers.airflow_serverless import build_idc_log_group_name
+
+        mock_airflow.build_idc_log_group_name.side_effect = build_idc_log_group_name
         mock_airflow.create_workflow.return_value = {
             "success": True,
             "workflow_arn": "arn:aws:airflow-serverless:us-east-1:123:workflow/w-abc",

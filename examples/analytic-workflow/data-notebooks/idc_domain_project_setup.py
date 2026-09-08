@@ -34,14 +34,17 @@ STAGE_NAME = "test-idc"
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def substitute_env_vars(text):
     """Substitute ${VAR} and ${VAR:default} patterns."""
+
     def replace(match):
         expr = match.group(1)
         if ":" in expr:
             var_name, default = expr.split(":", 1)
             return os.environ.get(var_name, default)
         return os.environ.get(expr, match.group(0))
+
     return re.sub(r"\$\{([^}]+)\}", replace, text)
 
 
@@ -50,10 +53,10 @@ def load_manifest(path):
         return yaml.safe_load(substitute_env_vars(f.read()))
 
 
-
 # ---------------------------------------------------------------------------
 # Project / domain resolution
 # ---------------------------------------------------------------------------
+
 
 def get_project_info(domain_id, project_name, region):
     """Resolve project role ARN and VPC info from the tooling environment."""
@@ -78,12 +81,9 @@ def get_project_info(domain_id, project_name, region):
         env_name = env.get("name", "").lower()
         if "tooling" not in env_name and "tool" not in env_name:
             continue
-        detail = dz.get_environment(
-            domainIdentifier=domain_id, identifier=env["id"]
-        )
+        detail = dz.get_environment(domainIdentifier=domain_id, identifier=env["id"])
         resources = {
-            r["name"]: r["value"]
-            for r in detail.get("provisionedResources", [])
+            r["name"]: r["value"] for r in detail.get("provisionedResources", [])
         }
         role_arn = resources.get("userRoleArn")
         vpc_id = resources.get("vpcId")
@@ -122,13 +122,19 @@ def get_sagemaker_domain_vpc(sm_domain_id, region):
 # VPC networking setup (S3 gateway endpoint + NAT gateway)
 # ---------------------------------------------------------------------------
 
-def setup_vpc_interface_endpoints(vpc_id, region, dry_run=False):
+
+def setup_vpc_interface_endpoints(vpc_id, region, workflow_sg_ids=None, dry_run=False):
     """Ensure VPC has required interface endpoints for notebook execution.
 
     In VpcOnly mode with network isolation, notebook containers need
     VPC endpoints to reach AWS services. Without these, the Jupyter
     kernel times out trying to start (60s timeout).
+
+    ``workflow_sg_ids`` are the security groups the MWAA Serverless workers use
+    (from the domain-scoped VPC connection). They are authorized inbound 443 on
+    the endpoint SG so the workers can actually reach the endpoints.
     """
+    workflow_sg_ids = workflow_sg_ids or []
     ec2 = boto3.client("ec2", region_name=region)
 
     print(f"\n🔌 VPC interface endpoints setup for {vpc_id}")
@@ -152,9 +158,9 @@ def setup_vpc_interface_endpoints(vpc_id, region, dry_run=False):
     }
 
     # Get subnets and security groups
-    subnets = ec2.describe_subnets(
-        Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
-    )["Subnets"]
+    subnets = ec2.describe_subnets(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])[
+        "Subnets"
+    ]
     subnet_ids = [s["SubnetId"] for s in subnets]
 
     # Find the VPC endpoint security group (or the environment SG)
@@ -189,9 +195,20 @@ def setup_vpc_interface_endpoints(vpc_id, region, dry_run=False):
     if env_sg_id and env_sg_id != sg_for_endpoints:
         print(f"   Environment SG: {env_sg_id}")
 
-    # Ensure endpoint SG allows inbound 443 from environment SG
-    if env_sg_id and endpoint_sg_id and env_sg_id != endpoint_sg_id:
-        _ensure_sg_ingress(ec2, endpoint_sg_id, env_sg_id, dry_run)
+    # Ensure endpoint SG allows inbound 443 from every SG that reaches the
+    # endpoints. This MUST include the workflow's VPC-connection security group
+    # (workflow_sg_ids): MWAA Serverless workers run with that SG, and if it is
+    # not allowed inbound on the endpoints, every AWS API call the worker makes
+    # via PrivateLink (sagemaker.api, sts, datazone, ...) silently times out and
+    # the notebook task hangs without ever launching a job or emitting logs.
+    source_sgs = []
+    if env_sg_id:
+        source_sgs.append(env_sg_id)
+    source_sgs.extend(workflow_sg_ids or [])
+    if endpoint_sg_id:
+        for src_sg in dict.fromkeys(source_sgs):  # de-dup, preserve order
+            if src_sg and src_sg != endpoint_sg_id:
+                _ensure_sg_ingress(ec2, endpoint_sg_id, src_sg, dry_run)
 
     # Create missing endpoints
     for service in required_services:
@@ -230,31 +247,84 @@ def _ensure_sg_ingress(ec2, endpoint_sg_id, env_sg_id, dry_run=False):
                     return
 
     if dry_run:
-        print(f"   [DRY RUN] Would add inbound 443 rule from {env_sg_id} to {endpoint_sg_id}")
+        print(
+            f"   [DRY RUN] Would add inbound 443 rule from {env_sg_id} to {endpoint_sg_id}"
+        )
         return
 
     ec2.authorize_security_group_ingress(
         GroupId=endpoint_sg_id,
-        IpPermissions=[{
-            "IpProtocol": "tcp",
-            "FromPort": 443,
-            "ToPort": 443,
-            "UserIdGroupPairs": [{"GroupId": env_sg_id}],
-        }],
+        IpPermissions=[
+            {
+                "IpProtocol": "tcp",
+                "FromPort": 443,
+                "ToPort": 443,
+                "UserIdGroupPairs": [{"GroupId": env_sg_id}],
+            }
+        ],
     )
-    print(f"   ✅ Added inbound 443 from env SG ({env_sg_id}) to endpoint SG ({endpoint_sg_id})")
+    print(
+        f"   ✅ Added inbound 443 from env SG ({env_sg_id}) to endpoint SG ({endpoint_sg_id})"
+    )
 
 
-def setup_vpc_networking(vpc_id, region, dry_run=False):
-    """Ensure VPC has S3 gateway endpoint and NAT gateway. Idempotent."""
+def get_workflow_network_config(domain_id, region):
+    """Resolve the network config MWAA Serverless workflows actually run with.
+
+    Workflows inherit their subnets AND security group from the domain-scoped
+    VPC connection (the same source the SMUS CI/CD CLI resolves). These are:
+      - the subnets that MUST have a NAT route so notebooks reach the internet
+        (pip installs, external datasets), and
+      - the security group the workers use, which MUST be allowed inbound on
+        the interface VPC endpoints or every AWS API call from the worker
+        silently times out.
+
+    Returns (subnet_ids, security_group_ids). Both empty if no VPC connection.
+    """
+    dz = boto3.client("datazone", region_name=region)
+    try:
+        resp = dz.list_connections(
+            domainIdentifier=domain_id, type="VPC", scope="DOMAIN"
+        )
+    except Exception as e:
+        print(f"   ⚠️ Could not list VPC connections: {e}")
+        return [], []
+
+    subnet_ids = []
+    security_group_ids = []
+    for conn in resp.get("items", []):
+        vpc_props = (conn.get("props") or {}).get("vpcProperties") or {}
+        subnet_ids.extend(s for s in (vpc_props.get("subnetIds") or []) if s)
+        sg = vpc_props.get("securityGroupId")
+        if sg:
+            security_group_ids.append(sg)
+    # De-duplicate while preserving order.
+    return (
+        list(dict.fromkeys(subnet_ids)),
+        list(dict.fromkeys(security_group_ids)),
+    )
+
+
+def setup_vpc_networking(vpc_id, region, workflow_subnet_ids=None, dry_run=False):
+    """Ensure VPC has S3 gateway endpoint and NAT gateway. Idempotent.
+
+    ``workflow_subnet_ids`` are the subnets the MWAA Serverless workflow runs
+    in (from the domain-scoped VPC connection). These are guaranteed a NAT
+    route so notebooks retain outbound internet access even though the subnets
+    are private (MWAA requires private subnets). The NAT gateway is never
+    placed in one of these subnets.
+    """
     ec2 = boto3.client("ec2", region_name=region)
+    workflow_subnet_ids = workflow_subnet_ids or []
 
     print(f"\n🌐 VPC networking setup for {vpc_id}")
+    if workflow_subnet_ids:
+        print(f"   Workflow subnets (need NAT egress): {workflow_subnet_ids}")
 
     # --- Gather existing state ---
-    subnets = ec2.describe_subnets(
-        Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
-    )["Subnets"]
+    subnets = ec2.describe_subnets(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])[
+        "Subnets"
+    ]
     subnet_ids = [s["SubnetId"] for s in subnets]
 
     route_tables = ec2.describe_route_tables(
@@ -280,7 +350,11 @@ def setup_vpc_networking(vpc_id, region, dry_run=False):
 
     # --- S3 Gateway Endpoint ---
     s3_service = f"com.amazonaws.{region}.s3"
-    s3_endpoints = [e for e in endpoints if e["ServiceName"] == s3_service and e["State"] == "available"]
+    s3_endpoints = [
+        e
+        for e in endpoints
+        if e["ServiceName"] == s3_service and e["State"] == "available"
+    ]
 
     if s3_endpoints:
         print(f"   ✓ S3 gateway endpoint exists: {s3_endpoints[0]['VpcEndpointId']}")
@@ -294,7 +368,9 @@ def setup_vpc_networking(vpc_id, region, dry_run=False):
             RouteTableIds=all_rt_ids,
             VpcEndpointType="Gateway",
         )
-        print(f"   ✅ Created S3 gateway endpoint: {resp['VpcEndpoint']['VpcEndpointId']}")
+        print(
+            f"   ✅ Created S3 gateway endpoint: {resp['VpcEndpoint']['VpcEndpointId']}"
+        )
 
     # --- NAT Gateway ---
     if active_nats:
@@ -306,8 +382,14 @@ def setup_vpc_networking(vpc_id, region, dry_run=False):
         print(f"   [DRY RUN] Would create NAT gateway + EIP")
         return
     else:
-        # Pick a subnet for the NAT gateway (first one)
-        nat_subnet = subnet_ids[0]
+        # Pick a subnet for the NAT gateway. It must NOT be a workflow subnet
+        # (those must stay private, routing through the NAT — not host it) and
+        # must be able to reach the internet gateway. Prefer a subnet on the
+        # main/IGW route table; fall back to any non-workflow subnet.
+        main_subnet_ids = [
+            s for s in subnet_ids if s not in workflow_subnet_ids
+        ] or subnet_ids
+        nat_subnet = main_subnet_ids[0]
         eip = ec2.allocate_address(Domain="vpc")
         print(f"   ✅ Allocated EIP: {eip['AllocationId']}")
 
@@ -321,9 +403,26 @@ def setup_vpc_networking(vpc_id, region, dry_run=False):
         waiter.wait(NatGatewayIds=[nat_gw_id])
         print(f"   ✅ NAT gateway available: {nat_gw_id}")
 
-    # --- Private route table for remaining subnets ---
-    # Subnets other than the NAT gateway subnet need a route through the NAT
-    private_subnets = [s for s in subnet_ids if s != nat_subnet]
+    # --- Private route table for subnets that need NAT egress ---
+    # The workflow subnets MUST route through the NAT (they run the notebooks
+    # that need internet). We associate them first/explicitly rather than
+    # relying on "all subnets except the NAT's", which previously missed the
+    # exact subnets the workflow used. The NAT's own subnet is excluded (it
+    # must keep its IGW route so the NAT can reach the internet).
+    priority_subnets = [s for s in workflow_subnet_ids if s != nat_subnet]
+    other_subnets = [
+        s for s in subnet_ids if s != nat_subnet and s not in priority_subnets
+    ]
+    # Workflow subnets first, then the rest (preserves prior broad behavior).
+    private_subnets = priority_subnets + other_subnets
+
+    if priority_subnets:
+        print(f"   Ensuring NAT route for workflow subnets: {priority_subnets}")
+    elif workflow_subnet_ids:
+        print(
+            "   ⚠️ Workflow subnet(s) coincide with the NAT subnet; "
+            "verify NAT placement manually"
+        )
 
     if not private_subnets:
         print(f"   ✓ No additional subnets to configure")
@@ -390,6 +489,7 @@ def setup_vpc_networking(vpc_id, region, dry_run=False):
 # Lake Formation permissions
 # ---------------------------------------------------------------------------
 
+
 def ensure_lakeformation_admin(region):
     """Ensure the current caller is a Lake Formation admin."""
     lf = boto3.client("lakeformation", region_name=region)
@@ -400,7 +500,8 @@ def ensure_lakeformation_admin(region):
         parts = caller_arn.split("/")
         role_arn = (
             parts[0].replace(":sts:", ":iam:").replace(":assumed-role", ":role")
-            + "/" + parts[1]
+            + "/"
+            + parts[1]
         )
     else:
         role_arn = caller_arn
@@ -498,6 +599,7 @@ def setup_lakeformation(role_arn, region, dry_run=False):
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Setup IdC domain infrastructure for data-notebooks example"
@@ -507,8 +609,12 @@ def main():
         default="examples/analytic-workflow/data-notebooks/manifest-idc.yaml",
         help="Path to manifest YAML",
     )
-    parser.add_argument("--stage", default=STAGE_NAME, help="Stage name (default: test-idc)")
-    parser.add_argument("--dry-run", action="store_true", help="Show what would be done")
+    parser.add_argument(
+        "--stage", default=STAGE_NAME, help="Stage name (default: test-idc)"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Show what would be done"
+    )
     args = parser.parse_args()
 
     manifest = load_manifest(args.manifest)
@@ -561,8 +667,25 @@ def main():
 
     # 1. VPC networking
     if vpc_id:
-        setup_vpc_networking(vpc_id, region, dry_run=args.dry_run)
-        setup_vpc_interface_endpoints(vpc_id, region, dry_run=args.dry_run)
+        # Resolve the subnets + security group the workflow actually runs with
+        # (from the domain-scoped VPC connection). The subnets need a NAT route
+        # (private but internet-capable) and the SG must be allowed inbound on
+        # the interface endpoints, or worker API calls silently time out.
+        workflow_subnet_ids, workflow_sg_ids = get_workflow_network_config(
+            domain_id, region
+        )
+        setup_vpc_networking(
+            vpc_id,
+            region,
+            workflow_subnet_ids=workflow_subnet_ids,
+            dry_run=args.dry_run,
+        )
+        setup_vpc_interface_endpoints(
+            vpc_id,
+            region,
+            workflow_sg_ids=workflow_sg_ids,
+            dry_run=args.dry_run,
+        )
     else:
         print(f"\n🌐 No VPC — skipping networking setup")
 
