@@ -1,0 +1,31 @@
+# Repro: single storage item that includes multiple folders.
+# Mirrors a customer report where bundling 3 folders (SLH/PSD/data-migration)
+# into one storage item only synced one folder's files to S3 on deploy.
+applicationName: ReproMultiFolderStorage
+content:
+  storage:
+    - name: workflows
+      include:
+        - "SLH/"
+        - "PSD/"
+        - "data-migration/"
+stages:
+  test:
+    stage: TEST
+    domain:
+      tags:
+        purpose: smus-cicd-testing
+      region: ${TEST_DOMAIN_REGION:us-east-1}
+    project:
+      name: test-marketing
+      owners:
+        - Eng1
+        - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
+        - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
+    environment_variables:
+      S3_PREFIX: test
+    deployment_configuration:
+      storage:
+        - name: workflows
+          connectionName: default.s3_shared
+          targetDirectory: repro-multifolder/workflows

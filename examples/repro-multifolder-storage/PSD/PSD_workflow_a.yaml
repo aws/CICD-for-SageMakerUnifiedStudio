@@ -1,0 +1,5 @@
+psd_workflow_a:
+  dag_id: psd_workflow_a
+  tasks:
+    hello:
+      operator: airflow.operators.empty.EmptyOperator
