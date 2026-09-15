@@ -10,6 +10,7 @@ drift apart.
 
 import json
 import os
+import re
 import shutil
 import tempfile
 import zipfile
@@ -1959,10 +1960,17 @@ def _generate_workflow_name(bundle_name: str, dag_name: str, target_config) -> s
     Returns:
         Generated workflow name
     """
-    # Create a unique name combining pipeline, target, and DAG name
-    stage_name = target_config.project.name.replace("-", "_")
-    safe_pipeline = bundle_name.replace("-", "_")
-    safe_dag = dag_name.replace("-", "_")
+
+    # Create a unique name combining pipeline, target, and DAG name.
+    # MWAA Serverless workflow names allow only [A-Za-z0-9_]; any other
+    # character (notably a space in a DataZone project name) must be
+    # normalized, otherwise CreateWorkflow rejects the name with a 400.
+    def _safe(part: str) -> str:
+        return re.sub(r"[^A-Za-z0-9_]", "_", part)
+
+    stage_name = _safe(target_config.project.name)
+    safe_pipeline = _safe(bundle_name)
+    safe_dag = _safe(dag_name)
 
     return f"{safe_pipeline}_{stage_name}_{safe_dag}"
 
