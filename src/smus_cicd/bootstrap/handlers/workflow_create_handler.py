@@ -379,14 +379,30 @@ def _ensure_workflow_tags(
         typer.echo(f"   ⚠️  Could not read tags for {workflow_arn}: {e}")
         return
 
-    missing_tags = {k: v for k, v in desired_tags.items() if k not in current_tags}
+    # Reconcile the desired tags: add keys that are missing and update keys
+    # whose value has changed. We intentionally do NOT delete tags that are on
+    # the workflow but absent from `desired_tags` — a customer may have added
+    # tags manually or out-of-band, and silently removing them on deploy would
+    # be a surprising, backwards-incompatible change. Since tag_resource
+    # overwrites by key, a single call handles both adds and updates.
+    tags_to_apply = {
+        k: v
+        for k, v in desired_tags.items()
+        if k not in current_tags or current_tags[k] != v
+    }
 
-    if not missing_tags:
+    if not tags_to_apply:
         typer.echo("   🏷️  All required tags already present")
         return
 
+    added = [k for k in tags_to_apply if k not in current_tags]
+    updated = [k for k in tags_to_apply if k in current_tags]
+
     try:
-        client.tag_resource(ResourceArn=workflow_arn, Tags=missing_tags)
-        typer.echo(f"   🏷️  Added missing tags: {list(missing_tags.keys())}")
+        client.tag_resource(ResourceArn=workflow_arn, Tags=tags_to_apply)
+        if added:
+            typer.echo(f"   🏷️  Added missing tags: {added}")
+        if updated:
+            typer.echo(f"   🏷️  Updated changed tags: {updated}")
     except Exception as e:
-        typer.echo(f"   ⚠️  Could not add tags to {workflow_arn}: {e}")
+        typer.echo(f"   ⚠️  Could not update tags on {workflow_arn}: {e}")
