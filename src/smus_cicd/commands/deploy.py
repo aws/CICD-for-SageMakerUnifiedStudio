@@ -690,66 +690,66 @@ def _resolve_and_upload_workflows(
         env_vars=target_config.environment_variables or {},
     )
 
-    # List all YAML files in S3 prefix
+    # List all YAML files in S3 prefix. Paginate so workflows beyond the first
+    # 1000 objects are still resolved (parity with _find_dag_files_in_s3).
     try:
-        response = s3_client.list_objects_v2(Bucket=s3_bucket, Prefix=s3_prefix)
-        if "Contents" not in response:
-            return
-
-        for obj in response["Contents"]:
-            s3_key = obj["Key"]
-            if not s3_key.endswith((".yaml", ".yml")):
+        paginator = s3_client.get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=s3_bucket, Prefix=s3_prefix):
+            if "Contents" not in page:
                 continue
 
-            # Skip editor/build artifacts so a stale JupyterLab checkpoint copy
-            # of a workflow YAML is never resolved and re-uploaded in place
-            # (consistent with the content.storage exclude defaults).
-            if _is_editor_or_build_artifact(s3_key):
-                continue
+            for obj in page["Contents"]:
+                s3_key = obj["Key"]
+                if not s3_key.endswith((".yaml", ".yml")):
+                    continue
 
-            # Download and check if it's a workflow YAML
-            with tempfile.NamedTemporaryFile(
-                mode="w+", suffix=".yaml", delete=False
-            ) as temp_file:
-                try:
-                    s3_client.download_file(s3_bucket, s3_key, temp_file.name)
+                # Skip editor/build artifacts (see _is_editor_or_build_artifact).
+                if _is_editor_or_build_artifact(s3_key):
+                    continue
 
-                    with open(temp_file.name, "r") as f:
-                        content = f.read()
-                        yaml_data = yaml.safe_load(content)
-
-                    # Check if this is a workflow YAML and if it's in our workflow list
-                    if not _is_workflow_yaml(yaml_data):
-                        continue
-
-                    # Get workflow name from YAML
-                    workflow_name = next(iter(yaml_data.keys()))
-                    if workflow_name not in workflow_names:
-                        typer.echo(
-                            f"  ⏭️  Skipping {s3_key} (workflow '{workflow_name}' not in manifest)"
-                        )
-                        continue
-
-                    typer.echo(f"  Resolving {s3_key}...")
-
-                    # Resolve variables
+                # Download and check if it's a workflow YAML
+                with tempfile.NamedTemporaryFile(
+                    mode="w+", suffix=".yaml", delete=False
+                ) as temp_file:
                     try:
-                        resolved_content = resolver.resolve(content)
-                    except ValueError as e:
-                        # Resolution failed - this is a critical error
-                        typer.echo(f"  ❌ Failed to resolve {s3_key}: {e}")
-                        raise Exception(
-                            f"Cannot resolve variables in workflow '{workflow_name}': {e}"
-                        )
+                        s3_client.download_file(s3_bucket, s3_key, temp_file.name)
 
-                    # Upload resolved content
-                    with open(temp_file.name, "w") as f:
-                        f.write(resolved_content)
+                        with open(temp_file.name, "r") as f:
+                            content = f.read()
+                            yaml_data = yaml.safe_load(content)
 
-                    s3_client.upload_file(temp_file.name, s3_bucket, s3_key)
-                    typer.echo(f"  ✅ Resolved and uploaded {s3_key}")
-                finally:
-                    os.unlink(temp_file.name)
+                        # Check if this is a workflow YAML and if it's in our workflow list
+                        if not _is_workflow_yaml(yaml_data):
+                            continue
+
+                        # Get workflow name from YAML
+                        workflow_name = next(iter(yaml_data.keys()))
+                        if workflow_name not in workflow_names:
+                            typer.echo(
+                                f"  ⏭️  Skipping {s3_key} (workflow '{workflow_name}' not in manifest)"
+                            )
+                            continue
+
+                        typer.echo(f"  Resolving {s3_key}...")
+
+                        # Resolve variables
+                        try:
+                            resolved_content = resolver.resolve(content)
+                        except ValueError as e:
+                            # Resolution failed - this is a critical error
+                            typer.echo(f"  ❌ Failed to resolve {s3_key}: {e}")
+                            raise Exception(
+                                f"Cannot resolve variables in workflow '{workflow_name}': {e}"
+                            )
+
+                        # Upload resolved content
+                        with open(temp_file.name, "w") as f:
+                            f.write(resolved_content)
+
+                        s3_client.upload_file(temp_file.name, s3_bucket, s3_key)
+                        typer.echo(f"  ✅ Resolved and uploaded {s3_key}")
+                    finally:
+                        os.unlink(temp_file.name)
 
     except Exception as e:
         typer.echo(f"  ❌ Error resolving workflows: {e}")
@@ -774,19 +774,17 @@ def _is_workflow_yaml(yaml_data: dict) -> bool:
 
 
 def _is_editor_or_build_artifact(s3_key: str) -> bool:
-    """Return True if an S3 key is an editor/build artifact that must never be
-    treated as a workflow definition.
+    """Return True if an S3 key is an editor/build artifact.
 
     JupyterLab writes checkpoint copies of workflow YAMLs
-    (``.ipynb_checkpoints/<name>-checkpoint.yaml``) into the project's shared
-    S3 prefix, and Python leaves ``__pycache__/`` directories. A checkpoint copy
-    can share the same top-level key / ``dag_id`` as the real file, so both S3
-    workflow-discovery loops must skip these keys — one to avoid registering a
-    stale definition (``_find_dag_files_in_s3``) and the other to avoid
-    resolving variables and re-uploading the stale copy in place
-    (``_resolve_and_upload_workflows``). Centralized here so a fix to one path
-    cannot miss the other. Consistent with the ``content.storage`` exclude
-    defaults.
+    (``.ipynb_checkpoints/<name>-checkpoint.yaml``) into the shared S3 prefix,
+    and Python leaves ``__pycache__/`` dirs. A checkpoint copy can share the
+    real file's top-level key / ``dag_id``, so both S3 workflow-discovery loops
+    (``_find_dag_files_in_s3`` and ``_resolve_and_upload_workflows``) must skip
+    it — centralized here so a fix to one path cannot miss the other. These two
+    prefixes are among the ``content.storage`` exclude defaults. Note: the
+    local/bundle discovery path (``dry_run.checkers.workflow_checker``) is
+    separate and not covered by this helper.
     """
     return ".ipynb_checkpoints/" in s3_key or "__pycache__/" in s3_key
 
@@ -1935,10 +1933,7 @@ def _find_dag_files_in_s3(
 
                     for obj in page["Contents"]:
                         s3_key = obj["Key"]
-                        # Skip editor/build artifacts so a stale JupyterLab
-                        # checkpoint copy of a workflow YAML is never treated
-                        # as a DAG definition (consistent with the
-                        # content.storage exclude defaults).
+                        # Skip editor/build artifacts (see _is_editor_or_build_artifact).
                         if _is_editor_or_build_artifact(s3_key):
                             continue
                         if s3_key.endswith((".yaml", ".yml")):

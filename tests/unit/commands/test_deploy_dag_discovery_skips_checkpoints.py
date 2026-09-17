@@ -79,29 +79,32 @@ def _resolve_target_config():
     return tc
 
 
-def test_resolve_and_upload_skips_ipynb_checkpoints():
-    """A checkpoint copy must never be downloaded, resolved, or re-uploaded."""
-    real = "shared/workflows/silver_etl.yaml"
-    ckpt = "shared/workflows/.ipynb_checkpoints/silver_etl-checkpoint.yaml"
-
+def _make_resolve_s3(pages, real_key, real_yaml):
+    """Build an S3 mock whose paginator yields the given pages. download_file
+    writes real_yaml for real_key and a non-workflow YAML for any other key, so
+    only the real workflow is resolved/re-uploaded."""
     s3 = MagicMock()
-    s3.list_objects_v2.return_value = {"Contents": [_obj(ckpt), _obj(real)]}
-
-    # Real file is a valid workflow YAML whose top-level key is in the manifest.
-    real_yaml = "silver_etl:\n  dag_id: silver_etl\n  tasks: []\n"
+    paginator = MagicMock()
+    paginator.paginate.return_value = [
+        {"Contents": [_obj(k) for k in page]} for page in pages
+    ]
+    s3.get_paginator.return_value = paginator
 
     def _download_file(bucket, key, dest):
+        # A plain (non-workflow) YAML: no top-level key with dag_id + tasks.
+        content = real_yaml if key == real_key else "not_a_workflow:\n  foo: bar\n"
         with open(dest, "w") as fh:
-            fh.write(real_yaml)
+            fh.write(content)
 
     s3.download_file.side_effect = _download_file
+    return s3
 
+
+def _run_resolve(s3):
     manifest = MagicMock()
     manifest.content.workflows = [{"workflowName": "silver_etl"}]
-
     resolver = MagicMock()
     resolver.resolve.side_effect = lambda content: content
-
     with patch("smus_cicd.commands.deploy.create_client", return_value=s3), patch(
         "smus_cicd.helpers.context_resolver.ContextResolver", return_value=resolver
     ):
@@ -115,10 +118,36 @@ def test_resolve_and_upload_skips_ipynb_checkpoints():
             manifest=manifest,
         )
 
+
+def test_resolve_and_upload_skips_ipynb_checkpoints():
+    """A checkpoint copy must never be downloaded, resolved, or re-uploaded."""
+    real = "shared/workflows/silver_etl.yaml"
+    ckpt = "shared/workflows/.ipynb_checkpoints/silver_etl-checkpoint.yaml"
+    real_yaml = "silver_etl:\n  dag_id: silver_etl\n  tasks: []\n"
+
+    s3 = _make_resolve_s3([[ckpt, real]], real, real_yaml)
+    _run_resolve(s3)
+
     downloaded = [c.args[1] for c in s3.download_file.call_args_list]
     uploaded = [c.args[2] for c in s3.upload_file.call_args_list]
     # Checkpoint copy is neither downloaded nor re-uploaded; real file round-trips.
     assert ckpt not in downloaded
-    assert ckpt not in uploaded
     assert real in downloaded
-    assert real in uploaded
+    assert uploaded == [real]
+
+
+def test_resolve_and_upload_paginates_beyond_first_page():
+    """A workflow YAML on the second page must still be resolved and re-uploaded
+    (regression: single list_objects_v2 call capped at 1000 objects)."""
+    real = "shared/workflows/silver_etl.yaml"
+    real_yaml = "silver_etl:\n  dag_id: silver_etl\n  tasks: []\n"
+
+    # Page 1 holds only non-workflow YAMLs; the real workflow is on page 2.
+    page1 = [f"shared/workflows/filler_{i}.yaml" for i in range(3)]
+    page2 = [real]
+    s3 = _make_resolve_s3([page1, page2], real, real_yaml)
+    _run_resolve(s3)
+
+    uploaded = [c.args[2] for c in s3.upload_file.call_args_list]
+    # Only the real workflow is re-uploaded; page-1 fillers are not workflows.
+    assert uploaded == [real]
