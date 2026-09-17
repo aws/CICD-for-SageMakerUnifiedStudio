@@ -701,6 +701,12 @@ def _resolve_and_upload_workflows(
             if not s3_key.endswith((".yaml", ".yml")):
                 continue
 
+            # Skip editor/build artifacts so a stale JupyterLab checkpoint copy
+            # of a workflow YAML is never resolved and re-uploaded in place
+            # (consistent with the content.storage exclude defaults).
+            if _is_editor_or_build_artifact(s3_key):
+                continue
+
             # Download and check if it's a workflow YAML
             with tempfile.NamedTemporaryFile(
                 mode="w+", suffix=".yaml", delete=False
@@ -765,6 +771,24 @@ def _is_workflow_yaml(yaml_data: dict) -> bool:
             return True
 
     return False
+
+
+def _is_editor_or_build_artifact(s3_key: str) -> bool:
+    """Return True if an S3 key is an editor/build artifact that must never be
+    treated as a workflow definition.
+
+    JupyterLab writes checkpoint copies of workflow YAMLs
+    (``.ipynb_checkpoints/<name>-checkpoint.yaml``) into the project's shared
+    S3 prefix, and Python leaves ``__pycache__/`` directories. A checkpoint copy
+    can share the same top-level key / ``dag_id`` as the real file, so both S3
+    workflow-discovery loops must skip these keys — one to avoid registering a
+    stale definition (``_find_dag_files_in_s3``) and the other to avoid
+    resolving variables and re-uploading the stale copy in place
+    (``_resolve_and_upload_workflows``). Centralized here so a fix to one path
+    cannot miss the other. Consistent with the ``content.storage`` exclude
+    defaults.
+    """
+    return ".ipynb_checkpoints/" in s3_key or "__pycache__/" in s3_key
 
 
 def _create_compressed_archive(source_path: str, item_name: str, temp_dir: str) -> str:
@@ -1911,6 +1935,12 @@ def _find_dag_files_in_s3(
 
                     for obj in page["Contents"]:
                         s3_key = obj["Key"]
+                        # Skip editor/build artifacts so a stale JupyterLab
+                        # checkpoint copy of a workflow YAML is never treated
+                        # as a DAG definition (consistent with the
+                        # content.storage exclude defaults).
+                        if _is_editor_or_build_artifact(s3_key):
+                            continue
                         if s3_key.endswith((".yaml", ".yml")):
                             # Download and check if it matches workflow
                             try:
