@@ -31,6 +31,7 @@ jobs:
       AWS_ROLE_ARN_PROD: ${{ secrets.AWS_ROLE_ARN_PROD }}
     with:
       manifest_path: 'examples/e2e-notebook-sync/manifest.yaml'
+      bundle_from_target: 'dev'
       test_target: 'test'
       prod_target: 'prod'
       deploy_to_prod: ${{ github.ref == 'refs/heads/main' }}
@@ -47,6 +48,7 @@ jobs:
       AWS_ROLE_ARN_PROD: ${{ secrets.AWS_ROLE_ARN_PROD }}
     with:
       manifest_path: 'examples/e2e-notebook-sync/manifest-idc.yaml'
+      bundle_from_target: 'dev-idc'
       test_target: 'test-idc'
       prod_target: 'prod-idc'
       deploy_to_prod: ${{ github.ref == 'refs/heads/main' }}

@@ -1,4 +1,7 @@
 typer[all]
 PyYAML
-boto3>=1.42.60
+# DataZone VPC connection support (props.vpcProperties) requires boto3/botocore
+# >= 1.43.14; older SDKs silently drop the field. See pyproject.toml.
+boto3>=1.43.14
+botocore>=1.43.14
 jsonschema

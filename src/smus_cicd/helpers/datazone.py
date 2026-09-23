@@ -272,43 +272,57 @@ def get_default_tooling_environment(
 def _resolve_tooling_environment_id(
     datazone_client, domain_id: str, project_id: str, logger
 ) -> Optional[str]:
-    """Resolve the tooling environment id via managed Tooling blueprints."""
-    # Step 1: managed blueprints named "Tooling", filtered to GA/Lightning.
-    blueprints_response = datazone_client.list_environment_blueprints(
-        domainIdentifier=domain_id, managed=True, name="Tooling"
-    )
-    tooling_blueprints = [
-        bp
-        for bp in blueprints_response.get("items", [])
-        if bp.get("name") in _TOOLING_BLUEPRINT_NAMES
-    ]
+    """Resolve the tooling environment id via managed Tooling blueprints.
 
-    if not tooling_blueprints:
+    Returns None (rather than raising) when blueprint discovery fails so the
+    caller can fall back to the IAM connection path. Some deploy roles are not
+    authorized for datazone:ListEnvironmentBlueprints / ListEnvironments on the
+    domain; in that case we still want the IAM connection fallback to run,
+    since that path may succeed with more narrowly scoped permissions.
+    """
+    try:
+        # Step 1: managed blueprints named "Tooling", filtered to GA/Lightning.
+        blueprints_response = datazone_client.list_environment_blueprints(
+            domainIdentifier=domain_id, managed=True, name="Tooling"
+        )
+        tooling_blueprints = [
+            bp
+            for bp in blueprints_response.get("items", [])
+            if bp.get("name") in _TOOLING_BLUEPRINT_NAMES
+        ]
+
+        if not tooling_blueprints:
+            logger.info(
+                "No managed Tooling.GA/Tooling.Lightning blueprint found; will try "
+                "the IAM connection fallback"
+            )
+            return None
+
+        # Step 2: for each blueprint, list the project's environments and pick the
+        # default one.
+        for blueprint in tooling_blueprints:
+            list_kwargs = {
+                "domainIdentifier": domain_id,
+                "projectIdentifier": project_id,
+                "environmentBlueprintIdentifier": blueprint.get("id"),
+            }
+            provider = blueprint.get("provider")
+            if provider:
+                list_kwargs["provider"] = provider
+
+            environments_response = datazone_client.list_environments(**list_kwargs)
+            environments = environments_response.get("items", [])
+            default_env = _find_default_tooling_environment(environments)
+            if default_env:
+                return default_env.get("id")
+
+        return None
+    except Exception as e:
         logger.info(
-            "No managed Tooling.GA/Tooling.Lightning blueprint found; will try "
-            "the IAM connection fallback"
+            f"Blueprint-based Tooling environment discovery failed ({e}); "
+            "will try the IAM connection fallback"
         )
         return None
-
-    # Step 2: for each blueprint, list the project's environments and pick the
-    # default one.
-    for blueprint in tooling_blueprints:
-        list_kwargs = {
-            "domainIdentifier": domain_id,
-            "projectIdentifier": project_id,
-            "environmentBlueprintIdentifier": blueprint.get("id"),
-        }
-        provider = blueprint.get("provider")
-        if provider:
-            list_kwargs["provider"] = provider
-
-        environments_response = datazone_client.list_environments(**list_kwargs)
-        environments = environments_response.get("items", [])
-        default_env = _find_default_tooling_environment(environments)
-        if default_env:
-            return default_env.get("id")
-
-    return None
 
 
 def _find_default_tooling_environment(environments: List[Dict]) -> Optional[Dict]:

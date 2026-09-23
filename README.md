@@ -62,6 +62,14 @@ aws-smus-cicd-cli destroy --manifest manifest.yaml --targets test --force
 
 ---
 
+## Generate a Manifest with AI (Skill)
+
+Don't want to write `manifest.yaml` by hand? This repo ships an [Agent Skill](https://agentskills.io/) that scans your SageMaker Unified Studio project and generates a deployment manifest — and an orchestration workflow when one is needed. Add it to a coding agent (Kiro, Amazon Q CLI, Claude Code, or any [AgentSkills](https://agentskills.io/)-compatible agent), then ask *"Generate an SMUS CI/CD manifest for my project."*
+
+→ **[Generate a Manifest with AI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/generate-manifest-skill.md)** - Setup and usage instructions
+
+---
+
 ## Who Is This For?
 
 ### 👨‍💻 Data Teams (Data Scientists, Data Engineers, GenAI App Developers)
@@ -1162,6 +1170,7 @@ All setup scripts are idempotent and safe to run multiple times. Use `--dry-run`
 ### Getting Started
 - **[Quick Start Guide](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/quickstart.md)** - Deploy your first application (10 min)
 - **[Admin Guide](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/getting-started/admin-quickstart.md)** - Set up infrastructure (15 min)
+- **[Generate a Manifest with AI](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/generate-manifest-skill.md)** - Agent skill that scans your project and generates a manifest
 
 ### Guides
 - **[Application Manifest](https://github.com/aws/CICD-for-SageMakerUnifiedStudio/blob/main/docs/manifest.md)** - Complete YAML configuration reference

@@ -59,6 +59,8 @@ Before deploying, you need a SageMaker Unified Studio IAM domain and project. Yo
 
 ## Step 4: Customize the Manifest
 
+> 💡 **Prefer to generate it automatically?** If you already have your own project in SageMaker Unified Studio, you can skip the hand-editing: use the [generate-bundle-manifest skill](../generate-manifest-skill.md) with your coding agent (Kiro, Amazon Q CLI, Claude Code, etc.), give the agent AWS access to your account, and ask *"Generate an SMUS CI/CD manifest for my project."* The agent scans your project (read-only) and returns a ready-to-review `manifest.yaml`. Save its output over the file below and jump to Step 5.
+
 Edit `manifest.yaml` to match your environment:
 
 ```yaml

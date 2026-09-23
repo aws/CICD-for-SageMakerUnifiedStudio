@@ -393,6 +393,98 @@ class TestDestroyExecutorNotebooks(unittest.TestCase):
         self.assertTrue(all(r.status == "deleted" for r in nb_results))
         self.assertEqual(dz.delete_notebook.call_count, 5)
 
+    @patch("smus_cicd.helpers.destroy_executor.time.sleep")
+    @patch(PATCH_BOTO3)
+    def test_notebook_conflict_retried_then_deleted(self, mock_boto3, mock_sleep):
+        """A transient ConflictException is retried and succeeds on a later attempt."""
+        dz = MagicMock()
+        # Conflict twice, then succeed on the third attempt.
+        dz.delete_notebook.side_effect = [
+            _client_error("ConflictException", "Notebook is currently being used"),
+            _client_error("ConflictException", "Notebook is currently being used"),
+            None,
+        ]
+        mock_boto3.side_effect = self._sts_dz(dz)
+
+        vr = _make_vr(
+            resources=[
+                ResourceToDelete(
+                    "notebook",
+                    "nb-conflict",
+                    "test",
+                    {"name": "NB", "source_notebook_id": "src-1", "domain_id": "dom-1"},
+                )
+            ]
+        )
+        results = _destroy_stage(
+            "test", _make_stage_config(), _simple_manifest(), vr, "us-east-1", "TEXT"
+        )
+        nb_result = next(r for r in results if r.resource_type == "notebook")
+        self.assertEqual(nb_result.status, "deleted")
+        self.assertEqual(dz.delete_notebook.call_count, 3)
+        # Slept once between each of the two failed attempts.
+        self.assertEqual(mock_sleep.call_count, 2)
+
+    @patch("smus_cicd.helpers.destroy_executor.time.sleep")
+    @patch(PATCH_BOTO3)
+    def test_notebook_persistent_conflict_reported_as_error(
+        self, mock_boto3, mock_sleep
+    ):
+        """A ConflictException that never clears is surfaced as an error, not hidden."""
+        from smus_cicd.helpers.destroy_executor import _NOTEBOOK_DELETE_MAX_ATTEMPTS
+
+        dz = MagicMock()
+        dz.delete_notebook.side_effect = _client_error(
+            "ConflictException", "Notebook is currently being used by another user"
+        )
+        mock_boto3.side_effect = self._sts_dz(dz)
+
+        vr = _make_vr(
+            resources=[
+                ResourceToDelete(
+                    "notebook",
+                    "nb-stuck",
+                    "test",
+                    {"name": "NB", "source_notebook_id": "src-1", "domain_id": "dom-1"},
+                )
+            ]
+        )
+        results = _destroy_stage(
+            "test", _make_stage_config(), _simple_manifest(), vr, "us-east-1", "TEXT"
+        )
+        nb_result = next(r for r in results if r.resource_type == "notebook")
+        self.assertEqual(nb_result.status, "error")
+        self.assertIn("ConflictException", nb_result.message)
+        # Tried the full budget of attempts, sleeping between each.
+        self.assertEqual(dz.delete_notebook.call_count, _NOTEBOOK_DELETE_MAX_ATTEMPTS)
+        self.assertEqual(mock_sleep.call_count, _NOTEBOOK_DELETE_MAX_ATTEMPTS - 1)
+
+    @patch("smus_cicd.helpers.destroy_executor.time.sleep")
+    @patch(PATCH_BOTO3)
+    def test_notebook_non_conflict_error_not_retried(self, mock_boto3, mock_sleep):
+        """Non-ConflictException errors fail immediately without retrying."""
+        dz = MagicMock()
+        dz.delete_notebook.side_effect = _client_error("AccessDeniedException")
+        mock_boto3.side_effect = self._sts_dz(dz)
+
+        vr = _make_vr(
+            resources=[
+                ResourceToDelete(
+                    "notebook",
+                    "nb-denied",
+                    "test",
+                    {"name": "NB", "source_notebook_id": "src-1", "domain_id": "dom-1"},
+                )
+            ]
+        )
+        results = _destroy_stage(
+            "test", _make_stage_config(), _simple_manifest(), vr, "us-east-1", "TEXT"
+        )
+        nb_result = next(r for r in results if r.resource_type == "notebook")
+        self.assertEqual(nb_result.status, "error")
+        self.assertEqual(dz.delete_notebook.call_count, 1)
+        mock_sleep.assert_not_called()
+
 
 # ---------------------------------------------------------------------------
 # Validate stage: notebook discovery integration

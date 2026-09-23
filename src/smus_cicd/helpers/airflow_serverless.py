@@ -992,6 +992,70 @@ def start_workflow_run_verified(
     return result
 
 
+def build_idc_log_group_name(
+    domain_id: str, project_id: str, workflow_name: str
+) -> str:
+    """CloudWatch log group name for a workflow on an IdC-based domain.
+
+    IdC domains namespace the workflow log group under
+    ``<domain-id>-<project-id>``. This is the single source of truth for that
+    naming scheme — used both when creating the workflow (to set the explicit
+    LoggingConfiguration) and, indirectly, when resolving logs later.
+    """
+    return f"/aws/mwaa-serverless/{domain_id}-{project_id}/{workflow_name}"
+
+
+def legacy_log_group_name(workflow_name: str) -> str:
+    """Legacy (service-default) CloudWatch log group name for a workflow.
+
+    Used for IAM-based domains and as a fallback when the workflow's actual
+    LoggingConfiguration cannot be read.
+    """
+    return f"/aws/mwaa-serverless/{workflow_name}/"
+
+
+def resolve_workflow_log_group(
+    workflow_arn: str,
+    connection_info: Dict[str, Any] = None,
+    region: str = None,
+) -> str:
+    """Resolve the CloudWatch log group for a workflow's runs.
+
+    Reads the workflow's actual ``LoggingConfiguration.LogGroupName`` from the
+    MWAA Serverless service, which is authoritative for both IAM and IdC-based
+    domains. IdC domains use a domain/project-namespaced log group
+    (``/aws/mwaa-serverless/<domain-id>-<project-id>/<workflow-name>``), so the
+    log group can't be reconstructed from the workflow name alone.
+
+    Falls back to the legacy ``/aws/mwaa-serverless/<workflow-name>/`` format
+    only when the service does not report a log group (e.g. logging not yet
+    configured), preserving backwards compatibility.
+    """
+    logger = get_logger("airflow_serverless")
+    workflow_name = workflow_arn.split("/")[-1]
+    fallback = legacy_log_group_name(workflow_name)
+    try:
+        client = create_airflow_serverless_client(connection_info, region)
+        response = client.get_workflow(WorkflowArn=workflow_arn)
+        log_group = (response.get("LoggingConfiguration") or {}).get("LogGroupName")
+        if log_group and log_group.strip():
+            return log_group.strip()
+        logger.debug(
+            "Workflow %s has no LoggingConfiguration.LogGroupName; "
+            "falling back to %s",
+            workflow_arn,
+            fallback,
+        )
+    except Exception as e:
+        logger.warning(
+            "Could not resolve log group for %s (%s); falling back to %s",
+            workflow_arn,
+            e,
+            fallback,
+        )
+    return fallback
+
+
 def get_workflow_logs(
     workflow_arn: str,
     run_id: str,
@@ -1012,9 +1076,11 @@ def get_workflow_logs(
     Returns:
         List of formatted log lines
     """
-    # Extract workflow name and construct log group
-    workflow_name = workflow_arn.split("/")[-1]
-    log_group = f"/aws/mwaa-serverless/{workflow_name}/"
+    # Resolve the log group from the workflow's actual LoggingConfiguration so
+    # IdC-based (namespaced) log groups are handled correctly.
+    log_group = resolve_workflow_log_group(
+        workflow_arn, connection_info=connection_info, region=region
+    )
 
     log_events = get_cloudwatch_logs(
         log_group_name=log_group, region=region, limit=max_lines
@@ -1050,8 +1116,9 @@ def monitor_workflow_logs_live(
     """
     import time
 
-    workflow_name = workflow_arn.split("/")[-1]
-    log_group = f"/aws/mwaa-serverless/{workflow_name}/"
+    # Resolve the log group from the workflow's actual LoggingConfiguration so
+    # IdC-based (namespaced) log groups are handled correctly.
+    log_group = resolve_workflow_log_group(workflow_arn, region=region)
 
     last_timestamp = None
     final_status = None
