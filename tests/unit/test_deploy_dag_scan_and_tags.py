@@ -2,8 +2,9 @@
 
 1. _find_dag_files_in_s3 scans each YAML once (single pass) and fails fast with
    WorkflowYamlNotFoundError when a manifest workflow has no matching YAML.
-2. _ensure_workflow_tags adds missing tags AND updates changed values, but
-   never deletes tags that are absent from the desired set.
+2. _apply_workflow_tags always overwrites the workflow's tags with the
+   manifest-derived set without inspecting current tags, but never deletes tags
+   that are absent from the desired set.
 """
 
 from unittest.mock import MagicMock, patch
@@ -15,7 +16,7 @@ from smus_cicd.commands.deploy import (
     WorkflowYamlNotFoundError,
     _find_dag_files_in_s3,
 )
-from smus_cicd.bootstrap.handlers.workflow_create_handler import _ensure_workflow_tags
+from smus_cicd.bootstrap.handlers.workflow_create_handler import _apply_workflow_tags
 
 
 def _make_target_config(target_directory="workflows"):
@@ -126,64 +127,59 @@ def test_find_dags_fails_fast_on_missing_yaml():
     assert "missing_workflow" in str(exc.value)
 
 
-def _tag_client(current_tags):
-    client = MagicMock()
-    client.list_tags_for_resource.return_value = {"Tags": dict(current_tags)}
-    return client
+def _tag_client():
+    return MagicMock()
 
 
-def test_ensure_tags_adds_missing():
-    client = _tag_client({"Existing": "1"})
+def test_apply_tags_overwrites_full_set():
+    """The full desired set is written verbatim, overwriting existing values."""
+    client = _tag_client()
     with patch(
         "smus_cicd.bootstrap.handlers.workflow_create_handler.airflow_serverless"
     ) as mock_af:
         mock_af.create_airflow_serverless_client.return_value = client
-        _ensure_workflow_tags("arn:w", {"Existing": "1", "New": "2"}, "us-east-1")
+        _apply_workflow_tags("arn:w", {"Env": "test", "Pipeline": "demo"}, "us-east-1")
 
     client.tag_resource.assert_called_once_with(
-        ResourceArn="arn:w", Tags={"New": "2"}
+        ResourceArn="arn:w", Tags={"Env": "test", "Pipeline": "demo"}
     )
 
 
-def test_ensure_tags_updates_changed_value():
-    """Changing a tag value in the manifest is now reflected on the workflow."""
-    client = _tag_client({"Env": "dev"})
+def test_apply_tags_does_not_read_current_state():
+    """Tags are applied without inspecting the workflow's existing tags."""
+    client = _tag_client()
     with patch(
         "smus_cicd.bootstrap.handlers.workflow_create_handler.airflow_serverless"
     ) as mock_af:
         mock_af.create_airflow_serverless_client.return_value = client
-        _ensure_workflow_tags("arn:w", {"Env": "test"}, "us-east-1")
+        _apply_workflow_tags("arn:w", {"Env": "test"}, "us-east-1")
 
+    client.list_tags_for_resource.assert_not_called()
     client.tag_resource.assert_called_once_with(
         ResourceArn="arn:w", Tags={"Env": "test"}
     )
 
 
-def test_ensure_tags_noop_when_all_match():
-    client = _tag_client({"Env": "test", "Pipeline": "demo"})
+def test_apply_tags_never_deletes_unmanaged():
+    """Tags absent from the desired set are never removed."""
+    client = _tag_client()
     with patch(
         "smus_cicd.bootstrap.handlers.workflow_create_handler.airflow_serverless"
     ) as mock_af:
         mock_af.create_airflow_serverless_client.return_value = client
-        _ensure_workflow_tags(
-            "arn:w", {"Env": "test", "Pipeline": "demo"}, "us-east-1"
-        )
+        _apply_workflow_tags("arn:w", {"Env": "test"}, "us-east-1")
 
-    client.tag_resource.assert_not_called()
-
-
-def test_ensure_tags_never_deletes_unmanaged():
-    """Tags present on the workflow but absent from desired are left untouched."""
-    client = _tag_client({"Env": "dev", "ManualTag": "keep-me"})
-    with patch(
-        "smus_cicd.bootstrap.handlers.workflow_create_handler.airflow_serverless"
-    ) as mock_af:
-        mock_af.create_airflow_serverless_client.return_value = client
-        _ensure_workflow_tags("arn:w", {"Env": "test"}, "us-east-1")
-
-    # No untag/delete call of any kind.
     client.untag_resource.assert_not_called()
-    # Only the changed key is applied; ManualTag is not referenced.
-    client.tag_resource.assert_called_once_with(
-        ResourceArn="arn:w", Tags={"Env": "test"}
-    )
+
+
+def test_apply_tags_noop_when_empty():
+    """An empty desired set makes no AWS calls at all."""
+    client = _tag_client()
+    with patch(
+        "smus_cicd.bootstrap.handlers.workflow_create_handler.airflow_serverless"
+    ) as mock_af:
+        mock_af.create_airflow_serverless_client.return_value = client
+        _apply_workflow_tags("arn:w", {}, "us-east-1")
+
+    mock_af.create_airflow_serverless_client.assert_not_called()
+    client.tag_resource.assert_not_called()
