@@ -196,7 +196,7 @@ ppft==1.7.8
 prance==26.7.19.0
 prompt-toolkit==3.0.52
 propcache==0.4.1
-proto-plus==1.26.1
+proto-plus==1.28.4
 protobuf==7.35.1
 psutil==7.1.3
 psycopg2-binary==2.9.11
