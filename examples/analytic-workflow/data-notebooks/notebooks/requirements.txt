@@ -189,7 +189,7 @@ pip==26.2
 platformdirs==4.11.7
 plotly==6.3.1
 pluggy==1.6.0
-polars==1.40.0
+polars==1.44.2
 polars-runtime-32==1.35.2
 pox==0.3.6
 ppft==1.7.8
