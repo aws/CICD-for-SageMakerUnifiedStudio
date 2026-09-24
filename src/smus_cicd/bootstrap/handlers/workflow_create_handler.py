@@ -327,8 +327,8 @@ def handle_workflow_create(
                 typer.echo(f"✅ Created workflow: {workflow_name}")
             typer.echo(f"   ARN: {workflow_arn}")
 
-            # Ensure all required tags are present (handles both new and pre-existing workflows)
-            _ensure_workflow_tags(workflow_arn, workflow_tags, region)
+            # Apply the canonical tag set (handles both new and pre-existing workflows)
+            _apply_workflow_tags(workflow_arn, workflow_tags, region)
 
             # Validate status
             workflow_status = airflow_serverless.get_workflow_status(
@@ -354,39 +354,38 @@ def handle_workflow_create(
         return True
 
 
-def _ensure_workflow_tags(
+def _apply_workflow_tags(
     workflow_arn: str,
     desired_tags: Dict[str, str],
     region: str,
 ) -> None:
     """
-    Check the current tags on a workflow and add any that are missing.
+    Apply the manifest-derived tag set to a workflow, overwriting existing values.
 
-    This allows recovery of pre-existing workflows that were created before
-    tagging was introduced.
+    The tags in `desired_tags` are always applied verbatim without inspecting
+    the workflow's current tags. `tag_resource` overwrites by key, so any tag
+    whose key appears in the manifest is set to the manifest value regardless of
+    what it was before. Reserved SMUS-managed tags are protected upstream:
+    customers cannot override them (their keys are rejected in
+    `handle_workflow_create` before we ever get here), and their canonical
+    values are layered on top of the custom tags in `workflow_tags`, so this
+    call always writes the correct reserved values too.
+
+    Tags present on the workflow but absent from `desired_tags` are left
+    untouched — we never delete out-of-band tags on deploy.
 
     Args:
         workflow_arn: ARN of the MWAA Serverless workflow
-        desired_tags: Full set of tags the workflow should have
+        desired_tags: Full set of tags to apply to the workflow
         region: AWS region
     """
+    if not desired_tags:
+        return
+
     client = airflow_serverless.create_airflow_serverless_client(region=region)
 
     try:
-        response = client.list_tags_for_resource(ResourceArn=workflow_arn)
-        current_tags = response.get("Tags", {})
+        client.tag_resource(ResourceArn=workflow_arn, Tags=dict(desired_tags))
+        typer.echo(f"   🏷️  Applied tags: {sorted(desired_tags)}")
     except Exception as e:
-        typer.echo(f"   ⚠️  Could not read tags for {workflow_arn}: {e}")
-        return
-
-    missing_tags = {k: v for k, v in desired_tags.items() if k not in current_tags}
-
-    if not missing_tags:
-        typer.echo("   🏷️  All required tags already present")
-        return
-
-    try:
-        client.tag_resource(ResourceArn=workflow_arn, Tags=missing_tags)
-        typer.echo(f"   🏷️  Added missing tags: {list(missing_tags.keys())}")
-    except Exception as e:
-        typer.echo(f"   ⚠️  Could not add tags to {workflow_arn}: {e}")
+        typer.echo(f"   ⚠️  Could not apply tags on {workflow_arn}: {e}")

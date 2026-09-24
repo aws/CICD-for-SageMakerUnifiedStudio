@@ -31,6 +31,15 @@ from ..helpers.utils import (  # noqa: F401
 )
 
 
+class WorkflowYamlNotFoundError(Exception):
+    """Raised when a manifest workflow has no matching YAML in the bundle.
+
+    This is a manifest configuration error (typo or a stale workflow entry
+    whose YAML was removed) and stops the deploy so it can be fixed quickly,
+    instead of degrading into an exhaustive S3 scan on every deploy.
+    """
+
+
 def _fix_airflow_role_cloudwatch_policy(role_arn: str, region: str) -> bool:
     """Fix IAM role by adding CloudWatch logs policy for airflow-serverless."""
     try:
@@ -1919,56 +1928,77 @@ def _find_dag_files_in_s3(
     if not search_prefixes:
         search_prefixes = [s3_prefix]
 
-    # Search for each workflow specified in manifest
-    for workflow in manifest.content.workflows:
-        workflow_name = workflow.get("workflowName", "")
-        found = False
+    # Scan each YAML in the configured prefixes exactly once, building a lookup
+    # of {workflow identifier -> s3_key}. A workflow identifier is either a
+    # top-level key in the YAML or a nested `dag_id`. This is O(files) instead
+    # of O(workflows x files): we no longer re-download and re-parse every YAML
+    # for each manifest workflow (which made an unmatched workflow trigger a
+    # full, exhaustive scan of the whole prefix).
+    import yaml
 
-        # Search each configured prefix
-        for search_prefix in search_prefixes:
-            try:
-                paginator = s3_client.get_paginator("list_objects_v2")
-                for page in paginator.paginate(Bucket=s3_bucket, Prefix=search_prefix):
-                    if "Contents" not in page:
+    identifier_to_key: Dict[str, str] = {}
+    scanned_keys = set()
+
+    for search_prefix in search_prefixes:
+        try:
+            paginator = s3_client.get_paginator("list_objects_v2")
+            for page in paginator.paginate(Bucket=s3_bucket, Prefix=search_prefix):
+                if "Contents" not in page:
+                    continue
+
+                for obj in page["Contents"]:
+                    s3_key = obj["Key"]
+                    # Skip editor/build artifacts (see _is_editor_or_build_artifact).
+                    if _is_editor_or_build_artifact(s3_key):
+                        continue
+                    if not s3_key.endswith((".yaml", ".yml")):
+                        continue
+                    if s3_key in scanned_keys:
+                        continue
+                    scanned_keys.add(s3_key)
+
+                    try:
+                        response = s3_client.get_object(Bucket=s3_bucket, Key=s3_key)
+                        content = yaml.safe_load(response["Body"].read())
+                    except Exception:
                         continue
 
-                    for obj in page["Contents"]:
-                        s3_key = obj["Key"]
-                        # Skip editor/build artifacts (see _is_editor_or_build_artifact).
-                        if _is_editor_or_build_artifact(s3_key):
-                            continue
-                        if s3_key.endswith((".yaml", ".yml")):
-                            # Download and check if it matches workflow
-                            try:
-                                import yaml
+                    if not isinstance(content, dict):
+                        continue
 
-                                response = s3_client.get_object(
-                                    Bucket=s3_bucket, Key=s3_key
-                                )
-                                content = yaml.safe_load(response["Body"].read())
-                                if isinstance(content, dict):
-                                    # Check if any top-level key matches workflow_name or has matching dag_id
-                                    for key, value in content.items():
-                                        if key == workflow_name or (
-                                            isinstance(value, dict)
-                                            and value.get("dag_id") == workflow_name
-                                        ):
-                                            dag_files.append((s3_key, workflow_name))
-                                            found = True
-                                            break
-                            except Exception:
-                                continue
-                        if found:
-                            break
-                    if found:
-                        break
-            except Exception:
-                continue
-            if found:
-                break
+                    # Register every identifier this YAML exposes so any manifest
+                    # workflow can be resolved with a plain dict lookup below.
+                    for key, value in content.items():
+                        identifier_to_key.setdefault(key, s3_key)
+                        if isinstance(value, dict):
+                            dag_id = value.get("dag_id")
+                            if dag_id:
+                                identifier_to_key.setdefault(dag_id, s3_key)
+        except Exception:
+            continue
 
-        if not found:
-            typer.echo(f"⚠️ Workflow YAML not found for: {workflow_name}")
+    # Resolve each manifest workflow against the single-pass lookup. A missing
+    # YAML is a clear manifest error (typo, or a workflow entry left in after
+    # its file was removed), so fail fast rather than silently continuing.
+    missing_workflows = []
+    for workflow in manifest.content.workflows:
+        workflow_name = workflow.get("workflowName", "")
+        s3_key = identifier_to_key.get(workflow_name)
+        if s3_key is None:
+            missing_workflows.append(workflow_name)
+        else:
+            dag_files.append((s3_key, workflow_name))
+
+    if missing_workflows:
+        names = ", ".join(missing_workflows)
+        typer.echo(f"❌ Workflow YAML not found for: {names}")
+        raise WorkflowYamlNotFoundError(
+            f"No matching workflow YAML found in S3 for: {names}. "
+            "Check that each workflow declared in the manifest has a "
+            "corresponding YAML file in the deployed bundle, or remove the "
+            "stale workflow entry (and its workflow.create bootstrap action) "
+            "from the manifest."
+        )
 
     return dag_files
 
