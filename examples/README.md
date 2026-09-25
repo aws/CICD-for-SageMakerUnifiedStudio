@@ -50,6 +50,27 @@ pytest tests/integration/ -v
 
 ## Feature Examples
 
+### Git V2 End-to-End (Direct Deploy, Trunk-Based)
+**Example:** `gitv2-end-to-end/`
+
+Deploys straight from a Git V2 application repository with no bundle step — the git
+commit is the artifact. The directory holds only a manifest; every deployed file is
+cloned from the repository at deploy time:
+- `content.git` source, so one `deploy` call clones, filters, copies, and registers the workflow
+- `include` patterns and exact paths control precisely which repository files reach a project
+- Developers open a PR from `feature/*` into `main`; on merge the same commit goes to test then prod
+- Dev is the authoring project and not a deploy target — it gets content by pulling in the Git V2 UI
+- Stage gates come from CI environment required reviewers, not branch topology
+- Includes the Git V2 connection setup steps and the promotion caveats per artifact type
+
+```bash
+aws-smus-cicd-cli deploy --manifest examples/gitv2-end-to-end/manifest.yaml --targets test
+```
+
+Requires unreleased CLI changes — see that example's README. Use the bundle flow
+(`serverless-example/`, `mwaa-example/`) instead when you need runtime configuration
+captured from a source project.
+
 ### Event Initialization
 **Example:** `analytic-workflow/dashboard-glue-quick/`
 

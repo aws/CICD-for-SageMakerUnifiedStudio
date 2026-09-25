@@ -159,6 +159,9 @@ q-tasks.txt
 create_pdf*.py
 cleanup.py
 
+# Local change notes, kept out of the repo so they don't land in a PR diff
+CHANGES.md
+
 # Overdrive test folder (private testing)
 tests/airless-test/
 tmp/

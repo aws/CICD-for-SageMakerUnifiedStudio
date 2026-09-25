@@ -1,0 +1,200 @@
+# SMUS CI/CD + Git V2 — end-to-end promotion, trunk-based.
+#
+# This directory holds only this manifest. Every artifact — notebooks, Query
+# Books, Visual ETL jobs, workflows — comes from the Git V2 repository declared
+# under content.git. The CLI clones it; nothing is committed here.
+#
+# SINGLE COMMAND PER STAGE. No bundle archive is involved:
+#
+#   aws-smus-cicd-cli deploy --manifest examples/gitv2-end-to-end/manifest.yaml \
+#       --targets test
+#
+# That one call runs `git clone --depth 1` on the URL below, applies the include
+# patterns to the clone, copies what survives into the target project's
+# connection at `targetDirectory`, then runs the stage's bootstrap actions to
+# register the workflow.
+#
+# ⚠️ Requires unreleased CLI changes. The published 1.0.5 treats content.git as
+# bundle-only and fails with "No bundle file found in ./artifacts directory".
+# See the "CLI changes this example depends on" section in README.md.
+#
+# AUTHENTICATION. The clone is a plain `git clone` with no credential injection.
+# A private repository only works where git already has credentials — a local
+# credential helper, or a token in the URL under CI. Never commit a token.
+applicationName: GitV2EndToEnd
+
+content:
+  git:
+    # `repository` is the join key: deployment_configuration.git[].name must match it.
+    #
+    # `include` selects which files may be copied. Nothing outside it is deployed,
+    # so repository documentation and CI config stay out of the target projects.
+    # `exclude` is applied afterwards if you prefer subtractive selection.
+    #
+    # Supported forms, all matched against the path relative to the repository root
+    # using forward slashes:
+    #
+    #   notebooks/sales-summary.ipynb   exact file
+    #   notebooks                       directory prefix — everything beneath it
+    #   notebooks/                      same, trailing slash optional
+    #   notebooks/**                    same, recursive prefix
+    #   notebooks/*.ipynb               glob within a directory
+    #   jobs/*/*.py                     nested wildcard
+    #   **/VETL-for-git.*               recursive, any extension
+    #   *.ipynb                         see caveat below
+    #
+    # ⚠️ `*` crosses directory separators, unlike a shell glob. `*.ipynb` therefore
+    # matches notebooks/sales-summary.ipynb as well as a root-level file. Anchor the
+    # pattern (`notebooks/*.ipynb`) when you mean one directory only.
+    #
+    # Patterns are used below so a newly tracked notebook is picked up without
+    # editing this manifest. Swap in exact paths if you would rather the manifest be
+    # a fixed inventory, where adding a file to the repo is deliberately not enough
+    # to deploy it.
+    #
+    # Note `branch` is ignored by the clone, which takes the remote default
+    # branch. Every stage below says `branch: main` and main IS the remote
+    # default, so the effect is correct here — but pointing a stage at another
+    # branch will not work until that is fixed.
+    - repository: Git-V2-test-repo-1
+      url: https://github.com/Shnekit/Git-V2-test-repo-1.git
+      include:
+        - notebooks/*.ipynb                 # all notebooks
+        - querybooks/*.sqlnb                # all Query Books
+        - jobs/**                           # Visual ETL: .py, .vetl and .json together
+        # Workflows are named individually rather than globbed. Each one has to be
+        # declared under content.workflows below and registered by a
+        # workflow.create bootstrap action, so a glob here would copy YAML for
+        # workflows that are never registered — a file in S3 doing nothing.
+        # Adding a workflow is a deliberate two-line change: this list, and the
+        # content.workflows entry.
+        - workflows/sample_notebook_workflow.yaml
+        - workflows/demo.yaml
+
+  # Declares which workflow this application deploys. The DAG definition itself
+  # lives in the repository above, at workflows/sample_notebook_workflow.yaml —
+  # nothing is duplicated here. `workflowName` must match the YAML's top-level key
+  # or its dag_id, which is how _find_dag_files_in_s3() identifies the file.
+  #
+  # sample_notebook_workflow is promotable: it uses {brace} placeholders that the
+  # CLI resolves per stage at registration. The repository previously also held
+  # EMR-S-test.yaml, which pinned an EMR Serverless application_id and an
+  # execution_role_arn in a different AWS account and so could not run outside its
+  # origin environment. It was removed for that reason.
+  #
+  # ⚠️ Declaring the workflow here does not create it. Registration is the
+  # `workflow.create` bootstrap action on each stage below.
+  workflows:
+    - workflowName: sample_notebook_workflow
+      connectionName: default.workflow_serverless
+    - workflowName: demo
+      connectionName: default.workflow_serverless
+
+# Stages. `dev` is the authoring project and the content source: developers get
+# code there by pulling in the Git V2 UI, so the pipeline does NOT deploy to it.
+# It stays here so `describe` and dry runs can target it.
+#
+# The pipeline deploys test, then prod.
+stages:
+  # Source / authoring project — not a pipeline deploy target
+  dev:
+    stage: DEV
+    branch: main
+    domain:
+      name: Default_02092026_Domain
+      region: ${DEV_DOMAIN_REGION:us-east-1}
+    project:
+      name: gitv2-ml-dev
+      create: false
+    environment_variables:
+      ENV_NAME: dev
+    # Registers the DAGs in the project. A copied YAML is an inert file; this is
+    # what turns it into an Airflow workflow, and where {brace} placeholders are
+    # resolved to this stage's values.
+    #
+    # `workflowName` is omitted deliberately: without it the action registers
+    # every entry under content.workflows. Naming one workflow here would filter
+    # to just that one and silently leave the others unregistered.
+    #
+    # This works for git-only content because _resolve_deployment_s3_location()
+    # falls back to git_results when there are no storage items. Before that
+    # fallback existed the action aborted with "S3 location not available".
+    bootstrap:
+      actions:
+        - type: workflow.create
+    deployment_configuration:
+      git:
+        - name: Git-V2-test-repo-1
+          connectionName: default.s3_shared
+          # Named after the source repository so the deployed copy is
+          # self-identifying, and so it cannot be mistaken for the SMUS-managed
+          # Git V2 clone, which lives under shared/repos/<connectionId>/.
+          targetDirectory: Git-V2-test-repo-1
+
+  test:
+    stage: TEST
+    branch: main
+    domain:
+      name: Default_02092026_Domain
+      region: ${TEST_DOMAIN_REGION:us-east-1}
+    project:
+      name: gitv2-ml-test
+      create: false
+    environment_variables:
+      ENV_NAME: test
+    # Registers the DAGs in the project. A copied YAML is an inert file; this is
+    # what turns it into an Airflow workflow, and where {brace} placeholders are
+    # resolved to this stage's values.
+    #
+    # `workflowName` is omitted deliberately: without it the action registers
+    # every entry under content.workflows. Naming one workflow here would filter
+    # to just that one and silently leave the others unregistered.
+    #
+    # This works for git-only content because _resolve_deployment_s3_location()
+    # falls back to git_results when there are no storage items. Before that
+    # fallback existed the action aborted with "S3 location not available".
+    bootstrap:
+      actions:
+        - type: workflow.create
+    deployment_configuration:
+      git:
+        - name: Git-V2-test-repo-1
+          connectionName: default.s3_shared
+          # Named after the source repository so the deployed copy is
+          # self-identifying, and so it cannot be mistaken for the SMUS-managed
+          # Git V2 clone, which lives under shared/repos/<connectionId>/.
+          targetDirectory: Git-V2-test-repo-1
+
+  prod:
+    stage: PROD
+    branch: main
+    domain:
+      name: Default_02092026_Domain
+      region: ${PROD_DOMAIN_REGION:us-east-1}
+    project:
+      name: gitv2-ml-prod
+      create: false
+    environment_variables:
+      ENV_NAME: prod
+    # Registers the DAGs in the project. A copied YAML is an inert file; this is
+    # what turns it into an Airflow workflow, and where {brace} placeholders are
+    # resolved to this stage's values.
+    #
+    # `workflowName` is omitted deliberately: without it the action registers
+    # every entry under content.workflows. Naming one workflow here would filter
+    # to just that one and silently leave the others unregistered.
+    #
+    # This works for git-only content because _resolve_deployment_s3_location()
+    # falls back to git_results when there are no storage items. Before that
+    # fallback existed the action aborted with "S3 location not available".
+    bootstrap:
+      actions:
+        - type: workflow.create
+    deployment_configuration:
+      git:
+        - name: Git-V2-test-repo-1
+          connectionName: default.s3_shared
+          # Named after the source repository so the deployed copy is
+          # self-identifying, and so it cannot be mistaken for the SMUS-managed
+          # Git V2 clone, which lives under shared/repos/<connectionId>/.
+          targetDirectory: Git-V2-test-repo-1
