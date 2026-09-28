@@ -84,6 +84,23 @@ def _build_encryption_configuration(kms_key_id: str) -> Dict[str, Any]:
     return {}
 
 
+def _parse_s3_location(s3_location: str) -> Dict[str, str]:
+    """Parse an ``s3://bucket/key`` URI into an S3Location dict.
+
+    Returns ``{"Bucket": ..., "ObjectKey": ...}`` as expected by the MWAA
+    Serverless DefinitionS3Location / Code.S3Location shapes. Returns an empty
+    dict for a falsy or non-``s3://`` input so callers can treat it as "not
+    provided".
+    """
+    if not s3_location or not s3_location.startswith("s3://"):
+        return {}
+    parts = s3_location[5:].split("/", 1)
+    return {
+        "Bucket": parts[0],
+        "ObjectKey": parts[1] if len(parts) > 1 else "",
+    }
+
+
 def create_workflow(
     workflow_name: str,
     dag_s3_location: Dict[str, str],
@@ -96,6 +113,7 @@ def create_workflow(
     subnet_ids: List[str] = None,
     kms_key_id: str = None,
     log_group_name: str = None,
+    code_s3_location: str = None,
 ) -> Dict[str, Any]:
     """Create a new serverless Airflow workflow (idempotent).
 
@@ -112,6 +130,12 @@ def create_workflow(
       - ``log_group_name``: when provided, sets an explicit CloudWatch log group
         (``/aws/mwaa-serverless/<domain-id>-<project-id>/<workflow-name>`` for
         IdC domains); otherwise the service default naming is used.
+      - ``code_s3_location``: ``s3://bucket/key`` of the operator code package
+        (a single ``.py``/``.sh`` file or a ``.zip`` archive) that
+        PythonOperator/BashOperator tasks run. When provided it is sent as the
+        ``Code`` parameter (an ``S3Location`` structure). Omit it for DAGs that
+        use only AWS service operators. ``Code`` is re-applied on update too, so
+        redeploying refreshed code produces a new workflow version.
 
     If the workflow already exists, this function updates it instead of
     creating it. On update, network and logging configuration are re-applied
@@ -126,12 +150,9 @@ def create_workflow(
         client = create_airflow_serverless_client(connection_info, region)
 
         # Parse S3 location into bucket and key
-        s3_bucket = None
-        s3_key = None
-        if dag_s3_location.startswith("s3://"):
-            parts = dag_s3_location[5:].split("/", 1)
-            s3_bucket = parts[0]
-            s3_key = parts[1] if len(parts) > 1 else ""
+        definition_location = _parse_s3_location(dag_s3_location)
+        s3_bucket = definition_location.get("Bucket")
+        s3_key = definition_location.get("ObjectKey")
 
         params = {
             "Name": workflow_name,
@@ -141,6 +162,16 @@ def create_workflow(
             },
             "RoleArn": role_arn,
         }
+
+        # Operator code package (PythonOperator/BashOperator). The workflow
+        # definition (DefinitionS3Location) is the YAML DAG; the Code parameter
+        # is the separate .py/.sh/.zip the tasks actually run. MWAA Serverless
+        # wraps it as {"S3Location": {...}} and snapshots it alongside the
+        # definition as a new immutable workflow version.
+        code_location = _parse_s3_location(code_s3_location)
+        if code_location:
+            params["Code"] = {"S3Location": code_location}
+        logger.debug(f"Code configuration: {code_s3_location}")
 
         # Network configuration - inherited from the project's Tooling blueprint.
         # Only set when both subnets and security groups are available; otherwise
@@ -241,6 +272,15 @@ def create_workflow(
                     },
                     "RoleArn": role_arn,
                 }
+
+                # Re-apply the operator code package on update. UpdateWorkflow
+                # accepts Code just like CreateWorkflow; sending it snapshots the
+                # refreshed code into the new workflow version. Only set it when
+                # the workflow declares code, so DAGs without operator code are
+                # unaffected.
+                code_location = _parse_s3_location(code_s3_location)
+                if code_location:
+                    update_params["Code"] = {"S3Location": code_location}
 
                 # Keep network + logging config in sync on update so an existing
                 # workflow converges toward the project's Tooling blueprint

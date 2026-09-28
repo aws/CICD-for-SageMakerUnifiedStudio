@@ -210,7 +210,11 @@ def handle_workflow_create(
     workflows_created = []
 
     # Find DAG files in S3
-    from ...commands.deploy import _find_dag_files_in_s3, _generate_workflow_name
+    from ...commands.deploy import (
+        _find_dag_files_in_s3,
+        _generate_workflow_name,
+        _resolve_and_upload_operator_code,
+    )
 
     dag_files_in_s3 = _find_dag_files_in_s3(
         s3_client, s3_bucket, s3_prefix, manifest, target_config
@@ -219,6 +223,19 @@ def handle_workflow_create(
     if not dag_files_in_s3:
         typer.echo("⚠️ No DAG files found in S3")
         return True
+
+    # Upload operator code (PythonOperator/BashOperator) for the subset of
+    # workflows that declare a `code` path. A single .py/.sh/.zip is uploaded
+    # as-is; a directory or multiple files are zipped - matching the SMUS UI -
+    # and stored under the operatorFiles/ prefix. Keyed by the manifest
+    # workflowName, the same identifier the DAG loop yields below.
+    code_files_in_s3 = _resolve_and_upload_operator_code(
+        s3_client, s3_bucket, s3_prefix, manifest, target_config
+    )
+    if code_files_in_s3:
+        typer.echo(
+            f"📦 Operator code uploaded for: {', '.join(sorted(code_files_in_s3))}"
+        )
 
     # Filter by workflow name if specified
     if workflow_name_filter:
@@ -280,6 +297,15 @@ def handle_workflow_create(
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
 
+        # Operator code package for this workflow, if it declared one. The code
+        # object was uploaded with the bundle content; pass its S3 URI so
+        # create_workflow sends the MWAA Serverless Code parameter.
+        code_s3_key = code_files_in_s3.get(workflow_name_from_yaml)
+        code_s3_location = None
+        if code_s3_key:
+            code_s3_location = f"s3://{s3_bucket}/{code_s3_key}"
+            typer.echo(f"📦 Using operator code package: {code_s3_location}")
+
         # Build the canonical tag set for this workflow - used for both creation
         # and recovery. Custom tags go first; SMUS-managed tags are applied on
         # top so they always win (collisions were already rejected above).
@@ -315,6 +341,7 @@ def handle_workflow_create(
             subnet_ids=subnet_ids,
             kms_key_id=kms_key_id,
             log_group_name=log_group_name,
+            code_s3_location=code_s3_location,
         )
 
         if result.get("success"):
