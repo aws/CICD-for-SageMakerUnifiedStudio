@@ -28,9 +28,7 @@ def is_code_artifact(path: str) -> bool:
     copies must never be treated as operator code.
     """
     return (
-        "__pycache__/" in path
-        or path.endswith(".pyc")
-        or ".ipynb_checkpoints/" in path
+        "__pycache__/" in path or path.endswith(".pyc") or ".ipynb_checkpoints/" in path
     )
 
 
