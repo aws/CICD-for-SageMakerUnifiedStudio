@@ -29,15 +29,12 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import yaml
 
 from smus_cicd.commands.dry_run.models import DryRunContext, Finding, Severity
+from smus_cicd.helpers.operator_code import code_ref_error, is_code_artifact
 
 logger = logging.getLogger(__name__)
 
 # Required keys inside the top-level DAG value dict
 _REQUIRED_DAG_KEYS = {"dag_id", "tasks"}
-
-# Operator code package extensions accepted by MWAA Serverless PythonOperator /
-# BashOperator tasks (see the workflow entry `code` field).
-_CODE_FILE_EXTENSIONS = (".py", ".sh", ".zip")
 
 
 class WorkflowChecker:
@@ -184,9 +181,6 @@ class WorkflowChecker:
 
         bundle_files = context.bundle_files or set()
 
-        def _is_artifact(name: str) -> bool:
-            return "__pycache__/" in name or name.endswith(".pyc")
-
         for workflow in workflows:
             code_path = workflow.get("code") if isinstance(workflow, dict) else None
             workflow_name = (
@@ -196,20 +190,16 @@ class WorkflowChecker:
                 continue
 
             code_basename = os.path.basename(str(code_path).rstrip("/"))
-            ext = os.path.splitext(code_basename)[1].lower()
 
             # Must be a single supported file. A directory (no extension) or an
             # unsupported extension is a hard error - pre-package a .zip instead.
-            if ext not in _CODE_FILE_EXTENSIONS:
+            # Shared rule with the deploy path so the two cannot drift.
+            ref_error = code_ref_error(code_path)
+            if ref_error:
                 findings.append(
                     Finding(
                         severity=Severity.ERROR,
-                        message=(
-                            f"Workflow '{workflow_name}': operator code '{code_path}' "
-                            f"must be a single .py/.sh file or a pre-built .zip "
-                            f"archive. To bundle multiple files or dependencies, "
-                            f"package them into a .zip and point `code` at it"
-                        ),
+                        message=f"Workflow '{workflow_name}': {ref_error}",
                         resource=code_path,
                         service="airflow",
                     )
@@ -234,7 +224,7 @@ class WorkflowChecker:
             matches = [
                 f
                 for f in bundle_files
-                if os.path.basename(f) == code_basename and not _is_artifact(f)
+                if os.path.basename(f) == code_basename and not is_code_artifact(f)
             ]
 
             if matches:

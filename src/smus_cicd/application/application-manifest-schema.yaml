@@ -168,18 +168,21 @@ properties:
               type: string
               description: >-
                 Path (relative to the manifest / bundle root) to the operator
-                code that PythonOperator and BashOperator tasks run. Points at a
-                single .py file, a single .sh script, or a .zip archive, OR a
-                directory whose contents are zipped for you. The code is
-                uploaded to S3 during deploy and passed to MWAA Serverless as
-                the CreateWorkflow/UpdateWorkflow Code parameter. Only needed for
-                workflows that use PythonOperator or BashOperator; DAGs that use
-                only AWS service operators can omit it.
+                code that PythonOperator and BashOperator tasks run. Must point
+                at a single .py file, a single .sh script, or a pre-built .zip
+                archive - the CLI uploads it as-is and does NOT zip a directory
+                for you. To bundle multiple modules or third-party dependencies,
+                package them into a .zip (files at the archive root) and point
+                `code` at that .zip. The file must be included in the bundle
+                (e.g. via content.storage) and its basename must be unique
+                across the bundle. It is uploaded to S3 during deploy and passed
+                to MWAA Serverless as the CreateWorkflow/UpdateWorkflow Code
+                parameter. Only needed for workflows that use PythonOperator or
+                BashOperator; DAGs that use only AWS service operators can omit it.
               examples:
                 - "workflows/dags/code/my_module.py"
                 - "workflows/dags/code/run.sh"
                 - "workflows/dags/code/my_package.zip"
-                - "workflows/dags/code"
             parameters:
               type: object
               description: "Workflow-specific parameters"

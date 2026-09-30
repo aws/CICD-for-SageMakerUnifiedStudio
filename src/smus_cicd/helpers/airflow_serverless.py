@@ -168,6 +168,12 @@ def create_workflow(
         # is the separate .py/.sh/.zip the tasks actually run. MWAA Serverless
         # wraps it as {"S3Location": {...}} and snapshots it alongside the
         # definition as a new immutable workflow version.
+        #
+        # We do not set S3Location.VersionId: the caller
+        # (_resolve_and_upload_operator_code) writes each deploy's code to a
+        # unique operatorFiles/<workflow>-<timestamp> key, so every deploy
+        # already points at a fresh, immutable object. That unique key is what
+        # pins the code version here in place of VersionId.
         code_location = _parse_s3_location(code_s3_location)
         if code_location:
             params["Code"] = {"S3Location": code_location}

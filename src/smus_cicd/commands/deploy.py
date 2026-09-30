@@ -24,6 +24,7 @@ from ..application import ApplicationManifest
 from ..helpers import datazone, deployment
 from ..helpers.boto3_client import create_client
 from ..helpers.error_handler import handle_error, handle_success
+from ..helpers.operator_code import code_ref_error, is_code_artifact
 from ..helpers.project_manager import ProjectManager
 from ..helpers.utils import (  # noqa: F401
     build_domain_config,
@@ -2022,12 +2023,6 @@ def _derive_workflow_search_prefixes(s3_prefix: str, target_config) -> List[str]
 _OPERATOR_FILES_PREFIX = "operatorFiles"
 
 
-# Operator code file types MWAA Serverless accepts, uploaded as-is. Multi-file
-# code must be pre-packaged into a .zip by the customer (see the docs on
-# preparing a zip with dependencies) - the CLI does not repackage.
-_OPERATOR_CODE_EXTENSIONS = (".py", ".sh", ".zip")
-
-
 def _find_operator_code_key_in_s3(
     s3_client, s3_bucket: str, search_prefixes: List[str], code_basename: str
 ) -> Optional[str]:
@@ -2037,14 +2032,15 @@ def _find_operator_code_key_in_s3(
     the workflow YAMLs), so this scans the same deployed prefixes the DAG scan
     uses and matches ``code_basename`` against each object's basename.
     ``__pycache__``/``.pyc`` and editor artifacts are skipped.
-    """
 
-    def _is_artifact(key: str) -> bool:
-        return (
-            "__pycache__/" in key
-            or key.endswith(".pyc")
-            or _is_editor_or_build_artifact(key)
-        )
+    Matching is by basename (the directory portion of the manifest ``code`` path
+    is not used) because bundling flattens included files under their storage
+    item's name, dropping intermediate directories - so the manifest's relative
+    path no longer exists in S3 to match against. Consequently ``code``
+    basenames must be unique across the bundle; the first match in
+    prefix-iteration order wins otherwise.
+    """
+    from botocore.exceptions import ClientError
 
     for search_prefix in search_prefixes:
         try:
@@ -2052,11 +2048,14 @@ def _find_operator_code_key_in_s3(
             for page in paginator.paginate(Bucket=s3_bucket, Prefix=search_prefix):
                 for obj in page.get("Contents", []):
                     key = obj["Key"]
-                    if _is_artifact(key):
+                    if is_code_artifact(key):
                         continue
                     if os.path.basename(key) == code_basename:
                         return key
-        except Exception:
+        except ClientError:
+            # A prefix that does not exist yet lists empty rather than raising;
+            # a real S3 error (access denied, throttling) is not "not found" -
+            # only swallow the expected/empty case and keep scanning others.
             continue
     return None
 
@@ -2099,13 +2098,12 @@ def _resolve_and_upload_operator_code(
         return code_files
 
     # Reject unsupported code references up front: the value must name a single
-    # .py/.sh/.zip file. A directory or any other extension means the customer
-    # must pre-package a .zip themselves.
-    bad_refs = []
-    for workflow_name, code_path in wanted.items():
-        ext = os.path.splitext(os.path.basename(str(code_path).rstrip("/")))[1].lower()
-        if ext not in _OPERATOR_CODE_EXTENSIONS:
-            bad_refs.append(f"{workflow_name} (code: {code_path})")
+    # .py/.sh/.zip file (shared rule with the dry-run checker).
+    bad_refs = [
+        f"{workflow_name} (code: {code_path})"
+        for workflow_name, code_path in wanted.items()
+        if code_ref_error(code_path)
+    ]
     if bad_refs:
         names = ", ".join(bad_refs)
         typer.echo(f"❌ Unsupported operator code reference for: {names}")
@@ -2118,6 +2116,12 @@ def _resolve_and_upload_operator_code(
 
     search_prefixes = _derive_workflow_search_prefixes(s3_prefix, target_config)
     code_prefix = f"{s3_prefix}{_OPERATOR_FILES_PREFIX}/"
+    # A unique per-deploy key gives deterministic, immutable snapshotting - each
+    # deploy points the workflow at a fresh object - which is what pins the code
+    # version here (so we don't need to set Code.S3Location.VersionId). Trade-off:
+    # superseded objects under operatorFiles/ are not pruned and accumulate
+    # against the account-wide code-storage quota (75 GB); periodic cleanup of
+    # old <workflow>-<ts> objects is left to the operator.
     timestamp = int(time.time() * 1000)
 
     missing = []
