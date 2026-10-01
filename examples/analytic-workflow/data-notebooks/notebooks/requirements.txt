@@ -216,7 +216,7 @@ pydantic-settings==2.15.0
 pydynamodb==0.8.2
 pygments==2.20.0
 pyiceberg==0.10.0
-pyjwt==2.13.0
+pyjwt==2.15.0
 pymssql==2.3.13
 pymysql==1.1.2
 pyopenssl==26.0.0
