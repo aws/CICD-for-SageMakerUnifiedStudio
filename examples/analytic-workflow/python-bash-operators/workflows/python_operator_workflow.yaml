@@ -1,0 +1,13 @@
+python_operator_workflow:
+  dag_id: python_operator_workflow
+  start_date: "2024-01-01"
+  schedule: null
+  tasks:
+    hello_python:
+      # PythonOperator runs a Python callable. The callable lives in the code
+      # supplied via this workflow's `code` field (hello_package.zip, uploaded
+      # as-is). greeting.py and helpers.py are at the archive root, so
+      # greeting.hello_world can `import helpers` at run time.
+      # `python_callable` is module_name.function_name.
+      operator: airflow.providers.standard.operators.python.PythonOperator
+      python_callable: greeting.hello_world

@@ -35,6 +35,19 @@ def _make_manifest(workflow_names):
     return manifest
 
 
+def _make_manifest_with_code(workflow_code):
+    """workflow_code: {workflowName: code_path_or_None}."""
+    manifest = MagicMock()
+    workflows = []
+    for name, code in workflow_code.items():
+        entry = {"workflowName": name}
+        if code is not None:
+            entry["code"] = code
+        workflows.append(entry)
+    manifest.content.workflows = workflows
+    return manifest
+
+
 class _FakeS3:
     """Minimal S3 client stub that counts get_object calls.
 
@@ -125,6 +138,136 @@ def test_find_dags_fails_fast_on_missing_yaml():
         )
 
     assert "missing_workflow" in str(exc.value)
+
+
+class _CodeS3:
+    """S3 stub for _resolve_and_upload_operator_code.
+
+    Serves a set of deployed object keys via list_objects_v2 pagination and
+    records copy_object calls (source key -> operatorFiles/ dest key). The code
+    is read from S3 (not a bundle) and copied within S3, so no downloads occur.
+    """
+
+    def __init__(self, keys):
+        self._keys = list(keys)
+        self.copies = []  # list of (source_key, dest_key)
+
+    def get_paginator(self, _op):
+        keys = self._keys
+
+        class _Paginator:
+            def paginate(self, Bucket=None, Prefix=None):
+                yield {
+                    "Contents": [
+                        {"Key": k} for k in keys if k.startswith(Prefix or "")
+                    ]
+                }
+
+        return _Paginator()
+
+    def copy_object(self, Bucket=None, CopySource=None, Key=None):
+        self.copies.append((CopySource["Key"], Key))
+
+
+def _make_code_target_config(target_directory="python-bash-operators/bundle"):
+    storage_item = MagicMock()
+    storage_item.target_directory = target_directory
+    tc = MagicMock()
+    tc.deployment_configuration.storage = [storage_item]
+    return tc
+
+
+def test_operator_code_single_file_copied_to_operator_files():
+    from smus_cicd.commands.deploy import _resolve_and_upload_operator_code
+
+    s3 = _CodeS3(["proj/dev/python-bash-operators/bundle/greet.sh"])
+    manifest = _make_manifest_with_code({"wf": "code/bash/greet.sh"})
+
+    result = _resolve_and_upload_operator_code(
+        s3, "bucket", "proj/dev/", manifest, _make_code_target_config()
+    )
+
+    key = result["wf"]
+    # Copied into the operatorFiles/ prefix, keeping the .sh extension.
+    assert key.startswith("proj/dev/operatorFiles/wf-")
+    assert key.endswith(".sh")
+    assert s3.copies == [
+        ("proj/dev/python-bash-operators/bundle/greet.sh", key)
+    ]
+
+
+def test_operator_code_zip_copied_as_is():
+    from smus_cicd.commands.deploy import _resolve_and_upload_operator_code
+
+    s3 = _CodeS3(["proj/dev/python-bash-operators/bundle/hello_package.zip"])
+    manifest = _make_manifest_with_code({"wf": "code/python/hello_package.zip"})
+
+    result = _resolve_and_upload_operator_code(
+        s3, "bucket", "proj/dev/", manifest, _make_code_target_config()
+    )
+
+    # .zip resolved by basename and copied verbatim (no repackaging).
+    assert result["wf"].endswith(".zip")
+    src, dest = s3.copies[0]
+    assert src == "proj/dev/python-bash-operators/bundle/hello_package.zip"
+    assert dest == result["wf"]
+
+
+def test_operator_code_directory_ref_is_rejected():
+    """A `code` naming a directory (no extension) is a hard error - no zipping."""
+    from smus_cicd.commands.deploy import _resolve_and_upload_operator_code
+
+    s3 = _CodeS3(["proj/dev/python-bash-operators/bundle/mypkg/mod.py"])
+    manifest = _make_manifest_with_code({"wf": "code/mypkg"})
+
+    with pytest.raises(WorkflowYamlNotFoundError) as exc:
+        _resolve_and_upload_operator_code(
+            s3, "bucket", "proj/dev/", manifest, _make_code_target_config()
+        )
+
+    assert "single .py/.sh file or a pre-built .zip" in str(exc.value)
+    assert s3.copies == []  # rejected before any copy
+
+
+def test_operator_code_skips_workflows_without_code():
+    from smus_cicd.commands.deploy import _resolve_and_upload_operator_code
+
+    s3 = _CodeS3(["proj/dev/python-bash-operators/bundle/greet.sh"])
+    manifest = _make_manifest_with_code({"wf_a": "code/greet.sh", "wf_b": None})
+
+    result = _resolve_and_upload_operator_code(
+        s3, "bucket", "proj/dev/", manifest, _make_code_target_config()
+    )
+
+    assert list(result) == ["wf_a"]
+
+
+def test_operator_code_returns_empty_when_none_declared():
+    from smus_cicd.commands.deploy import _resolve_and_upload_operator_code
+
+    s3 = _CodeS3(["proj/dev/python-bash-operators/bundle/greet.sh"])
+    manifest = _make_manifest(["wf_a", "wf_b"])
+
+    result = _resolve_and_upload_operator_code(
+        s3, "bucket", "proj/dev/", manifest, _make_code_target_config()
+    )
+
+    assert result == {}
+    assert s3.copies == []
+
+
+def test_operator_code_fails_fast_when_missing_from_s3():
+    from smus_cicd.commands.deploy import _resolve_and_upload_operator_code
+
+    s3 = _CodeS3(["proj/dev/python-bash-operators/bundle/present.py"])
+    manifest = _make_manifest_with_code({"wf": "code/missing.zip"})
+
+    with pytest.raises(WorkflowYamlNotFoundError) as exc:
+        _resolve_and_upload_operator_code(
+            s3, "bucket", "proj/dev/", manifest, _make_code_target_config()
+        )
+
+    assert "missing.zip" in str(exc.value)
 
 
 def _tag_client():

@@ -1,0 +1,36 @@
+name: Deploy Python/Bash Operators
+
+on:
+  push:
+    branches:
+      - main
+      - test
+    paths:
+      - 'examples/analytic-workflow/python-bash-operators/**'
+      - 'src/**'
+      - '.github/workflows/smus-bundle-deploy.yml'
+      - '.github/workflows/analytic-python-bash-operators.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: python-bash-operators-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/smus-bundle-deploy.yml
+    secrets:
+      AWS_ROLE_ARN_DEV: ${{ secrets.AWS_ROLE_ARN_DEV }}
+      AWS_ROLE_ARN_TEST: ${{ secrets.AWS_ROLE_ARN_TEST }}
+      AWS_ROLE_ARN_PROD: ${{ secrets.AWS_ROLE_ARN_PROD }}
+    with:
+      manifest_path: 'examples/analytic-workflow/python-bash-operators/manifest.yaml'
+      bundle_from_target: 'dev'
+      test_target: 'test'
+      prod_target: 'prod'
+      deploy_to_prod: ${{ github.ref == 'refs/heads/main' }}
+      destroy_test_after_deploy: true

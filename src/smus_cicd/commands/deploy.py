@@ -13,6 +13,7 @@ import os
 import re
 import shutil
 import tempfile
+import time
 import zipfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -23,6 +24,7 @@ from ..application import ApplicationManifest
 from ..helpers import datazone, deployment
 from ..helpers.boto3_client import create_client
 from ..helpers.error_handler import handle_error, handle_success
+from ..helpers.operator_code import code_ref_error, is_code_artifact
 from ..helpers.project_manager import ProjectManager
 from ..helpers.utils import (  # noqa: F401
     build_domain_config,
@@ -1911,22 +1913,9 @@ def _find_dag_files_in_s3(
     if not manifest.content.workflows:
         return dag_files
 
-    # Get target directories from deployment_configuration
-    search_prefixes = []
-    if hasattr(target_config, "deployment_configuration") and hasattr(
-        target_config.deployment_configuration, "storage"
-    ):
-        for storage_item in target_config.deployment_configuration.storage:
-            if hasattr(storage_item, "target_directory"):
-                target_dir = storage_item.target_directory or "."
-                if target_dir == ".":
-                    search_prefixes.append(s3_prefix)
-                else:
-                    search_prefixes.append(f"{s3_prefix}{target_dir}/")
-
-    # Fallback to base prefix
-    if not search_prefixes:
-        search_prefixes = [s3_prefix]
+    # Get target directories from deployment_configuration (shared with the
+    # operator-code scan so both look in the same deployed prefixes).
+    search_prefixes = _derive_workflow_search_prefixes(s3_prefix, target_config)
 
     # Scan each YAML in the configured prefixes exactly once, building a lookup
     # of {workflow identifier -> s3_key}. A workflow identifier is either a
@@ -2001,6 +1990,176 @@ def _find_dag_files_in_s3(
         )
 
     return dag_files
+
+
+def _derive_workflow_search_prefixes(s3_prefix: str, target_config) -> List[str]:
+    """Return the S3 prefixes a deployed bundle's workflow content lands in.
+
+    Derived from ``deployment_configuration.storage[*].target_directory`` (the
+    same mapping the DAG scan uses), falling back to the base prefix. Shared by
+    the DAG YAML scan and the operator-code scan so both look in the same place.
+    """
+    search_prefixes: List[str] = []
+    if hasattr(target_config, "deployment_configuration") and hasattr(
+        target_config.deployment_configuration, "storage"
+    ):
+        for storage_item in target_config.deployment_configuration.storage:
+            if hasattr(storage_item, "target_directory"):
+                target_dir = storage_item.target_directory or "."
+                if target_dir == ".":
+                    search_prefixes.append(s3_prefix)
+                else:
+                    search_prefixes.append(f"{s3_prefix}{target_dir}/")
+
+    if not search_prefixes:
+        search_prefixes = [s3_prefix]
+
+    return search_prefixes
+
+
+# Default S3 sub-prefix for operator code packages. Matches where the SMUS UI
+# stores uploaded Python/Bash operator files, so a manifest that does not
+# configure an explicit location lands code in the same place the console does.
+_OPERATOR_FILES_PREFIX = "operatorFiles"
+
+
+def _find_operator_code_key_in_s3(
+    s3_client, s3_bucket: str, search_prefixes: List[str], code_basename: str
+) -> Optional[str]:
+    """Return the S3 key of a deployed operator code file, matched by basename.
+
+    Operator code is uploaded to S3 by the storage-deployment step (just like
+    the workflow YAMLs), so this scans the same deployed prefixes the DAG scan
+    uses and matches ``code_basename`` against each object's basename.
+    ``__pycache__``/``.pyc`` and editor artifacts are skipped.
+
+    Matching is by basename (the directory portion of the manifest ``code`` path
+    is not used) because bundling flattens included files under their storage
+    item's name, dropping intermediate directories - so the manifest's relative
+    path no longer exists in S3 to match against. Consequently ``code``
+    basenames must be unique across the bundle; the first match in
+    prefix-iteration order wins otherwise.
+    """
+    from botocore.exceptions import ClientError
+
+    for search_prefix in search_prefixes:
+        try:
+            paginator = s3_client.get_paginator("list_objects_v2")
+            for page in paginator.paginate(Bucket=s3_bucket, Prefix=search_prefix):
+                for obj in page.get("Contents", []):
+                    key = obj["Key"]
+                    if is_code_artifact(key):
+                        continue
+                    if os.path.basename(key) == code_basename:
+                        return key
+        except ClientError:
+            # A prefix that does not exist yet lists empty rather than raising;
+            # a real S3 error (access denied, throttling) is not "not found" -
+            # only swallow the expected/empty case and keep scanning others.
+            continue
+    return None
+
+
+def _resolve_and_upload_operator_code(
+    s3_client,
+    s3_bucket: str,
+    s3_prefix: str,
+    manifest: ApplicationManifest,
+    target_config,
+) -> Dict[str, str]:
+    """Place each workflow's operator code at its ``operatorFiles/`` S3 key.
+
+    Operator ``code`` must be a single ``.py``/``.sh``/``.zip`` file. Storage
+    deployment has already uploaded it to S3 (as-is); this locates it in the
+    deployed prefixes (by basename, like the DAG scan) and copies it — within
+    S3, no download — to ``{s3_prefix}operatorFiles/<workflow_name>-<ts><ext>``,
+    the same location the SMUS console uses. Returns ``{name: operator_files_key}``.
+
+    Reading from S3 (not the bundle) is deliberate: storage items can be local
+    includes, in which case no bundle exists at this point — but the files are
+    always in S3 after storage deployment.
+
+    To use multiple modules or third-party dependencies, pre-build a ``.zip``
+    (files at the archive root) and point ``code`` at it — the CLI does not
+    repackage. Workflows without a ``code`` field are skipped. A ``code`` that
+    is not a supported single file, or that resolves to no S3 object, fails fast.
+    """
+    code_files: Dict[str, str] = {}
+
+    if not manifest.content.workflows:
+        return code_files
+
+    wanted = {
+        wf.get("workflowName", ""): wf.get("code")
+        for wf in manifest.content.workflows
+        if wf.get("code") and wf.get("workflowName")
+    }
+    if not wanted:
+        return code_files
+
+    # Reject unsupported code references up front: the value must name a single
+    # .py/.sh/.zip file (shared rule with the dry-run checker).
+    bad_refs = [
+        f"{workflow_name} (code: {code_path})"
+        for workflow_name, code_path in wanted.items()
+        if code_ref_error(code_path)
+    ]
+    if bad_refs:
+        names = ", ".join(bad_refs)
+        typer.echo(f"❌ Unsupported operator code reference for: {names}")
+        raise WorkflowYamlNotFoundError(
+            f"Operator `code` must be a single .py/.sh file or a pre-built .zip "
+            f"archive; got an unsupported path for: {names}. To bundle multiple "
+            "modules or third-party dependencies, package them into a .zip "
+            "(files at the archive root) and point `code` at that .zip."
+        )
+
+    search_prefixes = _derive_workflow_search_prefixes(s3_prefix, target_config)
+    code_prefix = f"{s3_prefix}{_OPERATOR_FILES_PREFIX}/"
+    # A unique per-deploy key gives deterministic, immutable snapshotting - each
+    # deploy points the workflow at a fresh object - which is what pins the code
+    # version here (so we don't need to set Code.S3Location.VersionId). Trade-off:
+    # superseded objects under operatorFiles/ are not pruned and accumulate
+    # against the account-wide code-storage quota (75 GB); periodic cleanup of
+    # old <workflow>-<ts> objects is left to the operator.
+    timestamp = int(time.time() * 1000)
+
+    missing = []
+    for workflow_name, code_path in wanted.items():
+        code_basename = os.path.basename(str(code_path).rstrip("/"))
+        source_key = _find_operator_code_key_in_s3(
+            s3_client, s3_bucket, search_prefixes, code_basename
+        )
+        if source_key is None:
+            missing.append(f"{workflow_name} (code: {code_path})")
+            continue
+
+        ext = os.path.splitext(source_key)[1].lower()
+        dest_key = f"{code_prefix}{workflow_name}-{timestamp}{ext}"
+
+        # Copy within S3 (no download): the deployed code object -> operatorFiles/.
+        s3_client.copy_object(
+            Bucket=s3_bucket,
+            CopySource={"Bucket": s3_bucket, "Key": source_key},
+            Key=dest_key,
+        )
+        code_files[workflow_name] = dest_key
+        typer.echo(
+            f"  📦 Operator code for '{workflow_name}' "
+            f"-> s3://{s3_bucket}/{dest_key}"
+        )
+
+    if missing:
+        names = ", ".join(missing)
+        typer.echo(f"❌ Operator code not found in S3 for: {names}")
+        raise WorkflowYamlNotFoundError(
+            f"No operator code found in S3 for: {names}. Check that each "
+            "workflow's `code` file (.py/.sh/.zip) is included in the deployed "
+            "bundle via content.storage, or remove the `code` field from the "
+            "workflow entry."
+        )
+
+    return code_files
 
 
 def _generate_workflow_name(bundle_name: str, dag_name: str, target_config) -> str:
