@@ -236,7 +236,7 @@ pyzmq==27.1.0
 questionary==2.1.1
 referencing==0.37.0
 regex==2026.2.28
-requests==2.33.0
+requests==2.34.2
 requests-toolbelt==1.0.0
 rfc3339-validator==0.1.4
 rich==14.2.0
