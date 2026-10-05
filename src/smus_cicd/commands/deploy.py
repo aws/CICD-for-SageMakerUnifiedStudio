@@ -590,16 +590,12 @@ def _deploy_bundle_to_target(
             )
         raise
 
-    # Create serverless Airflow workflows if configured
-    # Get S3 location from first successful storage deployment for backward compatibility
-    s3_bucket = None
-    s3_prefix = None
-    for files_list, s3_uri in storage_results:
-        if s3_uri and s3_uri.startswith("s3://"):
-            parts = s3_uri[5:].split("/", 1)
-            s3_bucket = parts[0]
-            s3_prefix = parts[1] if len(parts) > 1 else ""
-            break
+    # Create serverless Airflow workflows if configured.
+    # Resolve the S3 location that workflow.create needs to locate DAG files.
+    # Storage deployments are preferred for backward compatibility, then git
+    # deployments so manifests whose content comes only from content.git can
+    # still register workflows.
+    s3_bucket, s3_prefix = _resolve_deployment_s3_location(storage_results, git_results)
 
     # Workflow creation now handled by workflow.create bootstrap action
     # S3 location passed to bootstrap via metadata
@@ -824,6 +820,131 @@ def _create_compressed_archive(source_path: str, item_name: str, temp_dir: str) 
     shutil.copy(archive_path, os.path.join(archive_only_dir, archive_name))
 
     return archive_only_dir
+
+
+def _git_path_matches(rel_path: str, patterns: List[str]) -> bool:
+    """Return True if ``rel_path`` matches any of ``patterns``.
+
+    A pattern matches when it is any of:
+
+    - the exact relative path (``notebooks/sales-summary.ipynb``)
+    - an ``fnmatch`` glob (``notebooks/*.ipynb``, ``**/*.py``)
+    - a directory prefix (``notebooks`` or ``notebooks/``), which matches
+      everything beneath it
+
+    Paths are compared with forward slashes regardless of platform.
+    """
+    import fnmatch
+
+    rel_path = rel_path.replace(os.sep, "/")
+
+    for raw in patterns:
+        pattern = str(raw).replace(os.sep, "/").strip()
+        if not pattern:
+            continue
+        if rel_path == pattern:
+            return True
+        # Directory prefix: "notebooks" or "notebooks/" covers everything under it
+        prefix = pattern.rstrip("/")
+        if prefix and rel_path.startswith(prefix + "/"):
+            return True
+        if fnmatch.fnmatch(rel_path, pattern):
+            return True
+        # Allow "notebooks/**" to behave as a recursive prefix, which fnmatch
+        # does not treat specially
+        if pattern.endswith("/**") and rel_path.startswith(pattern[:-2]):
+            return True
+    return False
+
+
+def _filter_git_tree(
+    root: str, include: Optional[List[str]], exclude: Optional[List[str]]
+) -> List[str]:
+    """Prune a cloned/extracted git tree in place to the selected files.
+
+    Deletes any file not matched by ``include`` (when ``include`` is non-empty),
+    then any file matched by ``exclude``, then removes directories left empty.
+    This lets the existing deploy step upload the directory as-is.
+
+    Both ``content.git[].include`` and ``exclude`` are honoured here. They are
+    declared on GitContentConfig but were previously ignored, so the whole
+    repository was copied to every target regardless of what the manifest said.
+
+    Args:
+        root: Directory containing the repository working tree.
+        include: Patterns to keep. Empty or None keeps everything.
+        exclude: Patterns to drop, applied after include.
+
+    Returns:
+        Sorted list of retained file paths, relative to ``root``.
+    """
+    include = [p for p in (include or []) if str(p).strip()]
+    exclude = [p for p in (exclude or []) if str(p).strip()]
+
+    kept: List[str] = []
+    for dirpath, _dirnames, filenames in os.walk(root):
+        for filename in filenames:
+            abs_path = os.path.join(dirpath, filename)
+            rel_path = os.path.relpath(abs_path, root).replace(os.sep, "/")
+
+            if include and not _git_path_matches(rel_path, include):
+                os.remove(abs_path)
+                continue
+            if exclude and _git_path_matches(rel_path, exclude):
+                os.remove(abs_path)
+                continue
+            kept.append(rel_path)
+
+    # Remove directories that are now empty, deepest first
+    for dirpath, _dirnames, _filenames in sorted(
+        os.walk(root, topdown=False), key=lambda x: -x[0].count(os.sep)
+    ):
+        if dirpath == root:
+            continue
+        try:
+            if not os.listdir(dirpath):
+                os.rmdir(dirpath)
+        except OSError:
+            pass
+
+    return sorted(kept)
+
+
+def _resolve_deployment_s3_location(
+    *result_groups: List[Tuple[Optional[List[str]], Optional[str]]],
+) -> Tuple[Optional[str], Optional[str]]:
+    """Resolve the deployed S3 bucket and prefix from deployment results.
+
+    Scans each group of ``(files_list, s3_uri)`` tuples in order and returns the
+    bucket and prefix from the first usable ``s3://`` URI. Groups are tried in the
+    order given, so callers control precedence — typically storage results first
+    (preserving prior behaviour), then git results.
+
+    ``workflow.create`` uses the returned location to find DAG files in S3.
+    Without it, workflow registration aborts with "S3 location not available",
+    which is why git-only manifests need the git fallback.
+
+    Args:
+        *result_groups: One or more lists of (files_list, s3_uri) tuples in
+            precedence order. Empty or None groups are skipped.
+
+    Returns:
+        Tuple of (bucket, prefix), or (None, None) if no group yielded a usable
+        URI. The prefix is "" when the URI has no path component.
+    """
+    for results in result_groups:
+        for _files_list, s3_uri in results or []:
+            if s3_uri and s3_uri.startswith("s3://"):
+                parts = s3_uri[len("s3://") :].split("/", 1)
+                bucket = parts[0]
+                # A missing bucket means a malformed URI such as "s3://", which
+                # a connection with no s3Uri produces. Keep scanning rather than
+                # returning a location that looks present but is unusable.
+                if not bucket:
+                    continue
+                prefix = parts[1] if len(parts) > 1 else ""
+                return bucket, prefix
+    return None, None
 
 
 def _deploy_local_storage_item(
@@ -1307,6 +1428,22 @@ def _deploy_git_direct(
             git_dir = os.path.join(clone_path, ".git")
             if os.path.exists(git_dir):
                 shutil.rmtree(git_dir)
+
+            # Honour content.git include/exclude so the manifest controls exactly
+            # which files reach the target project.
+            include = getattr(git_content, "include", None)
+            exclude = getattr(git_content, "exclude", None)
+            if include or exclude:
+                selected = _filter_git_tree(clone_path, include, exclude)
+                typer.echo(f"  Selected {len(selected)} file(s) via include/exclude:")
+                for rel_path in selected:
+                    typer.echo(f"    {rel_path}")
+                if not selected:
+                    typer.echo(
+                        "  ⚠️ include/exclude matched no files; nothing to deploy",
+                        err=True,
+                    )
+                    return None, None
 
             typer.echo("Deploying cloned repository to S3...")
 
@@ -1911,22 +2048,33 @@ def _find_dag_files_in_s3(
     if not manifest.content.workflows:
         return dag_files
 
-    # Get target directories from deployment_configuration
+    # Get target directories from deployment_configuration. Both storage and git
+    # items are considered, because content deployed from content.git lands under
+    # its own targetDirectory and would otherwise have no targeted prefix.
+    #
+    # Note the attribute is targetDirectory (camelCase) on StorageConfig and
+    # GitTargetConfig. An earlier version checked target_directory (snake_case),
+    # which never matched, leaving search_prefixes empty and silently falling
+    # back to scanning every object under the base prefix.
     search_prefixes = []
-    if hasattr(target_config, "deployment_configuration") and hasattr(
-        target_config.deployment_configuration, "storage"
-    ):
-        for storage_item in target_config.deployment_configuration.storage:
-            if hasattr(storage_item, "target_directory"):
-                target_dir = storage_item.target_directory or "."
-                if target_dir == ".":
-                    search_prefixes.append(s3_prefix)
-                else:
-                    search_prefixes.append(f"{s3_prefix}{target_dir}/")
+    deployment_config = getattr(target_config, "deployment_configuration", None)
+    if deployment_config is not None:
+        deploy_items = list(getattr(deployment_config, "storage", None) or []) + list(
+            getattr(deployment_config, "git", None) or []
+        )
+        for deploy_item in deploy_items:
+            target_dir = getattr(deploy_item, "targetDirectory", None) or "."
+            if target_dir == ".":
+                search_prefixes.append(s3_prefix)
+            else:
+                search_prefixes.append(f"{s3_prefix}{target_dir.strip('/')}/")
 
-    # Fallback to base prefix
+    # Fallback to base prefix, and always include it as a last resort so a
+    # workflow deployed outside any declared targetDirectory is still found.
     if not search_prefixes:
         search_prefixes = [s3_prefix]
+    elif s3_prefix not in search_prefixes:
+        search_prefixes.append(s3_prefix)
 
     # Scan each YAML in the configured prefixes exactly once, building a lookup
     # of {workflow identifier -> s3_key}. A workflow identifier is either a
