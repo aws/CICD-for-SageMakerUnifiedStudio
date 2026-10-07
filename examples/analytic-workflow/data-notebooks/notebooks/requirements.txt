@@ -315,6 +315,6 @@ wrapt==1.17.3
 xgboost-cpu==3.1.1
 xxhash==3.8.1
 xyzservices==2026.3.0
-yarl==1.22.0
+yarl==1.25.1
 zipp==3.23.0
 zstandard==0.25.0
