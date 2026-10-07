@@ -151,7 +151,7 @@ ml-dtypes==0.5.4
 mlflow==3.5.1
 mlflow-skinny==3.5.1
 mlflow-tracing==3.5.1
-mmh3==5.2.1
+mmh3==5.3.1
 mock==4.0.3
 mpmath==1.4.1
 multidict==6.7.1
