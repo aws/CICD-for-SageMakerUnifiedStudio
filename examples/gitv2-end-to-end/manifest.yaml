@@ -15,8 +15,7 @@ content:
     - repository: Git-V2-test-repo-1
       url: https://github.com/Shnekit/Git-V2-test-repo-1.git
       include:
-        - notebooks/*.ipynb
-        - querybooks/*.sqlnb
+        - "*.ipynb" # notebooks 
         - jobs/**
         - workflows/sample_workflow.yaml
         - workflows/samplev2.yaml
