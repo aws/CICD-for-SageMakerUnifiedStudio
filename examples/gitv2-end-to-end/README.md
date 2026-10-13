@@ -8,10 +8,6 @@ This directory holds **only a manifest**. Every deployed file — notebooks, Que
 Visual ETL jobs, the workflow DAG — comes from a separate application repository that
 the CLI clones at deploy time.
 
-> **⚠️ Requires unreleased CLI changes.** The published CLI (1.0.5) treats
-> `content.git` as bundle-only and fails with `No bundle file found in ./artifacts
-> directory`. See [CLI changes required](#cli-changes-required).
-
 ## Architecture
 
 ```mermaid
@@ -99,39 +95,36 @@ README.md, .gitignore          ← not deployed
 ported-notebook.ipynb          ← root duplicate, not deployed (see below)
 ```
 
-`notebooks/` and `querybooks/` are that repository's convention, not Git V2's. When you
-track an artifact in the SMUS UI you cannot choose a folder, so notebooks and Query
-Books arrive at the repository root and must be moved by hand in the pull request — or
-the `include` patterns will not match them.
+`notebooks/` and `querybooks/` are an organizational convention this repository's
+maintainer chose, not something Git V2 or the CLI requires. Git V2 always lands a
+newly tracked artifact at the repository root — there is no folder picker in the SMUS
+UI — so it's the manifest's `include` patterns that decide whether a file deploys, not
+where it happens to sit. An exact root-level filename or a root-only glob in `include`
+works exactly the same as pointing it at a subfolder; organizing into
+`notebooks/`/`querybooks/` is only worth doing for your own repository hygiene, not
+because the CLI needs it.
 
-That root `ported-notebook.ipynb` is the constraint happening for real: it was pushed
-from the studio after the same notebook had already been organised into `notebooks/`, so
-the repository now holds two copies. `notebooks/*.ipynb` matches only the organised one,
-so the duplicate is never deployed. Anchored patterns are what keep this survivable —
-a bare `*.ipynb` would deploy both.
+This repository's root `ported-notebook.ipynb` is a genuine duplicate of a notebook
+later organised into `notebooks/`; anchoring to `notebooks/*.ipynb` keeps the manifest
+from deploying both, which is why patterns are anchored rather than left bare.
 
 `workflows/demo.yaml` is a minimal single-task DAG (one `EmptyOperator`) authored in the
 studio's workflow editor; the `# {"Airflow-task":{...}}` comment on its first line is
 that editor's canvas layout. It exists to show that a second workflow needs two
 declarations, not one.
 
-## How Direct Deploy Works
+## How This Example Deploys
 
-`deploy` runs four steps per stage, in one command:
+Each `deploy` call clones `content.git[].url`, applies this manifest's `include`/
+`exclude` patterns, copies what survives into the target project, then runs
+`workflow.create` to register the DAG. See [`docs/cli-commands.md`](../../docs/cli-commands.md)
+for the full `deploy` command reference and what makes a git source exempt from
+needing a bundle archive.
 
-1. **Clone** — `git clone --depth 1` of `content.git[].url` into a temp directory
-2. **Filter** — apply `include` then `exclude`, deleting everything else and pruning empty directories
-3. **Copy** — upload what survives to `<s3_shared>/Git-V2-test-repo-1/`, preserving relative paths. Incremental: unchanged objects are skipped
-4. **Register** — run the stage's `workflow.create` bootstrap action, turning each copied YAML into an Airflow workflow with `{domain.id}`, `{proj.id}` and `{domain.region}` resolved to that stage
-
-A bundle is required only when a `content.storage[]` item carries a `connectionName` —
-content that lives in a remote S3 connection and can only be captured at bundle time.
-A git source is reproducible from the URL, so it needs no archive. See
-`manifest_requires_bundle()` in `src/smus_cicd/helpers/bundle_storage.py`.
-
-The clone is a plain `git clone` with no credential injection, so a private repository
-needs ambient git credentials — a helper such as `gh auth login`, or a token in the URL
-under CI. Never commit a token.
+**For this example specifically:** the clone is a plain `git clone` with no
+credential injection, so the private `Git-V2-test-repo-1` repository needs ambient
+git credentials wherever you run `deploy` — a helper such as `gh auth login`
+locally, or a token in the URL under CI. Never commit a token.
 
 ### Registering the workflow
 
@@ -154,22 +147,9 @@ specifically want a subset.
 
 ### Selecting files with `include`
 
-Without `include` the whole repository is copied, `README.md` and all. Patterns match
-the path relative to the repository root:
-
-| Form | Example |
-| --- | --- |
-| Exact file | `notebooks/sales-summary.ipynb` |
-| Directory prefix | `notebooks` or `notebooks/` |
-| Recursive prefix | `jobs/**` |
-| Glob in a directory | `notebooks/*.ipynb` |
-| Recursive suffix | `**/*.py` |
-
-`exclude` applies after `include`.
-
-> **⚠️ `*` crosses directory separators**, unlike a shell glob — the matcher is
-> `fnmatch`-based, so a bare `*.ipynb` also matches `notebooks/sales-summary.ipynb`.
-> Anchor the pattern when you mean one directory only.
+Without `include` the whole repository is copied, `README.md` and all. See
+[Git Repositories](../../docs/manifest.md#git-repositories) in the Manifest Guide
+for the supported pattern forms and the `fnmatch` directory-separator caveat.
 
 The manifest uses patterns for notebooks, Query Books and jobs so newly tracked
 artifacts deploy without an edit, but names each workflow explicitly. A glob like
@@ -211,47 +191,35 @@ The workflow is the exception — `workflow.create` registers it properly.
 
 ## Setup
 
-Steps 1–4 are console-only. There is no programmatic API for repository *management*,
-so the Git V2 half of this flow cannot be automated.
+Setting up the Git connection and pushing content is console-only and provider-generic —
+follow [Git connections (admin guide)](https://docs.aws.amazon.com/sagemaker-unified-studio/latest/adminguide/git-connections.html)
+and [Git repositories (user guide)](https://docs.aws.amazon.com/sagemaker-unified-studio/latest/userguide/working-with-repositories.html)
+to create the connection, enable it for the project, add the repository to `dev`, and
+track/push an artifact. (AWS documentation does not use the term "Git V2" — the
+current experience is documented as Git repositories. Content was rephrased for
+compliance with licensing restrictions.) Only `dev` needs the repository added; `test`
+and `prod` receive deploys and never talk to git directly.
 
-**1. Create the Git connection (admin, domain level).** In the SageMaker Unified Studio
-console open your domain, choose the **Connections** tab, expand **Create Git
-connection**, pick a provider, then **Connect to \<provider\>**. Sign in and either
-select an existing AWS application or install a new one. The connection should read
-**Available** after a refresh. GitHub Enterprise Server and GitLab Self-Managed land in
-**Pending** — open the connection and choose **Update pending connection** to finish.
+What's specific to running **this** example:
 
-Providers: GitHub, GitHub Enterprise Server, GitLab, GitLab Self-Managed, Bitbucket
-Cloud — all through AWS CodeConnections. CodeCommit is not supported for new projects.
+- **Domain and all three projects already exist** — the CLI cannot create domains, and project names must match `manifest.yaml`: `gitv2-ml-dev`, `gitv2-ml-test`, `gitv2-ml-prod`
+- **Required connections on each project:** `default.s3_shared`, plus `default.workflow_serverless` on `test` and `prod`
+- **Credentials:** AWS credentials, plus git credentials for the private `Git-V2-test-repo-1` application repository (see "How This Example Deploys" above)
 
-**2. Enable it for project access (admin).** New connections are disabled and invisible
-to projects. Select the connection on the **Connections** tab, choose **Enable**, and
-confirm.
-
-> **Access scope.** Enabling a connection grants every user who can sign in to any
-> domain in the account read and write access to every repository on that connection,
-> regardless of project membership. There is no repository-level isolation within an
-> account — use separate AWS accounts to isolate repositories.
-
-**3. Add the repository to the project (developer).** Open **Repositories** in the
-project's left navigation, choose **Add Repository**, select the connection and
-repository, and set `main` as the default branch. Only the dev project needs this; test
-and prod receive deploys and never talk to git. SMUS creates a clone shared across
-project members under `shared/repos/`. Recommended ceiling is 1 GB and 20,000 files.
-
-**4. Track the artifact and push (developer).** Open the notebook, choose **Add to
-repository**, and select the repository and branch — you cannot choose a folder path. To
-publish, open **Repositories**, choose **Push**, select the changed artifacts, and enter
-a commit message. Commit and push are a single action, and you cannot push while remote
-changes are unpulled. Push to a `feature/*` branch, then open a pull request into
-`main`.
-
-**5. Prepare the target projects.**
-
-- Domain and all three projects created in the console — the CLI cannot create domains
-- Project names matching `manifest.yaml`: `gitv2-ml-dev`, `gitv2-ml-test`, `gitv2-ml-prod`
-- `default.s3_shared` on each, plus `default.workflow_serverless` on the deploy targets
-- AWS credentials, plus git credentials for the private application repository
+> **The `domain.name` in `manifest.yaml` is a placeholder, not a constant.** Each
+> stage hardcodes `name: Default_02092026_Domain` — that's whatever domain existed
+> in the account this example was authored against. It will not match your domain
+> unless you happen to have one by that exact name. Confirm your own domain name
+> first:
+> ```bash
+> aws datazone list-domains --region us-east-1 --query 'items[].name' --output json
+> ```
+> and update all three `domain.name` entries in `manifest.yaml` (`dev`, `test`,
+> `prod` stages) to match. `describe --connect` fails with `Domain not found` if
+> this is wrong, and the error gives no hint that the fix is in the manifest rather
+> than your credentials. If you switch AWS profiles/accounts between runs, re-check
+> this — a domain name that was correct for one account/session can silently stop
+> resolving in another.
 
 > **Check for stray whitespace in project names.** The console renders a leading space
 > invisibly, but DataZone stores it and the CLI's exact-match lookup then fails with
@@ -259,38 +227,12 @@ changes are unpulled. Push to a `feature/*` branch, then open a pull request int
 > `aws datazone list-projects --domain-identifier "$DOMAIN_ID" --query 'items[].name' --output json`
 > — quoted names make stray spaces visible.
 
-**6. Configure the pipeline.** Trigger on `push` to `main`, with one job per deploy
-stage (`--targets test`, then `--targets prod` declaring `needs: [deploy-test]`). Put
-required reviewers on the prod environment — approval gates belong there, not in the
-workflow file. Give the runner read access to the application repository, since
-`deploy` clones it. Protect `main` with a required pull request and review.
-
+**Pipeline:** trigger on `push` to `main`, with one job per deploy stage
+(`--targets test`, then `--targets prod` declaring `needs: [deploy-test]`). Put
+required reviewers on the prod environment, give the runner read access to the
+application repository, and protect `main` with a required pull request and review.
 Ready-made pieces: `.github/workflows/smus-direct-deploy.yml` (reusable deploy + test
 job) and `git-templates/direct-branch/standalone-application-workflow.yml`.
-
-### Verifying the connection
-
-The repository binding surfaces as a DataZone connection of type `GIT`:
-
-```bash
-aws datazone list-connections --domain-identifier "$DOMAIN_ID" \
-  --project-identifier "$PROJECT_ID" \
-  --query "items[?type=='GIT'].{name:name,id:connectionId}"
-
-aws datazone get-connection --domain-identifier "$DOMAIN_ID" \
-  --identifier "$GIT_CONNECTION_ID"
-```
-
-`props.gitProperties` carries `repositoryId`, `defaultBranch`, `status`, and the
-`codeConnectionArn` — which can sit in a different Region from the domain. Older
-botocore versions return `SDK_UNKNOWN_MEMBER` for it, and `describe --connect` lists the
-connection but not its properties. This is read-only; adding repositories, committing
-and pushing remain console-only.
-
-Sources for steps 1–4: [Git connections (admin guide)](https://docs.aws.amazon.com/sagemaker-unified-studio/latest/adminguide/git-connections.html)
-and [Git repositories (user guide)](https://docs.aws.amazon.com/sagemaker-unified-studio/latest/userguide/working-with-repositories.html).
-AWS documentation does not use the term "Git V2" — the current experience is documented
-as Git repositories. Content was rephrased for compliance with licensing restrictions.
 
 ## Running It
 
@@ -306,8 +248,42 @@ aws-smus-cicd-cli deploy   --manifest "$MANIFEST" --targets test
 aws-smus-cicd-cli monitor  --manifest "$MANIFEST" --targets test
 ```
 
-No `*_DOMAIN_REGION` exports needed — each stage's region reference carries its own
-default (`${TEST_DOMAIN_REGION:us-east-1}`). Export only to override.
+> **⚠️ `$MANIFEST` is a shell variable, not persistent config.** It only exists for
+> the rest of the current shell session. Pasting just one of the `aws-smus-cicd-cli`
+> lines into a fresh terminal — without the `MANIFEST=...` line first, in that same
+> session — sends an empty `--manifest ""` and fails with
+> `Manifest validation failed for :` / `File not found: ` (both blank). Either run
+> all four lines together, `echo "$MANIFEST"` to confirm it's still set before
+> reusing it, or skip the variable and pass the path directly:
+> `aws-smus-cicd-cli describe --manifest examples/gitv2-end-to-end/manifest.yaml --targets test --connect`.
+
+### Environment variables
+
+Nothing needs to be exported for a default run — the manifest's `${DEV_DOMAIN_REGION:us-east-1}`,
+`${TEST_DOMAIN_REGION:us-east-1}` and `${PROD_DOMAIN_REGION:us-east-1}` references
+each carry their own fallback. Set one only to target a region other than
+`us-east-1` for that stage:
+
+```bash
+export TEST_DOMAIN_REGION=us-west-2
+```
+
+What the CLI does need, through its normal channels rather than a named variable:
+
+- **AWS credentials** — your usual chain (profile, SSO, or OIDC in CI). Required for
+  every DataZone/S3/Airflow call `deploy`/`describe`/`monitor` make.
+- **Git credentials for the private `Git-V2-test-repo-1` repository** — `deploy`
+  runs a plain `git clone` with no credential injection, so whatever already
+  authenticates your `git` command (a credential helper, `gh auth login`, or a
+  token embedded in the clone URL under CI) has to be in place beforehand.
+
+Running via `.github/workflows/gitv2-end-to-end.yml` additionally needs these set
+in the repo (as a secret and a variable, not plain env vars):
+
+| Name | Kind | Used for |
+| --- | --- | --- |
+| `AWS_ROLE_ARN_TEST` | Secret | OIDC role the workflow assumes to deploy to `test` |
+| `DOMAIN_REGION` | Variable | Region passed to `aws-actions/configure-aws-credentials` |
 
 Swap `test` for `prod` to drive the other stage, though reaching prod from a workstation
 defeats the review gate. `--targets dev` is for `describe` only.
@@ -330,73 +306,8 @@ That run predates `workflows/demo.yaml` being added to `include`, so it deployed
 and registered one workflow while warning about `demo`. The current manifest selects 8
 and declares both; the second workflow has not had a live run yet.
 
-## CLI changes required
-
-Three changes in the working tree, none released:
-
-| Change | File | Without it |
-| --- | --- | --- |
-| `content.git` no longer forces a bundle | `helpers/bundle_storage.py` | `deploy` fails with `No bundle file found`, and `_deploy_git_direct()` is unreachable |
-| `_resolve_deployment_s3_location()` falls back to git results | `commands/deploy.py` | `workflow.create` aborts with `S3 location not available` |
-| `_find_dag_files_in_s3()` reads `targetDirectory` and git items | `commands/deploy.py` | The DAG YAML is never found, so nothing is registered |
-
-A fourth adds the `include`/`exclude` filtering — without it the whole repository is
-copied. To run from the working tree:
-
-```bash
-python -m venv /tmp/smusdev
-/tmp/smusdev/bin/pip install -e .
-/tmp/smusdev/bin/aws-smus-cicd-cli deploy --manifest examples/gitv2-end-to-end/manifest.yaml --targets test
-```
-
-## Known Issues
-
-### Misleading output
-
-Pre-existing bugs. None block a deploy.
-
-| Symptom | Cause |
-| --- | --- |
-| `⚠️ Unresolved environment variable reference: $DEV_DOMAIN_REGION:us-east-1`, even when exported | `manifest_checker.py` captures `${([^}]+)}`, so the name includes the `:default` suffix and never matches `os.environ` |
-| Dry run reports `0 file(s) to deploy`, then the deploy syncs files | `storage_checker.py` counts `context.bundle_files`, empty without a bundle |
-| Dry run reports `No workflow YAML files found in bundle` | The workflow validator reads only bundle contents, so the DAG goes unvalidated |
-| Dry run says a project both exists and does not exist | The connectivity checker and `project_checker.py` use different lookup logic. Often a project-name whitespace issue |
-
-### Runtime failures to expect
-
-- **`run_vetl_job` fails when the DAG runs.** `VETL-for-git.py` hardcodes its source as `.load("s3://amazon-sagemaker-<account>-<region>-<projectId>/shared/")` — a bucket in the project where the job was authored, in a different Region. The Glue job is created and started correctly; the Spark read reaches for another environment. Left visible because it is the genuine promotion problem, not an example bug.
-- **The Query Book is copied but never runs.** No Airflow operator in this CLI consumes `.sqlnb`. Query Books run from the Query Editor in the SMUS UI.
-
-### The real promotion obstacle
-
-The usual framing is that git holds definitions while runtime configuration stays in the
-project. For notebooks that holds — a `.ipynb` carries only `kernelspec` and
-`language_info`.
-
-For other types it is the opposite, and worse. Git V2 *does* commit runtime
-configuration, hard-coded to the source environment. Visual ETL's `.json` carries the
-full Glue job config including the execution role ARN and named DataZone connections
-suffixed with the source stage. Query Books pin a SQL Workbench connection ARN. The
-repository's former `EMR-S-test.yaml` pinned an EMR Serverless `application_id` and a
-role in a different AWS account, which is why it was removed.
-
-The copy step moves bytes and rewrites none of this. Only workflow YAML gets placeholder
-substitution, and only at registration. Promoting anything beyond notebooks and
-placeholder-based workflows needs per-stage substitution — a design decision, not a
-config change.
-
-### Git V2 and CLI constraints
-
-- **Notebooks and Query Books go to the repository root.** Visual ETL to `jobs/<JobName>/`, workflows to `workflows/`. Directory conventions are maintained by hand.
-- **Visual ETL writes three files per job** — `.vetl`, `.py`, `.json`. Tracked as a set; `jobs/**` keeps them together.
-- **Only serverless workflows can be tracked.** Managed and provisioned are unsupported, so `examples/mwaa-example/` cannot participate.
-- **Notebook filenames vary,** and renaming in the studio does not rename the file. Prefer glob or directory patterns over exact filenames.
-- **No pull requests, code review, history, or revert in the product.** Those live in your Git provider.
-- **`branch` is ignored by the clone,** which takes the remote default. Every stage says `branch: main` and `main` is the remote default, so the effect is correct here — but pointing a stage at another branch will not work.
-- **`include`/`exclude` only filter on the direct path.** `_deploy_git_item()`, used when a bundle *is* supplied, extracts the whole repository.
-
 ## Reference
 
-- `docs/cli-commands.md` — full command and flag reference
-- `examples/serverless-example/` — the bundle flow, for content captured from a live project
-- `git-templates/direct-branch/standalone-application-workflow.yml` — pipeline template
+- [`docs/cli-commands.md`](../../docs/cli-commands.md) — full command and flag reference
+- [`examples/serverless-example/`](../serverless-example/) — the bundle flow, for content captured from a live project
+- [`git-templates/direct-branch/standalone-application-workflow.yml`](../../git-templates/direct-branch/standalone-application-workflow.yml) — pipeline template

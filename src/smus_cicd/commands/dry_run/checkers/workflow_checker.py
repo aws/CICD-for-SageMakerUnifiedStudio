@@ -29,6 +29,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import yaml
 
 from smus_cicd.commands.dry_run.models import DryRunContext, Finding, Severity
+from smus_cicd.helpers.operator_code import code_ref_error, is_code_artifact
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,14 @@ class WorkflowChecker:
 
         for filename, content in workflow_files:
             self._validate_workflow_file(filename, content, context, findings)
+
+        # Validate operator code packages declared on workflow entries. This is
+        # independent of the DAG YAML checks above: a workflow using
+        # PythonOperator/BashOperator points at a .py/.sh/.zip via its `code`
+        # field, which must be present in the bundle and have a supported
+        # extension for deploy to upload it and pass the MWAA Serverless Code
+        # parameter.
+        self._validate_operator_code(context, findings)
 
         return findings
 
@@ -89,9 +98,24 @@ class WorkflowChecker:
         """Gather workflow file contents from the bundle or local filesystem.
 
         Returns a list of ``(filename, raw_content)`` tuples.
+
+        A manifest deployed via ``content.git`` with no bundle archive (the
+        direct-clone path — see ``manifest_requires_bundle()``) has no bundle
+        for this checker to enumerate: the DAG YAML only exists inside the git
+        repository, which the dry run does not clone over the network. In
+        that case this method cannot see the file at all, so it is misleading
+        to report "no workflow YAML files found" as if the manifest had none
+        configured — the caller already knows workflows exist, since
+        ``check()`` only reaches here when a ``workflow.*`` bootstrap action is
+        present. That "no bundle at all" case is reported as a WARNING below,
+        distinct from "a bundle exists but genuinely has no workflow YAML in
+        it," which stays an OK.
         """
         workflow_files: List[Tuple[str, str]] = []
         seen: Set[str] = set()
+        bundle_available = bool(context.bundle_path) and os.path.isfile(
+            context.bundle_path or ""
+        )
 
         # 1. Look for YAML files in the bundle under common workflow paths
         if context.bundle_path and os.path.isfile(context.bundle_path):
@@ -137,15 +161,129 @@ class WorkflowChecker:
                         seen.add(wf_file)
 
         if not workflow_files:
-            findings.append(
-                Finding(
-                    severity=Severity.OK,
-                    message="No workflow YAML files found in bundle.",
-                    service="airflow",
+            if bundle_available:
+                findings.append(
+                    Finding(
+                        severity=Severity.OK,
+                        message="No workflow YAML files found in bundle.",
+                        service="airflow",
+                    )
                 )
-            )
+            else:
+                findings.append(
+                    Finding(
+                        severity=Severity.WARNING,
+                        message=(
+                            "Workflow(s) configured, but no bundle is available "
+                            "to validate the DAG YAML against — this manifest "
+                            "deploys content.git directly without a bundle "
+                            "archive, so the DAG file only exists inside the "
+                            "cloned repository at deploy time. YAML syntax and "
+                            "structure for this deploy will not be caught until "
+                            "the actual deploy runs."
+                        ),
+                        service="airflow",
+                    )
+                )
 
         return workflow_files
+
+    def _validate_operator_code(
+        self,
+        context: DryRunContext,
+        findings: List[Finding],
+    ) -> None:
+        """Validate per-workflow ``code`` files (PythonOperator/BashOperator).
+
+        For each ``content.workflows`` entry that declares ``code``:
+
+        - The value must name a single ``.py``/``.sh``/``.zip`` file (deploy
+          uploads it as-is). A directory or any other extension is a hard error
+          - multiple modules or dependencies must be pre-packaged into a ``.zip``.
+        - When a bundle is enumerated, a matching file (by basename) must be
+          present in it.
+
+        Workflows without ``code`` are skipped (they use only AWS service
+        operators). When no bundle is enumerated (manifest-only dry run) the
+        presence check is skipped and the declaration is reported as OK.
+        """
+        manifest = getattr(context, "manifest", None)
+        content = getattr(manifest, "content", None) if manifest else None
+        workflows = getattr(content, "workflows", None) or []
+
+        bundle_files = context.bundle_files or set()
+
+        for workflow in workflows:
+            code_path = workflow.get("code") if isinstance(workflow, dict) else None
+            workflow_name = (
+                workflow.get("workflowName") if isinstance(workflow, dict) else None
+            )
+            if not code_path:
+                continue
+
+            code_basename = os.path.basename(str(code_path).rstrip("/"))
+
+            # Must be a single supported file. A directory (no extension) or an
+            # unsupported extension is a hard error - pre-package a .zip instead.
+            # Shared rule with the deploy path so the two cannot drift.
+            ref_error = code_ref_error(code_path)
+            if ref_error:
+                findings.append(
+                    Finding(
+                        severity=Severity.ERROR,
+                        message=f"Workflow '{workflow_name}': {ref_error}",
+                        resource=code_path,
+                        service="airflow",
+                    )
+                )
+                continue
+
+            # Presence check requires an enumerated bundle.
+            if not bundle_files:
+                findings.append(
+                    Finding(
+                        severity=Severity.OK,
+                        message=(
+                            f"Workflow '{workflow_name}': operator code '{code_path}' "
+                            f"declared (bundle not available to verify presence)"
+                        ),
+                        resource=code_path,
+                        service="airflow",
+                    )
+                )
+                continue
+
+            matches = [
+                f
+                for f in bundle_files
+                if os.path.basename(f) == code_basename and not is_code_artifact(f)
+            ]
+
+            if matches:
+                findings.append(
+                    Finding(
+                        severity=Severity.OK,
+                        message=(
+                            f"Workflow '{workflow_name}': operator code '{matches[0]}' "
+                            f"found in bundle"
+                        ),
+                        resource=code_path,
+                        service="airflow",
+                    )
+                )
+            else:
+                findings.append(
+                    Finding(
+                        severity=Severity.ERROR,
+                        message=(
+                            f"Workflow '{workflow_name}': operator code '{code_path}' "
+                            f"not found in bundle. Include it via content.storage so "
+                            f"deploy can upload it as the Code parameter."
+                        ),
+                        resource=code_path,
+                        service="airflow",
+                    )
+                )
 
     @staticmethod
     def _read_workflow_file(

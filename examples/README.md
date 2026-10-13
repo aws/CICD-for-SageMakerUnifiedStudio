@@ -61,15 +61,15 @@ cloned from the repository at deploy time:
 - Developers open a PR from `feature/*` into `main`; on merge the same commit goes to test then prod
 - Dev is the authoring project and not a deploy target — it gets content by pulling in the Git V2 UI
 - Stage gates come from CI environment required reviewers, not branch topology
+- This example only reacts to `deploy` being invoked — wiring that call to an actual trigger (a push to `main`, a PR merge, a pipeline stage) is the caller's responsibility, not something this example sets up
 - Includes the Git V2 connection setup steps and the promotion caveats per artifact type
 
 ```bash
 aws-smus-cicd-cli deploy --manifest examples/gitv2-end-to-end/manifest.yaml --targets test
 ```
 
-Requires unreleased CLI changes — see that example's README. Use the bundle flow
-(`serverless-example/`, `mwaa-example/`) instead when you need runtime configuration
-captured from a source project.
+Use the bundle flow (`serverless-example/`, `mwaa-example/`) instead when you need
+runtime configuration captured from a source project.
 
 ### Event Initialization
 **Example:** `analytic-workflow/dashboard-glue-quick/`

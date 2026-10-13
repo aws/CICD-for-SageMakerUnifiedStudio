@@ -11,6 +11,7 @@ on:
       - "Translate Documentation"
       - "Deploy Catalog Import Export"
       - "E2E Notebook Sync"
+      - "Deploy Python/Bash Operators"
     types: [completed]
 
 permissions:

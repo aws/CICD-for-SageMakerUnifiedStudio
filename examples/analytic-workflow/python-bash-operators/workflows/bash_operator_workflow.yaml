@@ -1,0 +1,20 @@
+bash_operator_workflow:
+  dag_id: bash_operator_workflow
+  start_date: "2024-01-01"
+  schedule: null
+  tasks:
+    hello_bash:
+      # BashOperator runs a Bash command. MWAA Serverless extracts this
+      # workflow's `code` package into the Airflow DAGs directory,
+      # /usr/local/airflow/dags. The CLI uploads the single .sh under a
+      # workflow-namespaced object key (operatorFiles/<workflow>-<ts>.sh), and
+      # the service extracts it under that name - so the original "greet.sh"
+      # name is NOT preserved. We therefore invoke it via a glob rather than a
+      # fixed filename.
+      #
+      # NOTE the trailing space in bash_command. Airflow's BashOperator Jinja-
+      # templates bash_command and, if the string ends in .sh, tries to load it
+      # as a template *file* (TemplateNotFound). A trailing space is the
+      # documented workaround so it runs as a command instead.
+      operator: airflow.providers.standard.operators.bash.BashOperator
+      bash_command: "bash /usr/local/airflow/dags/*.sh "

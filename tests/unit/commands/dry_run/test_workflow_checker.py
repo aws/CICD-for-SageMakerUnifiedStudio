@@ -540,6 +540,46 @@ class TestNoWorkflowFilesInBundle:
         ok_findings = [f for f in findings if f.severity == Severity.OK]
         assert any("no workflow" in f.message.lower() for f in ok_findings)
 
+    def test_no_bundle_at_all_with_workflow_actions_is_warning_not_ok(
+        self, checker
+    ):
+        """A content.git direct-deploy manifest (no bundle archive at all)
+        with workflow actions configured must not report the misleading
+        "no workflow YAML files found in bundle" OK — the DAG YAML genuinely
+        cannot be validated here, which is a WARNING, not a clean pass.
+        """
+        target = _FakeTarget(
+            bootstrap=_FakeBootstrap(actions=[_FakeAction(type="workflow.create")])
+        )
+        # No bundle_path at all — mirrors the git-direct-deploy dry run.
+        ctx = _make_context(target=target, bundle_path=None)
+        findings = checker.check(ctx)
+
+        assert len(findings) == 1
+        assert findings[0].severity == Severity.WARNING
+        assert "no bundle is available" in findings[0].message.lower()
+        # Must NOT be mistaken for the "bundle present, genuinely empty" OK case.
+        assert "no workflow yaml files found in bundle" not in (
+            findings[0].message.lower()
+        )
+
+    def test_bundle_path_set_but_file_missing_on_disk_is_warning(
+        self, checker, tmp_path
+    ):
+        """context.bundle_path can be set to a path that was never created
+        (e.g. resolution failed upstream) — treat that the same as no bundle,
+        not as "bundle present and empty."
+        """
+        target = _FakeTarget(
+            bootstrap=_FakeBootstrap(actions=[_FakeAction(type="workflow.create")])
+        )
+        missing_path = str(tmp_path / "does-not-exist.zip")
+        ctx = _make_context(target=target, bundle_path=missing_path)
+        findings = checker.check(ctx)
+
+        assert len(findings) == 1
+        assert findings[0].severity == Severity.WARNING
+
 
 # ---------------------------------------------------------------------------
 # Finding metadata
@@ -614,3 +654,89 @@ my_dag:
         assert any(
             w.details and w.details.get("variable") == "SOME_VAR" for w in warnings
         )
+
+
+# ---------------------------------------------------------------------------
+# Operator code (PythonOperator/BashOperator `code` field) validation
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class _FakeContent:
+    workflows: List[Dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass
+class _FakeManifest:
+    content: _FakeContent = field(default_factory=_FakeContent)
+
+
+def _make_code_context(workflows, bundle_files):
+    """Context with a workflow.create action, a manifest, and a bundle listing."""
+    target = _FakeTarget(
+        bootstrap=_FakeBootstrap(actions=[_FakeAction(type="workflow.create")]),
+        environment_variables={},
+    )
+    ctx = _make_context(target=target, bundle_files=set(bundle_files))
+    ctx.manifest = _FakeManifest(content=_FakeContent(workflows=workflows))
+    return ctx
+
+
+def test_operator_code_present_in_bundle_is_ok():
+    ctx = _make_code_context(
+        [
+            {"workflowName": "py", "code": "code/python/greeting.py"},
+            {"workflowName": "sh", "code": "code/bash/greet.sh"},
+        ],
+        [
+            "python-bash-operators/bundle/greeting.py",
+            "python-bash-operators/bundle/greet.sh",
+        ],
+    )
+    findings = WorkflowChecker().check(ctx)
+    code_findings = [f for f in findings if "operator code" in f.message]
+    assert len(code_findings) == 2
+    assert all(f.severity == Severity.OK for f in code_findings)
+
+
+def test_operator_code_missing_from_bundle_is_error():
+    ctx = _make_code_context(
+        [{"workflowName": "py", "code": "code/python/greeting.py"}],
+        ["python-bash-operators/bundle/workflows/py.yaml"],
+    )
+    findings = WorkflowChecker().check(ctx)
+    errors = [f for f in findings if f.severity == Severity.ERROR]
+    assert any("not found in bundle" in f.message for f in errors)
+
+
+def test_operator_code_bad_extension_is_error():
+    ctx = _make_code_context(
+        [{"workflowName": "py", "code": "code/python/module.txt"}],
+        ["python-bash-operators/bundle/module.txt"],
+    )
+    findings = WorkflowChecker().check(ctx)
+    errors = [f for f in findings if f.severity == Severity.ERROR]
+    assert any("must be a single .py/.sh file" in f.message for f in errors)
+
+
+def test_operator_code_directory_ref_is_error():
+    """A `code` naming a directory (no extension) is a hard error - no auto-zip."""
+    ctx = _make_code_context(
+        [{"workflowName": "py", "code": "code/mypkg"}],
+        [
+            "python-bash-operators/bundle/mypkg/mod.py",
+            "python-bash-operators/bundle/mypkg/helper.py",
+        ],
+    )
+    findings = WorkflowChecker().check(ctx)
+    errors = [f for f in findings if f.severity == Severity.ERROR]
+    assert any("pre-built .zip" in f.message for f in errors)
+
+
+def test_workflow_without_code_field_produces_no_code_findings():
+    ctx = _make_code_context(
+        [{"workflowName": "py"}],
+        ["python-bash-operators/bundle/workflows/py.yaml"],
+    )
+    findings = WorkflowChecker().check(ctx)
+    assert not [f for f in findings if "operator code" in f.message]
