@@ -210,7 +210,11 @@ def handle_workflow_create(
     workflows_created = []
 
     # Find DAG files in S3
-    from ...commands.deploy import _find_dag_files_in_s3, _generate_workflow_name
+    from ...commands.deploy import (
+        _find_dag_files_in_s3,
+        _generate_workflow_name,
+        _resolve_and_upload_operator_code,
+    )
 
     dag_files_in_s3 = _find_dag_files_in_s3(
         s3_client, s3_bucket, s3_prefix, manifest, target_config
@@ -219,6 +223,19 @@ def handle_workflow_create(
     if not dag_files_in_s3:
         typer.echo("⚠️ No DAG files found in S3")
         return True
+
+    # Upload operator code (PythonOperator/BashOperator) for the subset of
+    # workflows that declare a `code` path. A single .py/.sh/.zip is uploaded
+    # as-is; a directory or multiple files are zipped - matching the SMUS UI -
+    # and stored under the operatorFiles/ prefix. Keyed by the manifest
+    # workflowName, the same identifier the DAG loop yields below.
+    code_files_in_s3 = _resolve_and_upload_operator_code(
+        s3_client, s3_bucket, s3_prefix, manifest, target_config
+    )
+    if code_files_in_s3:
+        typer.echo(
+            f"📦 Operator code uploaded for: {', '.join(sorted(code_files_in_s3))}"
+        )
 
     # Filter by workflow name if specified
     if workflow_name_filter:
@@ -280,6 +297,15 @@ def handle_workflow_create(
             if os.path.exists(temp_path):
                 os.unlink(temp_path)
 
+        # Operator code package for this workflow, if it declared one. The code
+        # object was uploaded with the bundle content; pass its S3 URI so
+        # create_workflow sends the MWAA Serverless Code parameter.
+        code_s3_key = code_files_in_s3.get(workflow_name_from_yaml)
+        code_s3_location = None
+        if code_s3_key:
+            code_s3_location = f"s3://{s3_bucket}/{code_s3_key}"
+            typer.echo(f"📦 Using operator code package: {code_s3_location}")
+
         # Build the canonical tag set for this workflow - used for both creation
         # and recovery. Custom tags go first; SMUS-managed tags are applied on
         # top so they always win (collisions were already rejected above).
@@ -315,6 +341,7 @@ def handle_workflow_create(
             subnet_ids=subnet_ids,
             kms_key_id=kms_key_id,
             log_group_name=log_group_name,
+            code_s3_location=code_s3_location,
         )
 
         if result.get("success"):
@@ -327,8 +354,8 @@ def handle_workflow_create(
                 typer.echo(f"✅ Created workflow: {workflow_name}")
             typer.echo(f"   ARN: {workflow_arn}")
 
-            # Ensure all required tags are present (handles both new and pre-existing workflows)
-            _ensure_workflow_tags(workflow_arn, workflow_tags, region)
+            # Apply the canonical tag set (handles both new and pre-existing workflows)
+            _apply_workflow_tags(workflow_arn, workflow_tags, region)
 
             # Validate status
             workflow_status = airflow_serverless.get_workflow_status(
@@ -354,39 +381,38 @@ def handle_workflow_create(
         return True
 
 
-def _ensure_workflow_tags(
+def _apply_workflow_tags(
     workflow_arn: str,
     desired_tags: Dict[str, str],
     region: str,
 ) -> None:
     """
-    Check the current tags on a workflow and add any that are missing.
+    Apply the manifest-derived tag set to a workflow, overwriting existing values.
 
-    This allows recovery of pre-existing workflows that were created before
-    tagging was introduced.
+    The tags in `desired_tags` are always applied verbatim without inspecting
+    the workflow's current tags. `tag_resource` overwrites by key, so any tag
+    whose key appears in the manifest is set to the manifest value regardless of
+    what it was before. Reserved SMUS-managed tags are protected upstream:
+    customers cannot override them (their keys are rejected in
+    `handle_workflow_create` before we ever get here), and their canonical
+    values are layered on top of the custom tags in `workflow_tags`, so this
+    call always writes the correct reserved values too.
+
+    Tags present on the workflow but absent from `desired_tags` are left
+    untouched — we never delete out-of-band tags on deploy.
 
     Args:
         workflow_arn: ARN of the MWAA Serverless workflow
-        desired_tags: Full set of tags the workflow should have
+        desired_tags: Full set of tags to apply to the workflow
         region: AWS region
     """
+    if not desired_tags:
+        return
+
     client = airflow_serverless.create_airflow_serverless_client(region=region)
 
     try:
-        response = client.list_tags_for_resource(ResourceArn=workflow_arn)
-        current_tags = response.get("Tags", {})
+        client.tag_resource(ResourceArn=workflow_arn, Tags=dict(desired_tags))
+        typer.echo(f"   🏷️  Applied tags: {sorted(desired_tags)}")
     except Exception as e:
-        typer.echo(f"   ⚠️  Could not read tags for {workflow_arn}: {e}")
-        return
-
-    missing_tags = {k: v for k, v in desired_tags.items() if k not in current_tags}
-
-    if not missing_tags:
-        typer.echo("   🏷️  All required tags already present")
-        return
-
-    try:
-        client.tag_resource(ResourceArn=workflow_arn, Tags=missing_tags)
-        typer.echo(f"   🏷️  Added missing tags: {list(missing_tags.keys())}")
-    except Exception as e:
-        typer.echo(f"   ⚠️  Could not add tags to {workflow_arn}: {e}")
+        typer.echo(f"   ⚠️  Could not apply tags on {workflow_arn}: {e}")

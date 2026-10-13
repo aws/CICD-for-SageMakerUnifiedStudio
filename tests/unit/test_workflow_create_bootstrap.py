@@ -133,8 +133,11 @@ def test_handle_workflow_create_specific_workflow(mock_action, mock_context):
 
                             with patch(
                                 "smus_cicd.commands.deploy._find_dag_files_in_s3"
-                            ) as mock_find:
+                            ) as mock_find, patch(
+                                "smus_cicd.commands.deploy._resolve_and_upload_operator_code"
+                            ) as mock_find_code:
                                 mock_find.return_value = []  # No DAG files
+                                mock_find_code.return_value = {}
 
                                 result = handle_workflow_create(
                                     mock_action, mock_context
@@ -152,6 +155,8 @@ def test_handle_workflow_create_passes_tooling_config(mock_action, mock_context)
     ), patch(
         "smus_cicd.commands.deploy._find_dag_files_in_s3"
     ) as mock_find, patch(
+        "smus_cicd.commands.deploy._resolve_and_upload_operator_code"
+    ) as mock_find_code, patch(
         "smus_cicd.commands.deploy._generate_workflow_name"
     ) as mock_name, patch(
         "smus_cicd.helpers.context_resolver.ContextResolver"
@@ -173,6 +178,7 @@ def test_handle_workflow_create_passes_tooling_config(mock_action, mock_context)
         }
         mock_dz.is_idc_domain.return_value = False
         mock_find.return_value = [("s3-key.yaml", "test_workflow")]
+        mock_find_code.return_value = {}
         mock_name.return_value = "TestApp_test_project_test_workflow"
         mock_resolver.return_value.resolve.return_value = "resolved: yaml"
         mock_airflow.create_workflow.return_value = {
@@ -189,6 +195,8 @@ def test_handle_workflow_create_passes_tooling_config(mock_action, mock_context)
     assert result is True
     _, kwargs = mock_airflow.create_workflow.call_args
     assert kwargs["subnet_ids"] == ["subnet-1", "subnet-2"]
+    # No code declared -> code_s3_location is None
+    assert kwargs["code_s3_location"] is None
     assert kwargs["security_group_ids"] == ["sg-1"]
     assert kwargs["kms_key_id"] == "arn:aws:kms:us-east-1:123:key/abc"
     # IAM-based domain -> no explicit log group
@@ -204,6 +212,8 @@ def test_handle_workflow_create_idc_log_group(mock_action, mock_context):
     ), patch(
         "smus_cicd.commands.deploy._find_dag_files_in_s3"
     ) as mock_find, patch(
+        "smus_cicd.commands.deploy._resolve_and_upload_operator_code"
+    ) as mock_find_code, patch(
         "smus_cicd.commands.deploy._generate_workflow_name"
     ) as mock_name, patch(
         "smus_cicd.helpers.context_resolver.ContextResolver"
@@ -225,6 +235,7 @@ def test_handle_workflow_create_idc_log_group(mock_action, mock_context):
         }
         mock_dz.is_idc_domain.return_value = True
         mock_find.return_value = [("s3-key.yaml", "test_workflow")]
+        mock_find_code.return_value = {}
         mock_name.return_value = "my_workflow"
         mock_resolver.return_value.resolve.return_value = "resolved: yaml"
         # The log-group naming scheme lives in airflow_serverless; delegate to
@@ -311,6 +322,8 @@ def test_handle_workflow_create_merges_custom_tags(mock_action, mock_context):
     ), patch(
         "smus_cicd.commands.deploy._find_dag_files_in_s3"
     ) as mock_find, patch(
+        "smus_cicd.commands.deploy._resolve_and_upload_operator_code"
+    ) as mock_find_code, patch(
         "smus_cicd.commands.deploy._generate_workflow_name"
     ) as mock_name, patch(
         "smus_cicd.helpers.context_resolver.ContextResolver"
@@ -332,6 +345,7 @@ def test_handle_workflow_create_merges_custom_tags(mock_action, mock_context):
         }
         mock_dz.is_idc_domain.return_value = False
         mock_find.return_value = [("s3-key.yaml", "test_workflow")]
+        mock_find_code.return_value = {}
         mock_name.return_value = "TestApp_test_project_test_workflow"
         mock_resolver.return_value.resolve.return_value = "resolved: yaml"
         mock_airflow.create_workflow.return_value = {
@@ -355,3 +369,55 @@ def test_handle_workflow_create_merges_custom_tags(mock_action, mock_context):
     assert tags["CreatedBy"] == "SMUS-CICD"
     assert tags["AmazonDataZoneDomain"] == "domain-123"
     assert tags["AmazonDataZoneProject"] == "project-123"
+
+
+def test_handle_workflow_create_passes_code_location(mock_action, mock_context):
+    """A workflow with a resolved code package passes code_s3_location through."""
+    with patch(
+        "smus_cicd.bootstrap.handlers.workflow_create_handler.datazone"
+    ) as mock_dz, patch(
+        "smus_cicd.bootstrap.handlers.workflow_create_handler.create_client"
+    ), patch(
+        "smus_cicd.commands.deploy._find_dag_files_in_s3"
+    ) as mock_find, patch(
+        "smus_cicd.commands.deploy._resolve_and_upload_operator_code"
+    ) as mock_find_code, patch(
+        "smus_cicd.commands.deploy._generate_workflow_name"
+    ) as mock_name, patch(
+        "smus_cicd.helpers.context_resolver.ContextResolver"
+    ) as mock_resolver, patch(
+        "smus_cicd.bootstrap.handlers.workflow_create_handler.airflow_serverless"
+    ) as mock_airflow, patch(
+        "tempfile.NamedTemporaryFile"
+    ), patch(
+        "os.path.exists", return_value=False
+    ), patch(
+        "builtins.open"
+    ):
+
+        mock_dz.get_project_user_role_arn.return_value = "arn:aws:iam::123:role/test"
+        mock_dz.get_tooling_network_and_encryption_config.return_value = {
+            "subnet_ids": [],
+            "security_group_ids": [],
+            "kms_key_id": None,
+        }
+        mock_dz.is_idc_domain.return_value = False
+        mock_find.return_value = [("s3-key.yaml", "test_workflow")]
+        # Discovery maps the manifest workflowName -> uploaded code object key.
+        mock_find_code.return_value = {"test_workflow": "test-prefix/code/my_package.zip"}
+        mock_name.return_value = "TestApp_test_project_test_workflow"
+        mock_resolver.return_value.resolve.return_value = "resolved: yaml"
+        mock_airflow.create_workflow.return_value = {
+            "success": True,
+            "workflow_arn": "arn:aws:airflow-serverless:us-east-1:123:workflow/w-abc",
+        }
+        mock_airflow.get_workflow_status.return_value = {
+            "success": True,
+            "status": "READY",
+        }
+
+        result = handle_workflow_create(mock_action, mock_context)
+
+    assert result is True
+    _, kwargs = mock_airflow.create_workflow.call_args
+    assert kwargs["code_s3_location"] == "s3://test-bucket/test-prefix/code/my_package.zip"

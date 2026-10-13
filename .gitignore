@@ -152,6 +152,8 @@ config.local.yaml
 # Artifact files
 tests/integration/artifacts/*.zip
 *.zip
+# Exception: committed multi-file operator code package for the python/bash operators example
+!examples/analytic-workflow/python-bash-operators/code/python/hello_package.zip
 
 # Temporary files and scripts
 q-tasks/

@@ -1,0 +1,138 @@
+applicationName: PythonBashOperatorsExample
+content:
+  storage:
+  # Operator code consumed by PythonOperator/BashOperator tasks, bundled so
+  # deploy can upload each file to S3 (as-is) and pass it as the MWAA Serverless
+  # Code parameter. The bash operator uses a single .sh script; the python
+  # operator uses a pre-built .zip holding two modules (greeting.py + helpers.py
+  # at the archive root). The CLI uploads the .zip verbatim - it does not zip
+  # for you - which is how you ship multiple modules or dependencies.
+  - name: code
+    include:
+    - code/bash/greet.sh
+    - code/python/hello_package.zip
+    exclude:
+    - .ipynb_checkpoints/
+    - __pycache__/
+    - '*.pyc'
+  - name: workflows
+    include:
+    - workflows/
+    exclude:
+    - .ipynb_checkpoints/
+    - __pycache__/
+  workflows:
+  # Python operator: a pre-built .zip of two modules, uploaded to operatorFiles/
+  # in S3 as-is (verifies the whole archive is replicated and unpacked).
+  - workflowName: python_operator_workflow
+    connectionName: default.workflow_serverless
+    code: code/python/hello_package.zip
+  # Bash operator: a single .sh file, uploaded to operatorFiles/ as-is.
+  - workflowName: bash_operator_workflow
+    connectionName: default.workflow_serverless
+    code: code/bash/greet.sh
+stages:
+  dev:
+    stage: DEV
+    domain:
+      tags:
+        purpose: smus-cicd-testing
+      region: ${DEV_DOMAIN_REGION}
+    project:
+      name: dev-marketing
+      owners:
+      - Eng1
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
+    environment_variables:
+      S3_PREFIX: dev
+    bootstrap:
+      actions:
+      - type: workflow.create
+        workflowName: python_operator_workflow
+      - type: workflow.run
+        workflowName: python_operator_workflow
+        trailLogs: true
+      - type: workflow.create
+        workflowName: bash_operator_workflow
+      - type: workflow.run
+        workflowName: bash_operator_workflow
+        trailLogs: true
+    deployment_configuration:
+      storage:
+      - name: code
+        connectionName: default.s3_shared
+        targetDirectory: python-bash-operators/bundle
+      - name: workflows
+        connectionName: default.s3_shared
+        targetDirectory: python-bash-operators/bundle/workflows
+  test:
+    stage: TEST
+    domain:
+      tags:
+        purpose: smus-cicd-testing
+      region: ${TEST_DOMAIN_REGION}
+    project:
+      name: test-marketing
+      owners:
+      - Eng1
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
+    environment_variables:
+      S3_PREFIX: test
+    bootstrap:
+      actions:
+      - type: workflow.create
+        workflowName: python_operator_workflow
+      - type: workflow.run
+        workflowName: python_operator_workflow
+        trailLogs: true
+      - type: workflow.create
+        workflowName: bash_operator_workflow
+      - type: workflow.run
+        workflowName: bash_operator_workflow
+        trailLogs: true
+    deployment_configuration:
+      storage:
+      - name: code
+        connectionName: default.s3_shared
+        targetDirectory: python-bash-operators/bundle
+      - name: workflows
+        connectionName: default.s3_shared
+        targetDirectory: python-bash-operators/bundle/workflows
+  prod:
+    stage: PROD
+    domain:
+      tags:
+        purpose: smus-cicd-production
+      region: ${PROD_DOMAIN_REGION}
+    project:
+      name: prod-marketing
+      owners:
+      - Eng1
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/GitHubActionsRole-SMUS-CLI-Tests
+      - arn:aws:iam::${AWS_ACCOUNT_ID}:role/Admin
+    environment_variables:
+      S3_PREFIX: prod
+    bootstrap:
+      actions:
+      - type: workflow.create
+        workflowName: python_operator_workflow
+      - type: workflow.run
+        workflowName: python_operator_workflow
+        trailLogs: true
+      - type: workflow.create
+        workflowName: bash_operator_workflow
+      - type: workflow.run
+        workflowName: bash_operator_workflow
+        trailLogs: true
+    deployment_configuration:
+      storage:
+      - name: code
+        connectionName: default.s3_shared
+        targetDirectory: python-bash-operators/bundle
+      - name: workflows
+        connectionName: default.s3_shared
+        targetDirectory: python-bash-operators/bundle/workflows
+tests:
+  folder: examples/analytic-workflow/python-bash-operators/app_tests/
