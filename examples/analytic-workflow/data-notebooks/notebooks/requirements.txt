@@ -268,7 +268,7 @@ snowflake-connector-python==4.7.3
 snowflake-sqlalchemy==1.11.0
 sortedcontainers==2.4.0
 soupsieve==2.9.2
-sqlalchemy==2.0.44
+sqlalchemy==2.1.4
 sqlalchemy-bigquery==1.16.0
 sqlean-py==3.50.4.5
 sqlparse==0.6.0
