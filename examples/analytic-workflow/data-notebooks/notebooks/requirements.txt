@@ -154,7 +154,7 @@ mlflow-tracing==3.5.1
 mmh3==5.2.1
 mock==4.0.3
 mpmath==1.4.1
-multidict==6.7.1
+multidict==6.9.1
 multiprocess==0.70.16
 mypy-extensions==1.1.0
 namex==0.1.0
