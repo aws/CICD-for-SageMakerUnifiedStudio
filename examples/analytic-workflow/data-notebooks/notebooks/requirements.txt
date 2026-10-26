@@ -167,7 +167,7 @@ omegaconf==2.3.1
 openai==3.19.2
 openapi-schema-validator==0.6.3
 openapi-spec-validator==0.7.2
-opentelemetry-api==1.38.0
+opentelemetry-api==1.45.1
 opentelemetry-instrumentation==0.63b1
 opentelemetry-instrumentation-threading==0.59b0
 opentelemetry-proto==1.38.0
