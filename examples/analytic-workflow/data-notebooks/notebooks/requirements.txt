@@ -224,7 +224,7 @@ pyparsing==3.2.5
 pypdf==6.21.2
 pyroaring==1.1.0
 pyspark==3.5.8
-python-dateutil==2.9.0.post0
+python-dateutil==3.0.0
 python-dotenv==1.2.2
 python-lsp-jsonrpc==1.1.2
 python-lsp-server==1.15.0
