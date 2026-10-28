@@ -91,7 +91,7 @@ httpx-sse==0.4.3
 huggingface-hub==1.8.0
 ibis==3.3.0
 idna==3.15
-importlib-metadata==6.11.0
+importlib-metadata==10.1.0
 ipykernel==7.3.0
 ipython==9.6.0
 ipython-pygments-lexers==1.1.1
