@@ -29,7 +29,7 @@ bokeh==3.10.0
 boto3==1.40.70
 botocore==1.40.70
 cachetools==6.2.2
-certifi==2026.10.19
+certifi==2026.10.23
 cffi==2.1.1
 chardet==5.2.0
 charset-normalizer==3.4.7
