@@ -1,0 +1,90 @@
+# SMUS CI/CD + Git V2 — end-to-end promotion, trunk-based.
+#
+# Every artifact comes from the Git V2 repository under content.git; nothing
+# is committed in this directory. Single command per stage, no bundle:
+#
+#   aws-smus-cicd-cli deploy --manifest examples/gitv2-end-to-end/manifest.yaml --targets test
+#
+# See README.md for architecture, setup, and the full `include`/`exclude`
+# pattern reference (also in docs/manifest.md#git-repositories).
+applicationName: GitV2EndToEnd
+
+content:
+  git:
+    # `repository` must match deployment_configuration.git[].name below.
+    - repository: Git-V2-test-repo-1
+      url: https://github.com/Shnekit/Git-V2-test-repo-1.git
+      include:
+        - "*.ipynb" # notebooks 
+        - jobs/**
+        - workflows/sample_workflow.yaml
+        - workflows/samplev2.yaml
+
+  workflows:
+    - workflowName: sample_workflow
+      connectionName: default.workflow_serverless
+    - workflowName: samplev2
+      connectionName: default.workflow_serverless
+
+# dev is the authoring project (content source via Git V2 UI pull), not a
+# deploy target — kept here only so describe/dry-run can target it.
+stages:
+  dev:
+    stage: DEV
+    branch: main
+    domain:
+      name: Default_02092026_Domain
+      region: ${DEV_DOMAIN_REGION:us-east-1}
+    project:
+      name: gitv2-ml-dev
+      create: false
+    environment_variables:
+      ENV_NAME: dev
+    bootstrap:
+      actions:
+        - type: workflow.create
+    deployment_configuration:
+      git:
+        - name: Git-V2-test-repo-1
+          connectionName: default.s3_shared
+          targetDirectory: Git-V2-test-repo-1
+
+  test:
+    stage: TEST
+    branch: main
+    domain:
+      name: Default_02092026_Domain
+      region: ${TEST_DOMAIN_REGION:us-east-1}
+    project:
+      name: gitv2-ml-test
+      create: false
+    environment_variables:
+      ENV_NAME: test
+    bootstrap:
+      actions:
+        - type: workflow.create
+    deployment_configuration:
+      git:
+        - name: Git-V2-test-repo-1
+          connectionName: default.s3_shared
+          targetDirectory: Git-V2-test-repo-1
+
+  prod:
+    stage: PROD
+    branch: main
+    domain:
+      name: Default_02092026_Domain
+      region: ${PROD_DOMAIN_REGION:us-east-1}
+    project:
+      name: gitv2-ml-prod
+      create: false
+    environment_variables:
+      ENV_NAME: prod
+    bootstrap:
+      actions:
+        - type: workflow.create
+    deployment_configuration:
+      git:
+        - name: Git-V2-test-repo-1
+          connectionName: default.s3_shared
+          targetDirectory: Git-V2-test-repo-1

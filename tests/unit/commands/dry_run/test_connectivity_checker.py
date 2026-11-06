@@ -50,9 +50,16 @@ class _BootstrapConfig:
 
 
 @dataclass
+class _ProjectConfig:
+    name: str
+    create: bool = False
+
+
+@dataclass
 class _TargetConfig:
     deployment_configuration: Optional[_DeploymentConfiguration] = None
     bootstrap: Optional[_BootstrapConfig] = None
+    project: Optional[_ProjectConfig] = None
 
 
 def _make_context(
@@ -60,9 +67,16 @@ def _make_context(
     bootstrap_actions: list[str] | None = None,
     domain_id: str | None = "dzd_test",
     project_name: str | None = "test-project",
+    project_create: bool = False,
     region: str = "us-east-1",
 ) -> DryRunContext:
-    """Build a DryRunContext with the given features enabled."""
+    """Build a DryRunContext with the given features enabled.
+
+    ``project_create`` populates ``target_config.project.create`` — the
+    checker reads it to decide whether a missing project is a WARNING
+    (will be created) or an ERROR (deployment would fail), matching
+    ``ProjectChecker``'s own ``create`` handling.
+    """
     storage = [_StorageConfig(name=n) for n in (storage_names or [])]
     deploy_cfg = _DeploymentConfiguration(storage=storage)
 
@@ -72,9 +86,16 @@ def _make_context(
             actions=[_BootstrapAction(type=t) for t in bootstrap_actions]
         )
 
+    project_cfg = (
+        _ProjectConfig(name=project_name, create=project_create)
+        if project_name is not None
+        else None
+    )
+
     target = _TargetConfig(
         deployment_configuration=deploy_cfg,
         bootstrap=bootstrap,
+        project=project_cfg,
     )
 
     config: Dict[str, Any] = {"region": region}
@@ -221,7 +242,15 @@ class TestProjectExistence:
 
     @patch("smus_cicd.helpers.datazone.get_project_by_name")
     @patch("smus_cicd.commands.dry_run.checkers.connectivity_checker.create_client")
-    def test_project_not_found(self, mock_create_client, mock_get_project, checker):
+    def test_project_not_found_create_false_is_error(
+        self, mock_create_client, mock_get_project, checker
+    ):
+        """create defaults to False (no project config at all here), so a
+        missing project must be an ERROR — matching ProjectChecker's own
+        create=False behavior for the identical fact, not a WARNING. See
+        test_project_not_found_create_true_is_warning below for the other
+        branch.
+        """
         mock_dz = MagicMock()
         mock_dz.get_domain.return_value = {"id": "dzd_test"}
         mock_create_client.return_value = mock_dz
@@ -229,6 +258,49 @@ class TestProjectExistence:
         mock_get_project.return_value = None
 
         context = _make_context(project_name="missing-project", domain_id="dzd_test")
+        findings = checker.check(context)
+
+        project_errors = [
+            f
+            for f in findings
+            if f.severity == Severity.ERROR
+            and f.resource == "missing-project"
+            and f.service == "datazone"
+        ]
+        assert len(project_errors) >= 1
+        assert "not found" in project_errors[0].message.lower()
+        assert "create=false" in project_errors[0].message.lower()
+
+        # Must NOT also report this as a WARNING — that was the bug: this
+        # exact fact landing as both a severity in the same report.
+        project_warnings = [
+            f
+            for f in findings
+            if f.resource == "missing-project" and f.severity == Severity.WARNING
+        ]
+        assert len(project_warnings) == 0
+
+    @patch("smus_cicd.helpers.datazone.get_project_by_name")
+    @patch("smus_cicd.commands.dry_run.checkers.connectivity_checker.create_client")
+    def test_project_not_found_create_true_is_warning(
+        self, mock_create_client, mock_get_project, checker
+    ):
+        """A project target_config with create=True set must downgrade a
+        missing project to WARNING, matching ProjectChecker's OK-but-flagged
+        treatment of the same case (ProjectChecker reports OK; this phase
+        reports WARNING since the project genuinely does not exist yet).
+        """
+        mock_dz = MagicMock()
+        mock_dz.get_domain.return_value = {"id": "dzd_test"}
+        mock_create_client.return_value = mock_dz
+
+        mock_get_project.return_value = None
+
+        context = _make_context(
+            project_name="missing-project",
+            domain_id="dzd_test",
+            project_create=True,
+        )
         findings = checker.check(context)
 
         project_warnings = [
@@ -240,6 +312,14 @@ class TestProjectExistence:
         ]
         assert len(project_warnings) >= 1
         assert "not found" in project_warnings[0].message.lower()
+        assert "create=true" in project_warnings[0].message.lower()
+
+        project_errors = [
+            f
+            for f in findings
+            if f.resource == "missing-project" and f.severity == Severity.ERROR
+        ]
+        assert len(project_errors) == 0
 
     @patch("smus_cicd.helpers.datazone.get_project_by_name")
     @patch("smus_cicd.commands.dry_run.checkers.connectivity_checker.create_client")

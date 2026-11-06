@@ -42,16 +42,17 @@ class ConnectivityChecker:
                 pass
 
         # Resolve project_name — may come from config or target_config.
+        project_cfg = getattr(context.target_config, "project", None)
         project_name = config.get("project_name")
         if not project_name:
-            project_cfg = getattr(context.target_config, "project", None)
             project_name = getattr(project_cfg, "name", None) if project_cfg else None
+        create_flag = getattr(project_cfg, "create", False) if project_cfg else False
 
         # --- Step 1: Verify DataZone domain reachability (Req 6.1) ---
         self._check_domain(domain_id, region, findings)
 
         # --- Step 2: Verify DataZone project existence (Req 6.2) ---
-        self._check_project(project_name, domain_id, region, findings)
+        self._check_project(project_name, domain_id, region, create_flag, findings)
 
         # --- Step 3: Verify S3 bucket accessibility (Req 6.3) ---
         self._check_s3_buckets(context, region, findings)
@@ -111,9 +112,20 @@ class ConnectivityChecker:
         project_name: str | None,
         domain_id: str | None,
         region: str,
+        create_flag: bool,
         findings: List[Finding],
     ) -> None:
-        """Check project existence via ``get_project_by_name()``."""
+        """Check project existence via ``get_project_by_name()``.
+
+        ``create_flag`` must mirror ``ProjectChecker``'s own ``project.create``
+        check exactly: a missing project with ``create: false`` has to come out
+        as an ERROR in both phases. Previously this method ignored ``create``
+        entirely and always reported WARNING for a missing project, while
+        ``ProjectChecker`` (Phase 5, same report) reported ERROR for the exact
+        same ``create: false`` case — surfacing contradictory severities for
+        one fact in the same dry-run output ("project not found, might be
+        created" next to "project not found, deployment would fail").
+        """
         if not project_name or not domain_id:
             findings.append(
                 Finding(
@@ -143,14 +155,27 @@ class ConnectivityChecker:
                         service="datazone",
                     )
                 )
-            else:
+            elif create_flag:
                 findings.append(
                     Finding(
                         severity=Severity.WARNING,
                         message=(
                             f"DataZone project '{project_name}' not found "
-                            f"in domain '{domain_id}'. "
-                            "It may need to be created during deployment."
+                            f"in domain '{domain_id}', but create=True — "
+                            "it would be created during deployment."
+                        ),
+                        resource=project_name,
+                        service="datazone",
+                    )
+                )
+            else:
+                findings.append(
+                    Finding(
+                        severity=Severity.ERROR,
+                        message=(
+                            f"DataZone project '{project_name}' not found "
+                            f"in domain '{domain_id}' and create=False. "
+                            "Deployment would fail."
                         ),
                         resource=project_name,
                         service="datazone",

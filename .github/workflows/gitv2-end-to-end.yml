@@ -1,0 +1,26 @@
+name: Deploy Git V2 End-to-End Example
+
+on:
+  push:
+    branches:
+      - main
+      - test
+    paths:
+      - 'examples/gitv2-end-to-end/**'
+      - 'src/**'
+      - '.github/workflows/smus-direct-deploy.yml'
+      - '.github/workflows/gitv2-end-to-end.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/smus-direct-deploy.yml
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN_TEST }}
+    with:
+      manifest_path: 'examples/gitv2-end-to-end/manifest.yaml'
+      target: 'test'

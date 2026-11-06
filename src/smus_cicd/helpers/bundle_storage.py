@@ -160,10 +160,18 @@ def find_bundle_file(
 def manifest_requires_bundle(manifest) -> bool:
     """Return True if the manifest's content requires a bundle archive.
 
-    A bundle is needed when any content storage item has a ``connectionName``
-    (meaning it was downloaded from a remote source during bundling) or when
-    there are git content items.  Manifests that only use local storage items
-    (no ``connectionName``) or have no content at all do not need a bundle.
+    A bundle is needed when any content storage item has a ``connectionName``,
+    meaning its content lives in a remote S3 connection and was captured during
+    bundling. That content cannot be reproduced at deploy time, so the archive is
+    mandatory.
+
+    Git content items do NOT require a bundle. ``deploy`` clones the repository
+    directly via ``_deploy_git_direct()`` when no archive is supplied, and
+    extracts from ``repositories/<repository>/`` via ``_deploy_git_item()`` when
+    one is, so a git-only manifest deploys in a single command.
+
+    Manifests that only use local storage items (no ``connectionName``) or have
+    no content at all do not need a bundle either.
 
     This function is intentionally duck-typed so it works with both the real
     ``ApplicationManifest`` and lightweight test stubs.
@@ -175,11 +183,6 @@ def manifest_requires_bundle(manifest) -> bool:
     # Storage items with a connectionName come from the bundle
     storage_items = getattr(content, "storage", None) or []
     if any(getattr(item, "connectionName", None) for item in storage_items):
-        return True
-
-    # Git items always come from the bundle
-    git_items = getattr(content, "git", None) or []
-    if git_items:
         return True
 
     return False

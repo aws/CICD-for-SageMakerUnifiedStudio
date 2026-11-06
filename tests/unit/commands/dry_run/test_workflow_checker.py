@@ -540,6 +540,46 @@ class TestNoWorkflowFilesInBundle:
         ok_findings = [f for f in findings if f.severity == Severity.OK]
         assert any("no workflow" in f.message.lower() for f in ok_findings)
 
+    def test_no_bundle_at_all_with_workflow_actions_is_warning_not_ok(
+        self, checker
+    ):
+        """A content.git direct-deploy manifest (no bundle archive at all)
+        with workflow actions configured must not report the misleading
+        "no workflow YAML files found in bundle" OK — the DAG YAML genuinely
+        cannot be validated here, which is a WARNING, not a clean pass.
+        """
+        target = _FakeTarget(
+            bootstrap=_FakeBootstrap(actions=[_FakeAction(type="workflow.create")])
+        )
+        # No bundle_path at all — mirrors the git-direct-deploy dry run.
+        ctx = _make_context(target=target, bundle_path=None)
+        findings = checker.check(ctx)
+
+        assert len(findings) == 1
+        assert findings[0].severity == Severity.WARNING
+        assert "no bundle is available" in findings[0].message.lower()
+        # Must NOT be mistaken for the "bundle present, genuinely empty" OK case.
+        assert "no workflow yaml files found in bundle" not in (
+            findings[0].message.lower()
+        )
+
+    def test_bundle_path_set_but_file_missing_on_disk_is_warning(
+        self, checker, tmp_path
+    ):
+        """context.bundle_path can be set to a path that was never created
+        (e.g. resolution failed upstream) — treat that the same as no bundle,
+        not as "bundle present and empty."
+        """
+        target = _FakeTarget(
+            bootstrap=_FakeBootstrap(actions=[_FakeAction(type="workflow.create")])
+        )
+        missing_path = str(tmp_path / "does-not-exist.zip")
+        ctx = _make_context(target=target, bundle_path=missing_path)
+        findings = checker.check(ctx)
+
+        assert len(findings) == 1
+        assert findings[0].severity == Severity.WARNING
+
 
 # ---------------------------------------------------------------------------
 # Finding metadata

@@ -9,6 +9,8 @@ Tests cover:
 - Bucket derivation from connectionName
 - Prefix from targetDirectory
 - Finding metadata (resource, service, details)
+- Local-filesystem storage items (no connectionName, no bundle): file count
+  resolved from disk via include patterns, not context.bundle_files
 """
 
 from __future__ import annotations
@@ -44,6 +46,25 @@ class _TargetConfig:
     deployment_configuration: Optional[_DeploymentConfiguration] = None
 
 
+@dataclass
+class _ContentStorageItem:
+    """Stub for a manifest.content.storage entry (source-side config)."""
+
+    name: str
+    connectionName: Optional[str] = None
+    include: List[str] = field(default_factory=list)
+
+
+@dataclass
+class _ContentConfig:
+    storage: List[_ContentStorageItem] = field(default_factory=list)
+
+
+@dataclass
+class _Manifest:
+    content: Optional[_ContentConfig] = None
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -52,18 +73,28 @@ class _TargetConfig:
 def _make_context(
     storage_items: Optional[List[_StorageConfig]] = None,
     bundle_files: Optional[Set[str]] = None,
+    manifest_file: str = "manifest.yaml",
+    content_items: Optional[List[_ContentStorageItem]] = None,
 ) -> DryRunContext:
-    """Build a DryRunContext with storage configuration."""
+    """Build a DryRunContext with storage configuration.
+
+    ``manifest_file`` sets ``context.manifest_file`` (its directory is where
+    local ``include`` patterns are resolved relative to). ``content_items``
+    populates ``context.manifest.content.storage`` — the source-side entries
+    the checker consults to decide whether an item is local-filesystem-only.
+    """
     dep_cfg = _DeploymentConfiguration(storage=storage_items or [])
     target = _TargetConfig(deployment_configuration=dep_cfg)
 
     ctx = DryRunContext(
-        manifest_file="manifest.yaml",
+        manifest_file=manifest_file,
         target_config=target,
         config={"region": "us-east-1"},
     )
     if bundle_files is not None:
         ctx.bundle_files = bundle_files
+    if content_items is not None:
+        ctx.manifest = _Manifest(content=_ContentConfig(storage=content_items))
     return ctx
 
 
@@ -415,3 +446,186 @@ class TestFindingMetadata:
         ctx = _make_context(storage_items=[])
         findings = checker.check(ctx)
         assert findings[0].service == "s3"
+
+
+# ---------------------------------------------------------------------------
+# Local-filesystem storage items (no connectionName, no bundle)
+# ---------------------------------------------------------------------------
+
+
+class TestLocalFilesystemStorageItem:
+    """Items with no connectionName on content.storage never ship in a bundle
+    (see manifest_requires_bundle()); the checker must count their files on
+    disk via `include`, not via the (always-empty) context.bundle_files.
+    """
+
+    @patch(
+        "smus_cicd.commands.dry_run.checkers.storage_checker.get_project_connections"
+    )
+    def test_counts_files_from_disk_not_empty_bundle(self, mock_conns, checker, tmp_path):
+        mock_conns.return_value = _mock_connections(
+            ("default.s3_shared", "real-bucket")
+        )
+        (tmp_path / "notebooks").mkdir()
+        (tmp_path / "notebooks" / "a.ipynb").write_text("{}")
+        (tmp_path / "notebooks" / "b.ipynb").write_text("{}")
+        manifest_file = str(tmp_path / "manifest.yaml")
+
+        deploy_items = [
+            _StorageConfig(
+                name="notebooks",
+                connectionName="default.s3_shared",
+                targetDirectory="notebooks",
+            )
+        ]
+        content_items = [
+            _ContentStorageItem(
+                name="notebooks", connectionName=None, include=["notebooks"]
+            )
+        ]
+        # bundle_files intentionally left empty/unset — no bundle exists for
+        # a manifest with only local-filesystem storage items.
+        ctx = _make_context(
+            storage_items=deploy_items,
+            manifest_file=manifest_file,
+            content_items=content_items,
+        )
+
+        findings = checker.check(ctx)
+
+        assert len(findings) == 1
+        assert "2 file(s)" in findings[0].message
+        assert findings[0].details["file_count"] == 2
+
+    @patch(
+        "smus_cicd.commands.dry_run.checkers.storage_checker.get_project_connections"
+    )
+    def test_glob_pattern_counts_matching_files_only(
+        self, mock_conns, checker, tmp_path
+    ):
+        mock_conns.return_value = _mock_connections(
+            ("default.s3_shared", "real-bucket")
+        )
+        (tmp_path / "notebooks").mkdir()
+        (tmp_path / "notebooks" / "a.ipynb").write_text("{}")
+        (tmp_path / "notebooks" / "readme.md").write_text("x")
+        manifest_file = str(tmp_path / "manifest.yaml")
+
+        deploy_items = [
+            _StorageConfig(
+                name="notebooks",
+                connectionName="default.s3_shared",
+                targetDirectory="notebooks",
+            )
+        ]
+        content_items = [
+            _ContentStorageItem(
+                name="notebooks",
+                connectionName=None,
+                include=["notebooks/*.ipynb"],
+            )
+        ]
+        ctx = _make_context(
+            storage_items=deploy_items,
+            manifest_file=manifest_file,
+            content_items=content_items,
+        )
+
+        findings = checker.check(ctx)
+
+        assert "1 file(s)" in findings[0].message
+
+    @patch(
+        "smus_cicd.commands.dry_run.checkers.storage_checker.get_project_connections"
+    )
+    def test_no_matching_local_files_reports_zero(self, mock_conns, checker, tmp_path):
+        mock_conns.return_value = _mock_connections(
+            ("default.s3_shared", "real-bucket")
+        )
+        (tmp_path / "notebooks").mkdir()
+        manifest_file = str(tmp_path / "manifest.yaml")
+
+        deploy_items = [
+            _StorageConfig(
+                name="notebooks",
+                connectionName="default.s3_shared",
+                targetDirectory="notebooks",
+            )
+        ]
+        content_items = [
+            _ContentStorageItem(
+                name="notebooks", connectionName=None, include=["notebooks"]
+            )
+        ]
+        ctx = _make_context(
+            storage_items=deploy_items,
+            manifest_file=manifest_file,
+            content_items=content_items,
+        )
+
+        findings = checker.check(ctx)
+        assert "0 file(s)" in findings[0].message
+
+    @patch(
+        "smus_cicd.commands.dry_run.checkers.storage_checker.get_project_connections"
+    )
+    def test_item_with_connection_name_still_uses_bundle_files(
+        self, mock_conns, checker, tmp_path
+    ):
+        """A content item WITH a connectionName is bundle-backed — even if a
+        local directory of the same name happens to exist on disk, the
+        checker must keep counting from context.bundle_files, not disk.
+        """
+        mock_conns.return_value = _mock_connections(
+            ("default.s3_shared", "real-bucket")
+        )
+        (tmp_path / "code").mkdir()
+        (tmp_path / "code" / "a.py").write_text("x")
+        (tmp_path / "code" / "b.py").write_text("x")
+        (tmp_path / "code" / "c.py").write_text("x")
+        manifest_file = str(tmp_path / "manifest.yaml")
+
+        deploy_items = [
+            _StorageConfig(
+                name="code", connectionName="default.s3_shared", targetDirectory="src"
+            )
+        ]
+        content_items = [
+            _ContentStorageItem(
+                name="code", connectionName="default.s3_shared", include=["code"]
+            )
+        ]
+        bundle = {"code/a.py"}  # only one file in the bundle
+        ctx = _make_context(
+            storage_items=deploy_items,
+            manifest_file=manifest_file,
+            content_items=content_items,
+            bundle_files=bundle,
+        )
+
+        findings = checker.check(ctx)
+        # Must reflect the bundle (1), not the 3 files sitting on disk.
+        assert "1 file(s)" in findings[0].message
+
+    @patch(
+        "smus_cicd.commands.dry_run.checkers.storage_checker.get_project_connections"
+    )
+    def test_no_manifest_on_context_falls_back_to_bundle_files(
+        self, mock_conns, checker
+    ):
+        """Without context.manifest populated (e.g. a caller that never ran
+        ManifestChecker), the checker must not crash and should fall back to
+        the bundle-files count.
+        """
+        mock_conns.return_value = _mock_connections(
+            ("default.s3_shared", "real-bucket")
+        )
+        items = [
+            _StorageConfig(
+                name="code", connectionName="default.s3_shared", targetDirectory="src"
+            )
+        ]
+        ctx = _make_context(storage_items=items, bundle_files={"code/a.py"})
+
+        findings = checker.check(ctx)
+        assert "1 file(s)" in findings[0].message

@@ -98,9 +98,24 @@ class WorkflowChecker:
         """Gather workflow file contents from the bundle or local filesystem.
 
         Returns a list of ``(filename, raw_content)`` tuples.
+
+        A manifest deployed via ``content.git`` with no bundle archive (the
+        direct-clone path — see ``manifest_requires_bundle()``) has no bundle
+        for this checker to enumerate: the DAG YAML only exists inside the git
+        repository, which the dry run does not clone over the network. In
+        that case this method cannot see the file at all, so it is misleading
+        to report "no workflow YAML files found" as if the manifest had none
+        configured — the caller already knows workflows exist, since
+        ``check()`` only reaches here when a ``workflow.*`` bootstrap action is
+        present. That "no bundle at all" case is reported as a WARNING below,
+        distinct from "a bundle exists but genuinely has no workflow YAML in
+        it," which stays an OK.
         """
         workflow_files: List[Tuple[str, str]] = []
         seen: Set[str] = set()
+        bundle_available = bool(context.bundle_path) and os.path.isfile(
+            context.bundle_path or ""
+        )
 
         # 1. Look for YAML files in the bundle under common workflow paths
         if context.bundle_path and os.path.isfile(context.bundle_path):
@@ -146,13 +161,30 @@ class WorkflowChecker:
                         seen.add(wf_file)
 
         if not workflow_files:
-            findings.append(
-                Finding(
-                    severity=Severity.OK,
-                    message="No workflow YAML files found in bundle.",
-                    service="airflow",
+            if bundle_available:
+                findings.append(
+                    Finding(
+                        severity=Severity.OK,
+                        message="No workflow YAML files found in bundle.",
+                        service="airflow",
+                    )
                 )
-            )
+            else:
+                findings.append(
+                    Finding(
+                        severity=Severity.WARNING,
+                        message=(
+                            "Workflow(s) configured, but no bundle is available "
+                            "to validate the DAG YAML against — this manifest "
+                            "deploys content.git directly without a bundle "
+                            "archive, so the DAG file only exists inside the "
+                            "cloned repository at deploy time. YAML syntax and "
+                            "structure for this deploy will not be caught until "
+                            "the actual deploy runs."
+                        ),
+                        service="airflow",
+                    )
+                )
 
         return workflow_files
 
