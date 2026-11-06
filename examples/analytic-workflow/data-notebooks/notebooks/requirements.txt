@@ -244,7 +244,7 @@ rpds-py==0.29.0
 rsa==4.9.1
 ruamel-yaml==0.18.16
 ruamel-yaml-clib==0.2.15
-s3fs==2025.9.0
+s3fs==2026.9.0
 s3transfer==0.14.0
 safetensors==0.8.0
 sagemaker==3.8.0
