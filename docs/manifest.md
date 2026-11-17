@@ -352,6 +352,9 @@ content:
   git:
     - repository: MyDataPipeline
       url: https://github.com/myorg/data-pipeline.git
+      branch: main
+      include: ['src/*.py', 'workflows/my_dag.yaml']
+      exclude: ['tests/']
     - repository: SharedLibraries
       url: https://github.com/myorg/shared-libs.git
 ```
@@ -359,8 +362,24 @@ content:
 **Properties:**
 - `repository` (required): Repository name (used in deployment path: `repositories/{repository-name}/`)
 - `url` (required): Git repository URL
+- `branch` (optional): Branch name (default: `main`). **Note:** the clone always checks out the remote's default branch — pointing this at a non-default branch has no effect yet.
+- `include` (optional): Patterns selecting which cloned files are kept. When omitted, the entire repository is copied, including files like `README.md` that you likely do not want deployed.
+- `exclude` (optional): Patterns to drop, applied after `include`.
 
-**Note:** Git repositories are always cloned to `repositories/{repository-name}/` in the bundle. No `targetDir` configuration needed.
+**`include`/`exclude` pattern forms** — all matched against the file's path relative to the repository root, using forward slashes:
+
+| Form | Example | Matches |
+| --- | --- | --- |
+| Exact file | `notebooks/sales-summary.ipynb` | That one file |
+| Directory prefix | `notebooks` or `notebooks/` | Everything under that directory |
+| Recursive prefix | `notebooks/**` | Same as the directory prefix form |
+| Glob within a directory | `notebooks/*.ipynb` | Files directly in that directory matching the glob |
+| Nested wildcard | `jobs/*/*.py` | One directory level, then a glob |
+| Recursive, any location | `**/VETL-for-git.*` | Any depth, matching the glob |
+
+**⚠️ `*` crosses directory separators**, unlike a shell glob — the matcher is `fnmatch`-based, so a bare `*.ipynb` matches both a root-level file and `notebooks/sales-summary.ipynb`. Anchor the pattern (`notebooks/*.ipynb`) when you mean to match within one directory only.
+
+**Note:** Git repositories deploy to `repositories/{repository-name}/` when bundled, or to `deployment_configuration.git[].targetDirectory` when deployed directly without a bundle (see [Target Section](#target-section)).
 
 ### Catalog Assets
 

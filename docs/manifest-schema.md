@@ -49,9 +49,9 @@ content:
   git:
     - repository: my-repo      # Required: Repository name
       url: https://github.com/user/repo.git  # Required: Git URL
-      branch: main             # Optional: Branch name (default: main)
-      include: ['src/']        # Optional: Include patterns
-      exclude: ['*.pyc']       # Optional: Exclude patterns
+      branch: main             # Optional: Branch name (default: main; see note below)
+      include: ['src/*.py', 'notebooks/*.ipynb']  # Optional: see pattern forms below
+      exclude: ['*.pyc']       # Optional: applied after include
   
   # Workflows (Airflow DAGs)
   workflows:
@@ -275,6 +275,19 @@ stages:
           ResourceIdOverrideConfiguration:
             PrefixForAllResources: prod-
 ```
+
+## content.git `include`/`exclude` pattern forms
+
+`include`/`exclude` match against each cloned file's path relative to the repository
+root. Supported forms: an exact file path, a directory prefix (`notebooks` or
+`notebooks/`), a recursive prefix (`notebooks/**`), a glob within one directory
+(`notebooks/*.ipynb`), and a nested or fully recursive glob (`jobs/*/*.py`,
+`**/*.py`). `exclude` is applied after `include`. **⚠️** the glob matcher is
+`fnmatch`-based and `*` crosses directory separators, so a bare `*.ipynb` also
+matches a root-level file — anchor the pattern (`notebooks/*.ipynb`) to scope it to
+one directory. `branch` is accepted but not yet honored: the clone always checks out
+the remote's default branch. See [Git Repositories](manifest.md#git-repositories) in
+the Manifest Guide for the full pattern reference and worked examples.
 
 ## Related Documentation
 
