@@ -283,7 +283,7 @@ supervisor==4.3.0
 sympy==1.14.0
 tblib==3.2.2
 tenacity==9.1.2
-tensorboard==2.20.0
+tensorboard==2.21.0
 tensorboard-data-server==0.7.2
 tensorflow==2.20.0
 termcolor==3.2.0
