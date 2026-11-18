@@ -316,5 +316,5 @@ xgboost-cpu==3.1.1
 xxhash==4.0.1
 xyzservices==2026.3.0
 yarl==1.25.1
-zipp==3.23.0
+zipp==4.1.2
 zstandard==0.25.0
