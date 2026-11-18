@@ -72,7 +72,7 @@ google-cloud-bigquery==3.38.0
 google-cloud-core==2.5.0
 google-crc32c==1.8.0
 google-pasta==0.2.0
-google-resumable-media==2.9.0
+google-resumable-media==2.11.0
 googleapis-common-protos==1.72.0
 graphene==3.4.3
 graphql-core==3.2.12
